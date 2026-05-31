@@ -1,0 +1,9 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="춘배인증 마크">
+  <circle cx="60" cy="60" r="54" fill="#FFB41E"/>
+  <circle cx="60" cy="60" r="47" fill="#FFF3D0" stroke="#8A3D1D" stroke-width="4"/>
+  <path d="M60 18L65.7 27.6L76.5 25L73.9 35.8L83.5 41.5L73.9 47.2L76.5 58L65.7 55.4L60 65L54.3 55.4L43.5 58L46.1 47.2L36.5 41.5L46.1 35.8L43.5 25L54.3 27.6L60 18Z" fill="#D85A30" opacity="0.18"/>
+  <rect x="44" y="34" width="32" height="32" rx="8" fill="#1A1A2E"/>
+  <path d="M51 50.5L57.4 56.8L70 43.8" stroke="#FFB41E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36 78C42 72 49.8 69 60 69C70.2 69 78 72 84 78V87H36V78Z" fill="#1A1A2E"/>
+  <text x="60" y="99" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="900" fill="#8A3D1D">춘배인증</text>
+</svg>
