@@ -18,6 +18,7 @@ import {
   reportChatRoom,
   sendChatMessage,
 } from "../../services/chatService.js";
+import { LANG_CODE_MAP, translateText } from "../../services/translationService.js";
 
 export function ChatListPage({ onChatRoom, showToast }) {
   const [rooms, setRooms] = useState([]);
@@ -97,10 +98,12 @@ export function ChatListPage({ onChatRoom, showToast }) {
   );
 }
 
-export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
+export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [translateOn, setTranslateOn] = useState(false);
+  const [translationResults, setTranslationResults] = useState({});
+  const [translatingMessages, setTranslatingMessages] = useState({});
   const [attachOpen, setAttachOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [actioning, setActioning] = useState("");
@@ -142,6 +145,45 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
       // TODO: 읽음 처리 API 확정 전까지 화면 진입은 막지 않습니다.
     });
   }, [roomId]);
+
+  useEffect(() => {
+    if (!translateOn) return;
+
+    const targetLanguage = LANG_CODE_MAP[lang] ?? "KO";
+    const messagesToTranslate = messages.filter((message) => {
+      const messageId = message.id ?? message.messageId;
+      const content = message.text ?? message.content;
+      const cacheKey = `${messageId}:${targetLanguage}`;
+
+      return !message.me
+        && messageId
+        && content
+        && !translationResults[cacheKey]
+        && !translatingMessages[cacheKey];
+    });
+
+    messagesToTranslate.forEach((message) => {
+      const messageId = message.id ?? message.messageId;
+      const content = message.text ?? message.content;
+      const cacheKey = `${messageId}:${targetLanguage}`;
+
+      setTranslatingMessages((prev) => ({ ...prev, [cacheKey]: true }));
+      console.info("Translation request", { messageId, targetLanguage, content });
+      translateText(content, targetLanguage)
+        .then((result) => {
+          const translated = result.translatedContent ?? result.translatedText ?? "";
+          console.info("Translation response", { messageId, targetLanguage, translated });
+          setTranslationResults((prev) => ({ ...prev, [cacheKey]: translated || "번역 결과가 비어 있습니다." }));
+        })
+        .catch((error) => {
+          console.error("Translation failed", error);
+          setTranslationResults((prev) => ({ ...prev, [cacheKey]: getApiErrorHint(error) || "번역에 실패했습니다." }));
+        })
+        .finally(() => {
+          setTranslatingMessages((prev) => ({ ...prev, [cacheKey]: false }));
+        });
+    });
+  }, [messages, translateOn, lang, translationResults, translatingMessages]);
 
   useEffect(() => {
     let ignore = false;
@@ -367,11 +409,17 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
                   </div>
                 )}
               </div>
-              {translateOn && !m.me && (
-                <div className="chat-translation-preview">
-                  번역 미리보기: {m.text.includes("Hello") ? "안녕하세요! 이번 투어가 기대돼요." : "번역 결과가 여기에 표시됩니다."}
-                </div>
-              )}
+              {translateOn && !m.me && (() => {
+                const targetLanguage = LANG_CODE_MAP[lang] ?? "KO";
+                const cacheKey = `${m.id ?? m.messageId}:${targetLanguage}`;
+                const translated = translationResults[cacheKey];
+
+                return (
+                  <div className="chat-translation-preview">
+                    번역: {translated || (translatingMessages[cacheKey] ? "번역 중..." : "번역 대기 중...")}
+                  </div>
+                );
+              })()}
               <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 3, textAlign: m.me ? "right" : "left" }}>{m.time}</div>
               {m.me && <div className="chat-read-state">{m.read ? "읽음" : "안읽음"}</div>}
               {!m.me && <button type="button" className="chat-message-report" disabled={Boolean(actioning)} onClick={() => handleMessageReport(m)}>채팅 신고</button>}
