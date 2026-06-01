@@ -168,7 +168,7 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} user={user} showMobileTab={showTab} lang={lang} onLangChange={setLang}>
+      <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} lang={lang} onLangChange={setLang}>
         {screen === "home"             && <HomePage onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={() => go("fest")} onTab={handleTab} showToast={showToast} user={user} />}
         {screen === "map"              && <MapPage onPlaceClick={handlePlaceClick} />}
         {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} />}
@@ -180,7 +180,7 @@ export default function App() {
         {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => go("community")} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); go("chatroom"); }} />}
         {screen === "communityWrite"   && <CommunityWritePage onBack={() => go("community")} showToast={showToast} />}
         {screen === "chat"             && <ChatListPage onChatRoom={(r) => { setSelectedRoom(r); go("chatroom"); }} showToast={showToast} />}
-        {screen === "chatroom"         && <ChatRoomPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} onRequest={() => go("chatRequest")} />}
+        {screen === "chatroom"         && <ChatRoomPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} onRequest={() => go("chatRequest")} lang={lang} />}
         {screen === "chatRequest"      && <ChatRequestPage room={selectedRoom} onBack={() => go("chatroom")} showToast={showToast} />}
         {screen === "pay"              && <PayChargePage onBack={() => go("my")} onDone={() => go("my")} showToast={showToast} />}
         {screen === "payHistory"       && <PayHistoryPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} showToast={showToast} />}
@@ -188,7 +188,7 @@ export default function App() {
         {screen === "store"            && <StorePage onProduct={handleProductClick} />}
         {screen === "storeProduct"     && <StoreProductPage product={selectedProduct} onBack={() => go("store")} showToast={showToast} />}
         {screen === "storeShop"        && <StoreShopDetailPage shop={selectedShop} onBack={() => go(tab)} showToast={showToast} onQrPay={() => go("qrpay")} />}
-        {screen === "my"               && <MyPage onTab={handleTab} showToast={showToast} onLogout={handleLogout} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
+        {screen === "my"               && <MyPage onTab={handleTab} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
         {screen === "wishlist"         && <WishlistPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} />}
         {screen === "myReview"         && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "ownedItems"       && <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />}

@@ -23,11 +23,19 @@ const NAV_ITEMS = [
   { key: "my", label: "마이", icon: "👤" },
 ];
 
-export default function AppShell({ active, screen, onTab, onAR, user, showMobileTab, children, lang, onLangChange }) {
+export default function AppShell({ active, screen, onTab, onAR, user, onLogin, showMobileTab, children, lang, onLangChange }) {
   const selectedKey = screen === "place" || screen === "direction" ? "map" : screen;
   const hideFaqFloating = ["chatroom", "qrpay", "ar", "pay", "payHistory", "faq", "login", "signup"].includes(screen);
   const [langOpen, setLangOpen] = useState(false);
   const currentLang = LANGUAGES.find((l) => l.code === (lang || "ko"));
+  const isLoggedIn = Boolean(user);
+  const openAuthOrTab = (key) => {
+    if (!isLoggedIn && ["my", "pay", "notif"].includes(key)) {
+      onLogin?.();
+      return;
+    }
+    onTab(key);
+  };
 
   return (
     <div className="app-shell">
@@ -95,16 +103,16 @@ export default function AppShell({ active, screen, onTab, onAR, user, showMobile
                 </div>
               )}
             </div>
-            <button type="button" className="topbar-yeopjeon" onClick={() => onTab("pay")}>
-              <span>내 엽전 잔액</span>
-              <strong><img src={YeopjeonImg} alt="" /> 5,000</strong>
+            <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
+              <span>{isLoggedIn ? "내 엽전 잔액" : "엽전 이용"}</span>
+              <strong><img src={YeopjeonImg} alt="" /> {isLoggedIn ? "잔액 확인" : "로그인"}</strong>
             </button>
-            <button type="button" className="topbar-notification" onClick={() => onTab("notif")} aria-label="알림">
+            <button type="button" className="topbar-notification" onClick={() => openAuthOrTab("notif")} aria-label="알림">
               🔔
-              <span />
+              {isLoggedIn && <span />}
             </button>
-            <button type="button" className="topbar-user" onClick={() => onTab("my")}>
-              <span>{user?.nickname || "여행자"}</span>
+            <button type="button" className="topbar-user" onClick={() => openAuthOrTab("my")}>
+              <span>{user?.nickname || "로그인"}</span>
               <b style={{ background: COLORS.accent }}>👤</b>
             </button>
           </div>

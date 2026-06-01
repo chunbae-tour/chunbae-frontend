@@ -10,7 +10,8 @@ import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { fetchPopularSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchPlaces } from "../../services/searchService.js";
 
 // ─── 마이페이지 ───────────────────────────────────────────────────────
-export function MyPage({ onTab, showToast, onLogout, user, comfortableView = false, onComfortableViewChange = () => {} }) {
+export function MyPage({ onTab, showToast, onLogout, onLogin, user, comfortableView = false, onComfortableViewChange = () => {} }) {
+  const isLoggedIn = Boolean(user);
   const role = String(user?.role || "USER").toUpperCase();
   const [balance, setBalance] = useState(0);
   const [balanceStatus, setBalanceStatus] = useState("loading");
@@ -23,6 +24,13 @@ export function MyPage({ onTab, showToast, onLogout, user, comfortableView = fal
   ];
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setBalanceStatus("idle");
+      setBalance(0);
+      setBalanceError("");
+      return undefined;
+    }
+
     let ignore = false;
 
     fetchYeopjeonBalance()
@@ -38,7 +46,7 @@ export function MyPage({ onTab, showToast, onLogout, user, comfortableView = fal
       });
 
     return () => { ignore = true; };
-  }, []);
+  }, [isLoggedIn]);
 
   const confirmLogout = () => {
     setLogoutConfirmOpen(false);
@@ -52,11 +60,47 @@ export function MyPage({ onTab, showToast, onLogout, user, comfortableView = fal
         <span style={{ fontSize: 22, cursor: "pointer" }}>⚙️</span>
       </div>
       <div style={S.scrollArea}>
+        {!isLoggedIn ? (
+          <>
+            <div style={{ background: "#fff", padding: 20, display: "flex", gap: 16, alignItems: "center", marginBottom: 8 }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>👤</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>로그인이 필요합니다</div>
+                <div style={{ fontSize: 14, color: COLORS.textMuted, lineHeight: 1.5 }}>찜, 엽전, 이용 내역은 로그인 후 이용할 수 있어요.</div>
+                <button type="button" onClick={onLogin} style={{ marginTop: 10, border: 0, background: COLORS.primary, color: "#fff", borderRadius: 20, padding: "7px 14px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>로그인하기</button>
+              </div>
+            </div>
+            <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>서비스</div>
+              <button
+                type="button"
+                className="settings-row comfortable-view-toggle"
+                onClick={() => {
+                  const next = !comfortableView;
+                  onComfortableViewChange(next);
+                  showToast(next ? "편한 보기 모드를 켰습니다." : "편한 보기 모드를 껐습니다.");
+                }}
+                aria-pressed={comfortableView}
+              >
+                <div>
+                  <strong>편한 보기 모드</strong>
+                  <span>글씨와 버튼을 크게 보여드려요.</span>
+                </div>
+                <em className={comfortableView ? "on" : ""}>{comfortableView ? "ON" : "OFF"}</em>
+              </button>
+              <div onClick={() => onTab("faq")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <span style={{ fontSize: 14 }}>❓ FAQ</span>
+                <span style={{ color: COLORS.textMuted }}>›</span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
         <div style={{ background: "#fff", padding: 20, display: "flex", gap: 16, alignItems: "center", marginBottom: 8 }}>
           <div style={{ width: 64, height: 64, borderRadius: "50%", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>👤</div>
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>{user?.nickname || "여행자"}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>{user?.nickname || user?.email || "사용자"}</div>
               {role === "MERCHANT" && <span style={{ background: COLORS.accent, color: COLORS.primary, fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>🏪 상인</span>}
               {role === "ADMIN" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>👑 관리자</span>}
             </div>
@@ -83,7 +127,7 @@ export function MyPage({ onTab, showToast, onLogout, user, comfortableView = fal
           <div style={{ display: "flex", gap: 8 }}>
             <div className="my-balance-action" onClick={() => onTab("pay")} style={{ flex: 1, background: COLORS.accent, color: COLORS.primary, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>엽전 충전</div>
             <div className="my-balance-action" onClick={() => onTab("qrpay")} style={{ flex: 1, background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>🪙 QR 현장결제</div>
-            <div className="my-balance-action" onClick={() => onTab("payHistory")} style={{ flex: 1, background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>결제 내역</div>
+            <div className="my-balance-action" onClick={() => onTab("payHistory")} style={{ flex: 1, background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>이용 내역</div>
           </div>
         </div>
         <div className="my-trip-board">
@@ -112,7 +156,7 @@ export function MyPage({ onTab, showToast, onLogout, user, comfortableView = fal
           {[
             { icon: "❤️", label: "찜 목록", tab: "wishlist" },
             { icon: "✍️", label: "내 리뷰", tab: "myReview" },
-            { icon: "🧾", label: "결제 내역", tab: "payHistory" },
+            { icon: "🧾", label: "이용 내역", tab: "payHistory" },
             { icon: "🎁", label: "보유 아이템", tab: "ownedItems" },
           ].map((m, i) => (
             <div key={i} onClick={() => m.tab ? onTab(m.tab) : showToast("준비 중입니다")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
@@ -171,6 +215,8 @@ export function MyPage({ onTab, showToast, onLogout, user, comfortableView = fal
           ))}
           <div className="danger-service-action" onClick={() => setLogoutConfirmOpen(true)} style={{ padding: "14px 16px", color: "#E24B4A", fontSize: 14, cursor: "pointer" }}>🚪 로그아웃하기</div>
         </div>
+          </>
+        )}
       </div>
       <ConfirmDialog
         open={logoutConfirmOpen}
