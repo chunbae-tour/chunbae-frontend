@@ -1,8 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
-import { fetchMyReviews, fetchOwnedItems, fetchWishlist, getMockMyReviews, getMockOwnedItems, getMockWishlist, removeWishlistItem } from "../../services/myService.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
+import { fetchMyReviews, fetchOwnedItems, fetchWishlist, getMockMyReviews, removeWishlistItem } from "../../services/myService.js";
 
 // ─── 찜 목록 ─────────────────────────────────────────────────────────
 export function WishlistPage({ onBack, onPlaceClick }) {
@@ -67,7 +67,6 @@ export function WishlistPage({ onBack, onPlaceClick }) {
           </div>
         ) : (
           <div style={{ padding: 16 }}>
-            {status === "mock" && <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 12 }}>찜 API 미확정으로 현재는 목업 목록입니다.</div>}
             {items.map(p => (
               <div key={p.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
                 <div onClick={() => onPlaceClick(p)} style={{ fontSize: 36, width: 60, height: 60, background: COLORS.bg, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>{p.emoji}</div>
@@ -205,7 +204,6 @@ export function OwnedItemsPage({ onBack, showToast }) {
           <span>쿠폰과 교환권은 현장 방문 후 상인 확인 플로우로 사용할 예정입니다.</span>
         </div>
         {status === "loading" && <div style={{ padding: "0 16px 16px" }}><SkeletonList count={3} /></div>}
-        {status === "mock" && <div className="owned-items-todo">보유 아이템 API 연결 전까지 mock 아이템을 보여줍니다.</div>}
         {status === "empty" && (
           <div style={{ padding: "0 16px 16px" }}>
             <EmptyState
@@ -239,9 +237,7 @@ export function OwnedItemsPage({ onBack, showToast }) {
             </article>
           ))}
         </div>
-        <div className="owned-items-todo">
-          TODO: 보유 아이템 목록/사용 처리 API가 확정되면 목업 데이터를 실제 응답으로 교체합니다.
-        </div>
+        <div className="owned-items-todo">TODO: 보유 아이템 사용 처리 API가 확정되면 실제 응답으로 연결합니다.</div>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import MascotLoading from "../../assets/brand/mascot-loading.png";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import CertifiedMark from "../../assets/brand/chunbae-certified-mark.svg";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchFestivals, getMockFestivals } from "../../services/festivalService.js";
 import { fetchNearbyPlaces, getDefaultLocation, getMockPlaces } from "../../services/placeService.js";
 import { fetchCertifiedStorePromotions, getMockCertifiedStorePromotions } from "../../services/promotionService.js";
@@ -46,7 +46,7 @@ function StatusNotice({ status, type }) {
     return (
       <div className="home-status brand-status">
         <img src={MascotEmpty} alt="" />
-        <span>{type} API 연결 전까지 춘배가 준비한 추천을 보여줍니다.</span>
+        <span>{type} 데이터를 불러오지 못했습니다. 백엔드 연결 상태를 확인해 주세요.</span>
       </div>
     );
   }
@@ -55,7 +55,7 @@ function StatusNotice({ status, type }) {
     return (
       <div className="home-status brand-status">
         <img src={MascotEmpty} alt="" />
-        <span>{type} 응답이 비어 있어 기본 추천 데이터를 보여줍니다.</span>
+        <span>{type} 응답이 비어 있습니다.</span>
       </div>
     );
   }

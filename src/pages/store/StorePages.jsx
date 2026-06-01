@@ -3,8 +3,9 @@ import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import CertifiedMark from "../../assets/brand/chunbae-certified-mark.svg";
 import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
+import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { createShopReview, fetchShopDetail, fetchShopReviews, getMockShopDetail, getMockShopReviews } from "../../services/shopService.js";
-import { fetchStoreProduct, fetchStoreProducts, getMockProducts, purchaseStoreProduct } from "../../services/storeService.js";
+import { fetchStoreProduct, fetchStoreProducts, purchaseStoreProduct } from "../../services/storeService.js";
 
 // ─── 스토어 목록 ──────────────────────────────────────────────────────
 export function StorePage({ onProduct }) {
@@ -50,7 +51,6 @@ export function StorePage({ onProduct }) {
       <div style={S.scrollArea} className="web-detail-scroll">
         <div className="web-product-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10, padding: 16 }}>
           {status === "loading" && <div style={{ gridColumn: "1 / -1" }}><SkeletonList count={4} variant="card" /></div>}
-          {status === "mock" && <div style={{ gridColumn: "1 / -1", background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14 }}>스토어 API 연결 전까지 목업 상품을 보여줍니다.</div>}
           {status === "error" && (
             <div style={{ gridColumn: "1 / -1" }}>
               <ErrorState
@@ -95,7 +95,9 @@ export function StoreProductPage({ product, onBack, showToast }) {
   const [qty, setQty] = useState(1);
   const [detail, setDetail] = useState(product);
   const [buying, setBuying] = useState(false);
-  const balance = 10000;
+  const [balance, setBalance] = useState(null);
+  const [balanceError, setBalanceError] = useState("");
+  const [purchaseError, setPurchaseError] = useState("");
   const total = detail.price * qty;
 
   useEffect(() => {
@@ -105,17 +107,35 @@ export function StoreProductPage({ product, onBack, showToast }) {
         if (!ignore) setDetail(data);
       })
       .catch(() => {});
+
+    fetchYeopjeonBalance()
+      .then((amount) => {
+        if (ignore) return;
+        setBalance(amount);
+        setBalanceError("");
+      })
+      .catch((error) => {
+        if (ignore) return;
+        setBalance(null);
+        setBalanceError(getApiErrorHint(error));
+      });
+
     return () => { ignore = true; };
   }, [product?.id, product?.productId]);
 
   const handleBuy = async () => {
     if (buying) return;
+    if (balance == null) { showToast("엽전 잔액을 확인한 뒤 다시 시도해 주세요."); return; }
     if (balance < total) { showToast("엽전 잔액이 부족해요!"); return; }
     setBuying(true);
+    setPurchaseError("");
     try {
       await purchaseStoreProduct({ productId: detail.productId ?? detail.id, quantity: qty });
-    } catch {
-      // TODO: 구매 API 연결 실패 시 현재는 mock 구매 완료 흐름을 유지합니다.
+    } catch (error) {
+      setPurchaseError(getApiErrorHint(error));
+      showToast("구매를 완료하지 못했습니다.");
+      setBuying(false);
+      return;
     } finally {
       setBuying(false);
     }
@@ -145,8 +165,12 @@ export function StoreProductPage({ product, onBack, showToast }) {
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 16, marginBottom: 20, border: "0.5px solid rgba(0,0,0,0.06)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.textMuted, marginBottom: 8 }}>
-              <span>내 잔액</span><span style={{ fontWeight: 700, color: COLORS.primary }}>🪙 {balance.toLocaleString()} 엽전</span>
+              <span>내 잔액</span>
+              <span style={{ fontWeight: 700, color: COLORS.primary }}>
+                {balance == null ? "확인 필요" : `🪙 ${balance.toLocaleString()} 엽전`}
+              </span>
             </div>
+            {balanceError && <div style={{ fontSize: 13, color: "#D04437", marginBottom: 8 }}>{balanceError}</div>}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 14, color: COLORS.textMuted }}>수량</span>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -156,6 +180,7 @@ export function StoreProductPage({ product, onBack, showToast }) {
               </div>
             </div>
           </div>
+          {purchaseError && <div style={{ fontSize: 13, color: "#D04437", marginBottom: 10 }}>{purchaseError}</div>}
           <div onClick={handleBuy} style={{ background: COLORS.accent, color: COLORS.primary, borderRadius: 14, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
             {buying ? "구매 중..." : `🪙 ${total.toLocaleString()} 엽전으로 구매`}
           </div>
