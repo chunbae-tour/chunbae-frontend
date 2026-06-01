@@ -6,10 +6,12 @@ import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import {
   createPaymentRequestKey,
+  fetchChargeRefundHistory,
   fetchPaymentHistory,
   fetchYeopjeonBalance,
   isPaymentHistoryPayment,
   requestCharge,
+  requestPortOnePayment,
 } from "../../services/paymentService.js";
 
 const WON_TO_YEOPJEON_RATE = 10;
@@ -75,10 +77,13 @@ export function PayChargePage({ onBack, onDone, showToast }) {
 
     try {
       const result = await requestCharge({ amount: selected.value, paymentMethod: method, idempotencyKey: requestKey });
-      showToast(`충전 요청이 생성되었습니다. 주문번호: ${result.orderUid || "확인 필요"}`);
+      const paymentResult = await requestPortOnePayment(result);
+      console.info("PortOne payment result", paymentResult);
+      showToast(`결제 요청이 완료되었습니다. 주문번호: ${result.orderUid || "확인 필요"}`);
       setTimeout(onDone, 1500);
     } catch (err) {
-      setError(err.message || "충전 요청 중 문제가 발생했습니다.");
+      console.error("Charge payment failed", err);
+      setError(err.message || "결제 요청 중 문제가 발생했습니다.");
     } finally {
       setCharging(false);
     }
@@ -165,9 +170,9 @@ export function PayChargePage({ onBack, onDone, showToast }) {
           )}
           {error && <div style={{ color: "#E24B4A", fontSize: 14, marginBottom: 10 }}>{error}</div>}
           <button type="button" className="payment-primary-action" disabled={charging} onClick={handleCharge} style={{ width: "100%", border: "none", background: COLORS.accent, color: COLORS.primary, borderRadius: 14, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: charging ? "default" : "pointer", opacity: charging ? 0.7 : 1 }}>
-            {charging ? "충전 요청 중..." : selected ? `${selected.price} 결제 요청하기` : "충전할 금액을 먼저 선택해주세요"}
+            {charging ? "결제창 여는 중..." : selected ? `${selected.price} 결제 요청하기` : "충전할 금액을 먼저 선택해주세요"}
           </button>
-          <div style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center", marginTop: 8 }}>PG 결제창 URL은 백엔드 응답 협의 후 연결합니다.</div>
+          <div style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center", marginTop: 8 }}>결제창에서 결제를 완료하면 웹훅으로 엽전 충전이 반영됩니다.</div>
         </div>
         </div>
       </div>
@@ -176,9 +181,13 @@ export function PayChargePage({ onBack, onDone, showToast }) {
 }
 
 export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast }) {
+  const [activeHistoryTab, setActiveHistoryTab] = useState("yeopjeon");
   const [history, setHistory] = useState([]);
+  const [chargeRefundHistory, setChargeRefundHistory] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [chargeRefundStatus, setChargeRefundStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [chargeRefundErrorMessage, setChargeRefundErrorMessage] = useState("");
 
   const loadHistory = () => {
     setStatus("loading");
@@ -195,11 +204,31 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
       });
   };
 
+  const loadChargeRefundHistory = () => {
+    setChargeRefundStatus("loading");
+    setChargeRefundErrorMessage("");
+    fetchChargeRefundHistory()
+      .then((data) => {
+        setChargeRefundHistory(data);
+        setChargeRefundStatus(data.length > 0 ? "success" : "empty");
+      })
+      .catch((error) => {
+        setChargeRefundHistory([]);
+        setChargeRefundErrorMessage(getApiErrorHint(error));
+        setChargeRefundStatus("error");
+      });
+  };
+
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadHistory();
     return () => { ignore = true; };
   }, []);
+
+  useEffect(() => {
+    if (activeHistoryTab !== "chargeRefund" || chargeRefundStatus !== "idle") return;
+    loadChargeRefundHistory();
+  }, [activeHistoryTab, chargeRefundStatus]);
 
   const findPaidPlace = (historyItem) => {
     if (!isPaymentHistoryPayment(historyItem)) return null;
@@ -210,7 +239,7 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
     <div style={S.screen} className="web-payment-page">
       <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
         <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
-        <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>결제 내역</span>
+        <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>이용 내역</span>
       </div>
       <div style={{ background: COLORS.primary, padding: "0 16px 20px", textAlign: "center" }}>
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>현재 잔액</div>
@@ -220,23 +249,50 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
         </div>
       </div>
       <div style={S.scrollArea} className="web-detail-scroll">
+        <div style={{ display: "flex", gap: 8, padding: "16px 16px 0" }}>
+          {[
+            { key: "yeopjeon", label: "엽전 내역" },
+            { key: "chargeRefund", label: "충전/환불 내역" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveHistoryTab(tab.key)}
+              style={{
+                flex: 1,
+                border: activeHistoryTab === tab.key ? `1px solid ${COLORS.primary}` : "1px solid rgba(0,0,0,0.08)",
+                background: activeHistoryTab === tab.key ? COLORS.primary : "#fff",
+                color: activeHistoryTab === tab.key ? "#fff" : COLORS.primary,
+                borderRadius: 12,
+                padding: "10px 12px",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         <div className="web-history-list" style={{ padding: 16 }}>
-          {status === "loading" && <SkeletonList count={4} />}
-          {status === "empty" && (
-            <EmptyState
-              icon="🧾"
-              title="결제 내역이 없습니다."
-              description="현장에서 QR 결제를 완료하면 거래한 상점과 리뷰 작성入口가 이곳에 표시됩니다."
-            />
-          )}
-          {status === "error" && (
-            <ErrorState
-              title="결제 내역을 불러오지 못했습니다."
-              description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
-              onRetry={loadHistory}
-            />
-          )}
-          {history.map(h => {
+          {activeHistoryTab === "yeopjeon" && (
+            <>
+              {status === "loading" && <SkeletonList count={4} />}
+              {status === "empty" && (
+                <EmptyState
+                  icon="🧾"
+                  title="엽전 내역이 없습니다."
+                  description="충전, 현장결제, 환불처럼 엽전 잔액이 바뀌면 이곳에 표시됩니다."
+                />
+              )}
+              {status === "error" && (
+                <ErrorState
+                  title="엽전 내역을 불러오지 못했습니다."
+                  description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
+                  onRetry={loadHistory}
+                />
+              )}
+              {history.map(h => {
             const paidPlace = findPaidPlace(h);
             const reviewTarget = isPaymentHistoryPayment(h) && h.shopId ? {
               id: h.shopId,
@@ -283,6 +339,47 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
               <div style={{ fontSize: 15, fontWeight: 700, color: h.type !== "결제" ? COLORS.green : "#E24B4A" }}>{h.amount}</div>
             </div>
           );})}
+            </>
+          )}
+          {activeHistoryTab === "chargeRefund" && (
+            <>
+              {chargeRefundStatus === "loading" && <SkeletonList count={4} />}
+              {chargeRefundStatus === "empty" && (
+                <EmptyState
+                  icon="💳"
+                  title="충전/환불 내역이 없습니다."
+                  description="엽전 충전 결제와 환불 상태가 이곳에 표시됩니다."
+                />
+              )}
+              {chargeRefundStatus === "error" && (
+                <ErrorState
+                  title="충전/환불 내역을 불러오지 못했습니다."
+                  description={chargeRefundErrorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
+                  onRetry={loadChargeRefundHistory}
+                />
+              )}
+              {chargeRefundHistory.map((item) => (
+                <div key={item.id} className="payment-history-row" style={{ background: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: item.status === "COMPLETED" ? COLORS.greenBg : "#FFF3D0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                      {item.status === "REFUNDED" || item.status === "CANCELLED" ? "↩" : "💳"}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>{item.title}</div>
+                      <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 2 }}>{item.date}</div>
+                      <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>
+                        {item.paymentMethodLabel} · 주문번호 {String(item.orderUid || "").slice(0, 8)}...
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: item.status === "FAILED" ? "#E24B4A" : COLORS.primary }}>{item.amount}</div>
+                    <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>{item.statusLabel}</div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>
