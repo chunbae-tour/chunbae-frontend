@@ -71,6 +71,7 @@ export default function App() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedShop, setSelectedShop] = useState(null);
+  const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(null);
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [lang, setLang] = useState("ko");
 
@@ -173,7 +174,7 @@ export default function App() {
         {screen === "map"              && <MapPage onPlaceClick={handlePlaceClick} />}
         {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} />}
         {screen === "direction"        && <DirectionPage place={selectedPlace} onBack={() => go("place")} />}
-        {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} />}
+        {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} />}
         {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} />}
         {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} />}
         {screen === "community"        && <CommunityListPage onPost={(p) => { setSelectedPost(p); go("communityPost"); }} onWrite={() => go("communityWrite")} onBack={() => go(tab)} />}
@@ -196,9 +197,9 @@ export default function App() {
         {screen === "notif"            && <NotificationPage onBack={() => go(tab)} />}
         {screen === "notificationSettings" && <NotificationSettingsPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "faq"              && <FAQPage onBack={() => go(tab)} />}
-        {screen === "merchant"         && <MerchantShopPage onBack={() => go("my")} showToast={showToast} onMenuManage={() => go("merchantMenu")} onSettlement={() => go("merchantSettlement")} />}
-        {screen === "merchantMenu"     && <MerchantMenuPage onBack={() => go("merchant")} showToast={showToast} />}
-        {screen === "merchantSettlement" && <MerchantSettlementPage onBack={() => go("merchant")} />}
+        {screen === "merchant"         && <MerchantShopPage onBack={() => go("my")} showToast={showToast} onMenuManage={() => go("merchantMenu")} onSettlement={() => go("merchantSettlement")} selectedShopId={selectedMerchantShopId} onShopChange={setSelectedMerchantShopId} />}
+        {screen === "merchantMenu"     && <MerchantMenuPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}
+        {screen === "merchantSettlement" && <MerchantSettlementPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}
         {screen === "adminDashboard"   && <AdminDashboardPage onBack={() => go("my")} onNav={go} />}
         {screen === "adminUsers"       && <AdminUsersPage onBack={() => go("adminDashboard")} showToast={showToast} />}
         {screen === "adminReports"     && <AdminReportsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
