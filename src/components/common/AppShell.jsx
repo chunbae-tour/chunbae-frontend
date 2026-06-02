@@ -25,7 +25,19 @@ const NAV_ITEMS = [
 
 export default function AppShell({ active, screen, onTab, onAR, user, onLogin, showMobileTab, children, lang, onLangChange }) {
   const selectedKey = screen === "place" || screen === "direction" ? "map" : screen;
-  const hideFaqFloating = ["chatroom", "qrpay", "ar", "pay", "payHistory", "faq", "login", "signup"].includes(screen);
+  const hideFaqFloating = [
+    "chatroom",
+    "qrpay",
+    "ar",
+    "pay",
+    "payHistory",
+    "merchant",
+    "merchantMenu",
+    "merchantSettlement",
+    "faq",
+    "login",
+    "signup",
+  ].includes(screen);
   const [langOpen, setLangOpen] = useState(false);
   const currentLang = LANGUAGES.find((l) => l.code === (lang || "ko"));
   const isLoggedIn = Boolean(user);
