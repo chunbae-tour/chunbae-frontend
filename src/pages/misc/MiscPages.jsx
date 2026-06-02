@@ -7,7 +7,7 @@ import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, getMockNotificationSettings, getMockNotifications, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
 import YeopjeonImg from "../../assets/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { fetchPopularSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchPlaces } from "../../services/searchService.js";
+import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchUnified } from "../../services/searchService.js";
 
 // ─── 마이페이지 ───────────────────────────────────────────────────────
 export function MyPage({ onTab, showToast, onLogout, onLogin, user, comfortableView = false, onComfortableViewChange = () => {} }) {
@@ -608,6 +608,12 @@ const SEARCH_SUGGESTIONS = [
   { label: "창덕궁 후원길", query: "창덕궁", meta: "고즈넉한 산책 · 사진 포인트" },
 ];
 const POPULAR_SEARCH_FALLBACK = ["광장시장", "통인시장", "경복궁", "창덕궁", "먹자골목"];
+const SEARCH_RESULT_TABS = [
+  { key: "ALL", label: "전체" },
+  { key: "PLACE", label: "장소" },
+  { key: "SHOP", label: "가게" },
+  { key: "MENU", label: "메뉴" },
+];
 
 function readRecentSearches() {
   try {
@@ -618,14 +624,29 @@ function readRecentSearches() {
 }
 
 function writeRecentSearch(keyword) {
-  const next = [keyword, ...readRecentSearches().filter(item => item !== keyword)].slice(0, 5);
+  const next = [keyword, ...readRecentSearches().filter(item => item !== keyword)].slice(0, 10);
   sessionStorage.setItem("chunbae_recent_searches", JSON.stringify(next));
   return next;
 }
 
-export function SearchPage({ onBack, onPlaceClick }) {
+function replaceRecentSearches(keywords) {
+  const next = keywords.filter(Boolean).slice(0, 10);
+  sessionStorage.setItem("chunbae_recent_searches", JSON.stringify(next));
+  return next;
+}
+
+function removeRecentSearch(keyword) {
+  return replaceRecentSearches(readRecentSearches().filter(item => item !== keyword));
+}
+
+function clearRecentSearches() {
+  return replaceRecentSearches([]);
+}
+
+export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [activeResultType, setActiveResultType] = useState("ALL");
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [retryKey, setRetryKey] = useState(0);
@@ -634,6 +655,11 @@ export function SearchPage({ onBack, onPlaceClick }) {
   const [suggestions, setSuggestions] = useState([]);
   // TODO: 검색 API가 확정되면 검색어/필터/정렬/페이지네이션 응답으로 교체합니다.
   const normalizedQuery = query.trim();
+  const resultCounts = SEARCH_RESULT_TABS.reduce((acc, tab) => {
+    acc[tab.key] = tab.key === "ALL" ? results.length : results.filter(item => item.targetType === tab.key).length;
+    return acc;
+  }, {});
+  const visibleResults = activeResultType === "ALL" ? results : results.filter(item => item.targetType === activeResultType);
 
   useEffect(() => {
     let ignore = false;
@@ -649,8 +675,28 @@ export function SearchPage({ onBack, onPlaceClick }) {
       })
       .catch(() => setPopularSearches(POPULAR_SEARCH_FALLBACK));
 
+    fetchRecentSearches()
+      .then((data) => {
+        if (ignore) return;
+        const values = (Array.isArray(data) ? data : [])
+          .map(item => item.keyword || item.query || item.name || item)
+          .filter(Boolean);
+        setRecentSearches(replaceRecentSearches(values));
+      })
+      .catch(() => {});
+
     return () => { ignore = true; };
   }, []);
+
+  const handleDeleteRecentSearch = (keyword) => {
+    setRecentSearches(removeRecentSearch(keyword));
+    deleteRecentSearch(keyword).catch(() => {});
+  };
+
+  const handleClearRecentSearches = () => {
+    setRecentSearches(clearRecentSearches());
+    deleteRecentSearch().catch(() => {});
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -679,11 +725,14 @@ export function SearchPage({ onBack, onPlaceClick }) {
           setSuggestions(POPULAR_SEARCH_FALLBACK.filter(item => item.includes(normalizedQuery)).slice(0, 5));
         });
 
-      searchPlaces({ query: normalizedQuery })
+      searchUnified({ query: normalizedQuery })
         .then((data) => {
           if (ignore) return;
           setResults(data);
           setStatus(data.length > 0 ? "success" : "empty");
+          if (activeResultType !== "ALL" && data.filter(item => item.targetType === activeResultType).length === 0) {
+            setActiveResultType("ALL");
+          }
           setRecentSearches(writeRecentSearch(normalizedQuery));
           saveSearchKeyword(normalizedQuery).catch(() => {});
         })
@@ -707,6 +756,42 @@ export function SearchPage({ onBack, onPlaceClick }) {
       clearTimeout(timer);
     };
   }, [normalizedQuery, retryKey]);
+
+  const handleSearchResultClick = (item) => {
+    if (item.targetType === "SHOP" || item.targetType === "MENU") {
+      onShopClick?.({
+        id: item.shopId ?? item.id,
+        shopId: item.shopId ?? item.id,
+        name: item.shopName ?? item.name,
+        shopName: item.shopName ?? item.name,
+        marketName: item.placeName,
+        rating: item.rating,
+        reviewCount: item.reviewCount,
+        desc: item.desc,
+      });
+      return;
+    }
+
+    const placeImage = getPlaceImageUrl(item);
+    onPlaceClick({ ...item, imageUrl: placeImage });
+  };
+
+  const getResultMeta = (item) => {
+    if (item.targetType === "MENU") {
+      return `${item.shopName} · ${item.placeName}${item.price ? ` · ${item.price.toLocaleString()}원` : ""}`;
+    }
+    if (item.targetType === "SHOP") {
+      const menuText = item.matchedMenuNames?.length ? ` · 대표 ${item.matchedMenuNames.slice(0, 2).join(", ")}` : "";
+      return `${item.placeName ?? "연결 장소"} · ${item.category ?? "가게"}${menuText}`;
+    }
+    return `${item.type} · ${item.dist}`;
+  };
+
+  const getResultDescription = (item) => {
+    if (item.targetType === "MENU") return item.desc || "이 메뉴를 파는 가게로 이동합니다.";
+    if (item.targetType === "SHOP") return item.desc || "가게 상세와 엽전 결제 정보를 확인하세요.";
+    return item.type === "전통시장" ? "먹거리 골목 · 야시장 추천" : "산책 코스 · 사진 포인트";
+  };
 
   return (
     <div style={S.screen} className="search-local-page">
@@ -749,14 +834,20 @@ export function SearchPage({ onBack, onPlaceClick }) {
                 </div>
               </div>
               <div>
-                <strong>최근 검색어</strong>
+                <div className="search-recent-head">
+                  <strong>최근 검색어</strong>
+                  {recentSearches.length > 0 && (
+                    <button type="button" onClick={handleClearRecentSearches}>전체 삭제</button>
+                  )}
+                </div>
                 <div>
                   {recentSearches.length === 0 ? (
                     <span className="search-empty-keyword">아직 최근 검색어가 없습니다.</span>
                   ) : recentSearches.map(item => (
-                    <button key={item} type="button" onClick={() => setQuery(item)}>
-                      {item}
-                    </button>
+                    <span key={item} className="search-recent-chip">
+                      <button type="button" onClick={() => setQuery(item)}>{item}</button>
+                      <button type="button" aria-label={`${item} 최근 검색어 삭제`} onClick={() => handleDeleteRecentSearch(item)}>×</button>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -791,6 +882,22 @@ export function SearchPage({ onBack, onPlaceClick }) {
               <span>{status === "mock" ? "목업 " : ""}검색 결과 {results.length}개</span>
               <small>거리와 분위기를 보고 바로 상세로 들어가세요</small>
             </div>
+            <div className="search-result-tabs" role="tablist" aria-label="검색 결과 유형">
+              {SEARCH_RESULT_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={activeResultType === tab.key ? "active" : ""}
+                  role="tab"
+                  aria-selected={activeResultType === tab.key}
+                  onClick={() => setActiveResultType(tab.key)}
+                  disabled={resultCounts[tab.key] === 0}
+                >
+                  {tab.label}
+                  <b>{resultCounts[tab.key]}</b>
+                </button>
+              ))}
+            </div>
             {suggestions.length > 0 && (
               <div className="search-suggest-row">
                 <span>자동완성</span>
@@ -799,22 +906,23 @@ export function SearchPage({ onBack, onPlaceClick }) {
                 ))}
               </div>
             )}
-            {results.map(p => {
+            {visibleResults.map(p => {
               const placeImage = getPlaceImageUrl(p);
               return (
-              <div key={p.id} onClick={() => onPlaceClick({ ...p, imageUrl: placeImage })} className="search-result-card">
+              <div key={`${p.targetType}-${p.id}`} onClick={() => handleSearchResultClick(p)} className={`search-result-card ${p.targetType?.toLowerCase() || "place"}`}>
                 <div
                   className={p.type === "전통시장" ? "search-result-thumb market has-image" : "search-result-thumb has-image"}
-                  style={{ "--place-card-image": placeImage ? `url("${placeImage}")` : undefined }}
+                  style={{ "--place-card-image": p.targetType === "PLACE" && placeImage ? `url("${placeImage}")` : undefined }}
                 >
-                  {!placeImage && p.emoji}
+                  {p.targetType === "SHOP" ? "가게" : p.targetType === "MENU" ? "메뉴" : !placeImage && p.emoji}
                 </div>
                 <div>
+                  <em>{p.targetLabel ?? "장소"}</em>
                   <strong>{p.name}</strong>
-                  <span>{p.type} · {p.dist}</span>
-                  <small>{p.type === "전통시장" ? "먹거리 골목 · 야시장 추천" : "산책 코스 · 사진 포인트"}</small>
+                  <span>{getResultMeta(p)}</span>
+                  <small>{getResultDescription(p)}</small>
                 </div>
-                <button type="button">상세 보기</button>
+                <button type="button">{p.targetType === "PLACE" ? "장소 보기" : "가게 보기"}</button>
               </div>
             );})}
           </div>
