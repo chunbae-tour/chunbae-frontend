@@ -51,6 +51,8 @@ function normalizeAuthData(data, fallbackRole) {
     language: data.language,
     companionScore: data.companionScore,
     companionReviewCount: data.companionReviewCount,
+    status: data.status,
+    createdAt: data.createdAt,
   };
 }
 
@@ -114,19 +116,22 @@ export async function fetchCurrentUser() {
 }
 
 export async function updateCurrentUserProfile({ nickname, language, profileImageUrl }) {
+  const accessToken = getAccessToken("USER");
   const body = {};
   if (nickname !== undefined) body.nickname = nickname;
   if (language !== undefined) body.language = language;
   if (profileImageUrl !== undefined) body.profileImageUrl = profileImageUrl;
 
-  await apiRequest("/users/me", {
+  const data = await apiRequest("/users/me", {
     method: "PATCH",
     auth: true,
     role: "USER",
     body,
   });
 
-  return fetchCurrentUser();
+  const authData = normalizeAuthData({ ...data, accessToken, role: "USER" }, "USER");
+  saveSession(authData);
+  return authData;
 }
 
 export function shouldClearSessionForError(error) {
