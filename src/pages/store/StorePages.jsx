@@ -206,6 +206,8 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
   const currentShop = detail || {};
   const shopName = currentShop.shopName || currentShop.name || "춘배인증 상점";
   const marketName = currentShop.marketName || currentShop.placeName || currentShop.place?.name || "연결된 장소";
+  const shopMenus = Array.isArray(currentShop.menus) ? currentShop.menus : [];
+  const shopNotices = Array.isArray(currentShop.notices) ? currentShop.notices : [];
   const canWriteReview = currentShop.reviewWritable !== false;
 
   useEffect(() => {
@@ -335,7 +337,7 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
               <strong>{shopName}</strong>
             </div>
             <dl>
-              <div><dt>대표 메뉴</dt><dd>{currentShop.menu || "대표 메뉴 준비 중"}</dd></div>
+              <div><dt>대표 메뉴</dt><dd>{currentShop.menu || shopMenus[0]?.name || "대표 메뉴 준비 중"}</dd></div>
               <div><dt>혜택</dt><dd>{currentShop.benefit || currentShop.event?.label || "현장 혜택 확인"}</dd></div>
               <div><dt>결제</dt><dd>{currentShop.acceptsYeopjeon !== false ? "현장 QR 엽전 결제" : "결제 준비 중"}</dd></div>
             </dl>
@@ -362,16 +364,53 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
           <section className="shop-menu-panel">
             <div className="place-action-head">
               <span>상점 메뉴와 혜택</span>
-              <small>실제 메뉴 API 연결 전까지 광고/목업 정보로 보여줍니다.</small>
+              <small>{shopMenus.length > 0 ? "상인이 등록한 메뉴입니다." : "등록된 메뉴가 없으면 대표 정보만 보여줍니다."}</small>
             </div>
-            <div className="shop-menu-grid">
-              {[currentShop.menu || "대표 메뉴", "현장 추천 세트", currentShop.benefit || "춘배 혜택"].map((item, index) => (
-                <div key={`${item}-${index}`}>
-                  <strong>{item}</strong>
-                  <span>{index === 0 ? "대표" : index === 1 ? "추천" : "혜택"}</span>
-                </div>
-              ))}
+            {shopMenus.length > 0 ? (
+              <div className="shop-menu-grid">
+                {shopMenus.map(menu => (
+                  <div key={menu.id ?? menu.name} className={menu.available === false ? "is-disabled" : ""}>
+                    <strong>{menu.name}</strong>
+                    <span>{menu.price > 0 ? `${menu.price.toLocaleString()}엽전` : "가격 확인"}</span>
+                    {menu.description && <small>{menu.description}</small>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="shop-menu-grid">
+                {[currentShop.menu || "대표 메뉴 준비 중", currentShop.benefit || "춘배 혜택"].map((item, index) => (
+                  <div key={`${item}-${index}`}>
+                    <strong>{item}</strong>
+                    <span>{index === 0 ? "대표" : "혜택"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+          <section className="shop-menu-panel">
+            <div className="place-action-head">
+              <span>가게 공지</span>
+              <small>{shopNotices.length > 0 ? "상인이 등록한 최신 안내입니다." : "아직 등록된 공지가 없습니다."}</small>
             </div>
+            {shopNotices.length > 0 ? (
+              <div className="shop-notice-list">
+                {shopNotices.map(notice => (
+                  <article key={notice.id ?? `${notice.title}-${notice.createdAt}`}>
+                    <div>
+                      <strong>{notice.title}</strong>
+                      {notice.createdAt && <span>{notice.createdAt}</span>}
+                    </div>
+                    {notice.content && <p>{notice.content}</p>}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon="공지"
+                title="등록된 공지가 없습니다."
+                description="휴무나 재료 소진 안내가 등록되면 이곳에 표시됩니다."
+              />
+            )}
           </section>
           <section className="shop-review-list">
             <div className="place-action-head">

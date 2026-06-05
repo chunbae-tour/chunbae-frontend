@@ -4,6 +4,10 @@ import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchMyReviews, fetchOwnedItems, fetchWishlist, getMockMyReviews, removeWishlistItem } from "../../services/myService.js";
 
+function isRoleDeniedError(error) {
+  return error?.status === 403;
+}
+
 // ─── 찜 목록 ─────────────────────────────────────────────────────────
 export function WishlistPage({ onBack, onPlaceClick }) {
   const [items, setItems] = useState([]);
@@ -20,6 +24,10 @@ export function WishlistPage({ onBack, onPlaceClick }) {
       })
       .catch((error) => {
         setItems([]);
+        if (isRoleDeniedError(error)) {
+          setStatus("empty");
+          return;
+        }
         setErrorMessage(getApiErrorHint(error));
         setStatus("error");
       });
@@ -181,6 +189,10 @@ export function OwnedItemsPage({ onBack, showToast }) {
       })
       .catch((error) => {
         setItems([]);
+        if (isRoleDeniedError(error)) {
+          setStatus("empty");
+          return;
+        }
         setErrorMessage(getApiErrorHint(error));
         setStatus("error");
       });

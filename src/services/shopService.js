@@ -28,6 +28,23 @@ function normalizeShop(shop = {}) {
   const shopId = getShopId(shop);
   const shopName = shop.shopName || shop.name || "춘배인증 상점";
   const marketName = shop.marketName || shop.placeName || shop.place?.name || "연결된 장소";
+  const rawMenus = shop.menus ?? shop.menuResponses ?? shop.menuList ?? shop.shopMenus ?? [];
+  const menus = Array.isArray(rawMenus) ? rawMenus.map(menu => ({
+    id: menu.menuId ?? menu.id,
+    name: menu.name ?? menu.menuName ?? "메뉴",
+    price: Number(menu.price ?? 0),
+    description: menu.description ?? menu.desc ?? "",
+    available: menu.available ?? menu.isAvailable ?? menu.status !== "SOLD_OUT",
+    imageUrl: menu.imageUrl ?? menu.thumbnailUrl ?? "",
+  })) : [];
+  const rawNotices = shop.notices ?? shop.noticeResponses ?? shop.noticeList ?? shop.shopNotices ?? [];
+  const notices = Array.isArray(rawNotices) ? rawNotices.map(notice => ({
+    id: notice.noticeId ?? notice.id,
+    title: notice.title ?? notice.subject ?? "가게 공지",
+    content: notice.content ?? notice.message ?? "",
+    createdAt: notice.createdAt ?? notice.createdDate ?? notice.date ?? "",
+  })) : [];
+  const mainMenu = shop.menu || shop.mainMenu || shop.representativeMenu || menus.find(menu => menu.available !== false)?.name || "";
 
   return {
     ...shop,
@@ -37,7 +54,9 @@ function normalizeShop(shop = {}) {
     shopName,
     marketName,
     placeName: shop.placeName || marketName,
-    menu: shop.menu || shop.mainMenu || "대표 메뉴 준비 중",
+    menu: mainMenu,
+    menus,
+    notices,
     benefit: shop.benefit || shop.event?.label || "현장 혜택 확인",
     acceptsYeopjeon: shop.acceptsYeopjeon ?? true,
     certified: shop.certified ?? shop.verified ?? true,
