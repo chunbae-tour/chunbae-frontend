@@ -1,4 +1,4 @@
-import { apiRequest, getPageContent } from "./apiClient.js";
+import { apiFormRequest, apiRequest, getPageContent } from "./apiClient.js";
 import { getStoredAuthSession } from "./authService.js";
 
 function getStoredMerchantShopId() {
@@ -77,6 +77,10 @@ export const MOCK_PAYMENT_REQUESTS = [
   },
 ];
 
+export const MOCK_SHOP_NOTICES = [
+  { id: 1, title: "오늘 영업 안내", content: "오후 10시까지 정상 영업합니다.", createdAt: "2026.06.01" },
+];
+
 export function normalizeMenu(menu = {}) {
   return {
     id: menu.menuId ?? menu.id,
@@ -95,6 +99,15 @@ export function normalizeSettlement(item = {}) {
     date: item.createdAt ?? item.requestedAt ?? item.settledAt ?? item.date ?? "",
     amount: Number(item.amount ?? 0),
     status: item.status ?? "정산요청",
+  };
+}
+
+export function normalizeShopNotice(item = {}) {
+  return {
+    id: item.noticeId ?? item.id,
+    title: item.title ?? item.subject ?? "가게 공지",
+    content: item.content ?? item.message ?? item.description ?? "",
+    createdAt: item.createdAt ?? item.createdDate ?? item.date ?? "",
   };
 }
 
@@ -134,6 +147,9 @@ export function normalizeShop(data = {}) {
     reviewCount: Number(data.reviewCount ?? MOCK_MERCHANT_SHOP.reviewCount),
     verified: data.verified ?? data.isVerified ?? MOCK_MERCHANT_SHOP.verified,
     status: data.status ?? MOCK_MERCHANT_SHOP.status,
+    imageUrls: data.imageUrls ?? data.images ?? [],
+    thumbnailUrl: data.thumbnailUrl ?? data.imageUrl,
+    notices: Array.isArray(data.notices) ? data.notices.map(normalizeShopNotice) : undefined,
     menus: Array.isArray(data.menus) ? data.menus.map(normalizeMenu) : undefined,
   };
 }
@@ -167,6 +183,59 @@ export async function updateMerchantShop(shopId, payload) {
     },
   });
   return normalizeShop(data);
+}
+
+export async function uploadMerchantShopImage(shopId, file) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const formData = new FormData();
+  formData.append("file", file);
+  const data = await apiFormRequest(`/merchants/me/shops/${resolvedShopId}/images`, {
+    method: "POST",
+    auth: true,
+    role: "MERCHANT",
+    formData,
+  });
+  return normalizeShop(data);
+}
+
+export async function updateMerchantShopStatus(shopId, nextStatus) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/status`, {
+    method: "PATCH",
+    auth: true,
+    role: "MERCHANT",
+    body: { status: nextStatus },
+  });
+  return normalizeShop(data);
+}
+
+export async function fetchMerchantShopNotices(shopId) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/notices`, { auth: true, role: "MERCHANT" });
+  return getPageContent(data).map(normalizeShopNotice);
+}
+
+export async function addMerchantShopNotice(shopId, payload) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/notices`, {
+    method: "POST",
+    auth: true,
+    role: "MERCHANT",
+    body: {
+      title: payload.title,
+      content: payload.content,
+    },
+  });
+  return normalizeShopNotice(data);
+}
+
+export async function deleteMerchantShopNotice(shopId, noticeId) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  return apiRequest(`/merchants/me/shops/${resolvedShopId}/notices/${noticeId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "MERCHANT",
+  });
 }
 
 export async function fetchMerchantWallet(shopId) {

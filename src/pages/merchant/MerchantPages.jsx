@@ -3,11 +3,14 @@ import { COLORS, S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import {
   addMerchantMenu,
+  addMerchantShopNotice,
   approveMerchantPaymentRequest,
+  deleteMerchantShopNotice,
   deleteMerchantMenu,
   fetchMerchantPaymentRequests,
   fetchMerchantSettlements,
   fetchMerchantShop,
+  fetchMerchantShopNotices,
   fetchMerchantShops,
   fetchMerchantWallet,
   MOCK_MENUS as SERVICE_MOCK_MENUS,
@@ -17,9 +20,16 @@ import {
   requestMerchantSettlement,
   updateMerchantMenu,
   updateMerchantShop,
+  updateMerchantShopStatus,
+  uploadMerchantShopImage,
 } from "../../services/merchantService.js";
 
 const MIN_SETTLEMENT_AMOUNT = 5000;
+const SHOP_STATUS_LABELS = {
+  ACTIVE: "영업중",
+  CLOSED: "영업종료",
+  SUSPENDED: "운영정지",
+};
 
 // ─── 상인 가게 관리 ───────────────────────────────────────────────────
 export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement, selectedShopId, onShopChange }) {
@@ -27,8 +37,10 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const [shops, setShops] = useState([]);
   const [wallet, setWallet] = useState(MOCK_MERCHANT_WALLET);
   const [paymentRequests, setPaymentRequests] = useState([]);
+  const [notices, setNotices] = useState([]);
   const [status, setStatus] = useState("loading");
   const [requestStatus, setRequestStatus] = useState("loading");
+  const [noticeStatus, setNoticeStatus] = useState("loading");
   const [isShopEditorOpen, setIsShopEditorOpen] = useState(false);
   const [shopForm, setShopForm] = useState({
     name: "",
@@ -40,6 +52,10 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     holiday: "",
   });
   const [isSavingShop, setIsSavingShop] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [noticeForm, setNoticeForm] = useState({ title: "", content: "" });
+  const [isSavingNotice, setIsSavingNotice] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -47,6 +63,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     async function loadMerchantDashboard() {
       setStatus("loading");
       setRequestStatus("loading");
+      setNoticeStatus("loading");
 
       const shopList = await fetchMerchantShops().catch(() => []);
       if (ignore) return;
@@ -63,13 +80,18 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         fetchMerchantWallet(effectiveShopId),
         fetchMerchantPaymentRequests(effectiveShopId),
       ]);
+      const noticeResult = await fetchMerchantShopNotices(effectiveShopId)
+        .then(value => ({ status: "fulfilled", value }))
+        .catch(error => ({ status: "rejected", reason: error }));
 
       if (ignore) return;
       setShop(shopResult.status === "fulfilled" ? shopResult.value : (nextShops.find(item => String(item.id) === String(effectiveShopId)) ?? MOCK_MERCHANT_SHOP));
       setWallet(walletResult.status === "fulfilled" ? walletResult.value : MOCK_MERCHANT_WALLET);
       setPaymentRequests(requestResult.status === "fulfilled" ? requestResult.value : []);
+      setNotices(noticeResult.status === "fulfilled" ? noticeResult.value : []);
       setStatus(shopResult.status === "fulfilled" || walletResult.status === "fulfilled" ? "success" : "mock");
       setRequestStatus(requestResult.status === "fulfilled" ? (requestResult.value.length > 0 ? "success" : "empty") : "error");
+      setNoticeStatus(noticeResult.status === "fulfilled" ? (noticeResult.value.length > 0 ? "success" : "empty") : "error");
     }
 
     loadMerchantDashboard()
@@ -79,8 +101,10 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         setShop(MOCK_MERCHANT_SHOP);
         setWallet(MOCK_MERCHANT_WALLET);
         setPaymentRequests([]);
+        setNotices([]);
         setStatus("mock");
         setRequestStatus("error");
+        setNoticeStatus("error");
       });
 
     return () => { ignore = true; };
@@ -140,6 +164,71 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     }
   };
 
+  const handleStatusChange = async (nextStatus) => {
+    if (!currentShopId || shop.status === nextStatus || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      const updatedShop = await updateMerchantShopStatus(currentShopId, nextStatus);
+      const nextShop = { ...updatedShop, status: nextStatus };
+      setShop(nextShop);
+      setShops(prev => prev.map(item => String(item.id) === String(nextShop.id) ? { ...item, ...nextShop } : item));
+      showToast(`${SHOP_STATUS_LABELS[nextStatus] ?? nextStatus} 상태로 변경했습니다.`);
+    } catch {
+      showToast("가게 상태 변경에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const updatedShop = await uploadMerchantShopImage(currentShopId, file);
+      setShop(updatedShop);
+      setShops(prev => prev.map(item => String(item.id) === String(updatedShop.id) ? { ...item, ...updatedShop } : item));
+      showToast("가게 사진을 업로드했습니다.");
+    } catch {
+      showToast("가게 사진 업로드에 실패했습니다. 파일 형식과 백엔드 상태를 확인해주세요.");
+    } finally {
+      setIsUploadingImage(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleNoticeSave = async () => {
+    if (!noticeForm.title.trim() || !noticeForm.content.trim()) {
+      showToast("공지 제목과 내용을 입력해주세요.");
+      return;
+    }
+    setIsSavingNotice(true);
+    try {
+      const createdNotice = await addMerchantShopNotice(currentShopId, {
+        title: noticeForm.title.trim(),
+        content: noticeForm.content.trim(),
+      });
+      setNotices(prev => [createdNotice, ...prev]);
+      setNoticeForm({ title: "", content: "" });
+      setNoticeStatus("success");
+      showToast("가게 공지를 등록했습니다.");
+    } catch {
+      showToast("가게 공지 등록에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");
+    } finally {
+      setIsSavingNotice(false);
+    }
+  };
+
+  const handleNoticeDelete = async (noticeId) => {
+    try {
+      await deleteMerchantShopNotice(currentShopId, noticeId);
+      setNotices(prev => prev.filter(item => item.id !== noticeId));
+      showToast("가게 공지를 삭제했습니다.");
+    } catch {
+      showToast("가게 공지 삭제에 실패했습니다.");
+    }
+  };
+
   return (
     <div style={S.screen} className="merchant-dashboard-page">
       <div style={{ background: COLORS.primary, padding: "44px 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -187,6 +276,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>
                 {shop.name}
                 {shop.verified && <span style={{ fontSize: 14, background: COLORS.greenBg, color: COLORS.green, borderRadius: 6, padding: "2px 8px", marginLeft: 8 }}>✅ 인증</span>}
+                {shop.status && <span className={`merchant-shop-status ${String(shop.status).toLowerCase()}`}>{SHOP_STATUS_LABELS[shop.status] ?? shop.status}</span>}
               </div>
               <div style={{ color: COLORS.accent, fontSize: 14 }}>★ {shop.rating} · 리뷰 {shop.reviewCount}개</div>
             </div>
@@ -208,6 +298,95 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="merchant-ops-panel">
+          <div className="merchant-section-head">
+            <div>
+              <span>가게 운영 설정</span>
+              <small>사진, 영업 상태, 사용자 공지를 관리합니다.</small>
+            </div>
+          </div>
+          <div className="merchant-ops-grid">
+            <div className="merchant-status-card">
+              <strong>영업 상태</strong>
+              <small>사용자에게 노출되는 가게 상태입니다.</small>
+              {shop.status === "SUSPENDED" ? (
+                <em>관리자 조치로 운영정지 상태입니다.</em>
+              ) : (
+                <div>
+                  {["ACTIVE", "CLOSED"].map(nextStatus => (
+                    <button
+                      key={nextStatus}
+                      type="button"
+                      className={shop.status === nextStatus ? "active" : ""}
+                      aria-pressed={shop.status === nextStatus}
+                      onClick={() => handleStatusChange(nextStatus)}
+                      disabled={isUpdatingStatus}
+                    >
+                      {shop.status === nextStatus ? "✓ " : ""}{SHOP_STATUS_LABELS[nextStatus]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="merchant-image-card">
+              <strong>가게 사진</strong>
+              <small>대표 이미지나 매장 사진을 업로드합니다.</small>
+              {(shop.thumbnailUrl || shop.imageUrls?.[0]) && (
+                <img src={shop.thumbnailUrl || shop.imageUrls[0]} alt={`${shop.name} 사진`} />
+              )}
+              <label>
+                <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploadingImage} />
+                {isUploadingImage ? "업로드 중" : "사진 업로드"}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="merchant-notice-panel">
+          <div className="merchant-section-head">
+            <div>
+              <span>가게 공지</span>
+              <small>휴무, 재료 소진, 이벤트 안내를 사용자에게 보여줍니다.</small>
+            </div>
+            <strong>{notices.length}건</strong>
+          </div>
+          {noticeStatus === "error" && <div className="merchant-api-note">공지 목록을 불러오지 못했습니다. 백엔드 연결 상태를 확인해주세요.</div>}
+          <div className="merchant-notice-form">
+            <input
+              value={noticeForm.title}
+              onChange={event => setNoticeForm(prev => ({ ...prev, title: event.target.value }))}
+              placeholder="공지 제목"
+            />
+            <textarea
+              value={noticeForm.content}
+              onChange={event => setNoticeForm(prev => ({ ...prev, content: event.target.value }))}
+              placeholder="공지 내용을 입력하세요."
+              rows={3}
+            />
+            <button type="button" onClick={handleNoticeSave} disabled={isSavingNotice}>
+              {isSavingNotice ? "등록 중" : "공지 등록"}
+            </button>
+          </div>
+          {noticeStatus === "loading" && <SkeletonList count={2} />}
+          {noticeStatus !== "loading" && notices.length === 0 && (
+            <EmptyState
+              icon="공지"
+              title="등록된 공지가 없습니다."
+              description="오늘의 영업 안내나 임시 휴무를 공지로 남겨보세요."
+            />
+          )}
+          {notices.map(notice => (
+            <div key={notice.id} className="merchant-notice-item">
+              <div>
+                <strong>{notice.title}</strong>
+                {notice.createdAt && <span>{notice.createdAt}</span>}
+                <p>{notice.content}</p>
+              </div>
+              <button type="button" onClick={() => handleNoticeDelete(notice.id)}>삭제</button>
+            </div>
+          ))}
         </div>
 
         {isShopEditorOpen && (
