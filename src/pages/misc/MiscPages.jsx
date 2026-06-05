@@ -7,7 +7,7 @@ import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, getMockNotificationSettings, getMockNotifications, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
 import YeopjeonImg from "../../assets/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchUnified } from "../../services/searchService.js";
+import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
 
 // ─── 마이페이지 ───────────────────────────────────────────────────────
 export function MyPage({ onTab, showToast, onLogout, onLogin, user, comfortableView = false, onComfortableViewChange = () => {} }) {
@@ -614,6 +614,7 @@ const SEARCH_RESULT_TABS = [
   { key: "SHOP", label: "가게" },
   { key: "MENU", label: "메뉴" },
 ];
+const SEARCH_PAGE_SIZE = 50;
 
 function readRecentSearches() {
   try {
@@ -645,16 +646,22 @@ function clearRecentSearches() {
 
 export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
   const [query, setQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
   const [results, setResults] = useState([]);
   const [activeResultType, setActiveResultType] = useState("ALL");
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasNextResults, setHasNextResults] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
   const [popularSearches, setPopularSearches] = useState(POPULAR_SEARCH_FALLBACK);
   const [recentSearches, setRecentSearches] = useState(readRecentSearches);
   const [suggestions, setSuggestions] = useState([]);
   // TODO: 검색 API가 확정되면 검색어/필터/정렬/페이지네이션 응답으로 교체합니다.
-  const normalizedQuery = query.trim();
+  const draftQuery = query.trim();
+  const normalizedQuery = submittedQuery.trim();
   const resultCounts = SEARCH_RESULT_TABS.reduce((acc, tab) => {
     acc[tab.key] = tab.key === "ALL" ? results.length : results.filter(item => item.targetType === tab.key).length;
     return acc;
@@ -698,20 +705,39 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
     deleteRecentSearch().catch(() => {});
   };
 
+  const submitSearch = (keyword = query) => {
+    const nextQuery = keyword.trim();
+    if (!nextQuery) {
+      setQuery("");
+      setSubmittedQuery("");
+      setResults([]);
+      setStatus("idle");
+      setErrorMessage("");
+      setNextCursor(null);
+      setHasNextResults(false);
+      setLoadMoreError("");
+      return;
+    }
+    setQuery(nextQuery);
+    setSubmittedQuery(nextQuery);
+    setActiveResultType("ALL");
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    submitSearch();
+  };
+
   useEffect(() => {
     let ignore = false;
 
-    if (!normalizedQuery) {
-      setResults([]);
-      setStatus("idle");
+    if (!draftQuery) {
       setSuggestions([]);
       return () => { ignore = true; };
     }
 
-    setStatus("loading");
-    setErrorMessage("");
     const timer = setTimeout(() => {
-      fetchSearchSuggestions(normalizedQuery)
+      fetchSearchSuggestions(draftQuery)
         .then((data) => {
           if (ignore) return;
           const values = (Array.isArray(data) ? data : [])
@@ -722,32 +748,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
         })
         .catch(() => {
           if (ignore) return;
-          setSuggestions(POPULAR_SEARCH_FALLBACK.filter(item => item.includes(normalizedQuery)).slice(0, 5));
-        });
-
-      searchUnified({ query: normalizedQuery })
-        .then((data) => {
-          if (ignore) return;
-          setResults(data);
-          setStatus(data.length > 0 ? "success" : "empty");
-          if (activeResultType !== "ALL" && data.filter(item => item.targetType === activeResultType).length === 0) {
-            setActiveResultType("ALL");
-          }
-          setRecentSearches(writeRecentSearch(normalizedQuery));
-          saveSearchKeyword(normalizedQuery).catch(() => {});
-        })
-        .catch((error) => {
-          if (ignore) return;
-          if (!shouldUseMockFallback(error)) {
-            setResults([]);
-            setErrorMessage(getApiErrorHint(error));
-            setStatus("error");
-            return;
-          }
-          const mockResults = getMockSearchResults(normalizedQuery);
-          setResults(mockResults);
-          setStatus(mockResults.length > 0 ? "mock" : "empty");
-          if (mockResults.length > 0) setRecentSearches(writeRecentSearch(normalizedQuery));
+          setSuggestions(POPULAR_SEARCH_FALLBACK.filter(item => item.includes(draftQuery)).slice(0, 5));
         });
     }, 250);
 
@@ -755,7 +756,88 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       ignore = true;
       clearTimeout(timer);
     };
+  }, [draftQuery]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    if (!normalizedQuery) {
+      setResults([]);
+      setStatus("idle");
+      setNextCursor(null);
+      setHasNextResults(false);
+      setLoadMoreError("");
+      return () => { ignore = true; };
+    }
+
+    setStatus("loading");
+    setErrorMessage("");
+    setNextCursor(null);
+    setHasNextResults(false);
+    setLoadMoreError("");
+    searchUnifiedPage({ query: normalizedQuery, size: SEARCH_PAGE_SIZE })
+      .then((page) => {
+        if (ignore) return;
+        setResults(page.content);
+        setNextCursor(page.nextCursor);
+        setHasNextResults(page.hasNext);
+        setStatus(page.content.length > 0 ? "success" : "empty");
+        setActiveResultType("ALL");
+        setRecentSearches(writeRecentSearch(normalizedQuery));
+        saveSearchKeyword(normalizedQuery).catch(() => {});
+      })
+      .catch((error) => {
+        if (ignore) return;
+        if (!shouldUseMockFallback(error)) {
+          setResults([]);
+          setErrorMessage(getApiErrorHint(error));
+          setStatus("error");
+          return;
+        }
+        const mockResults = getMockSearchResults(normalizedQuery);
+        setResults(mockResults);
+        setNextCursor(null);
+        setHasNextResults(false);
+        setStatus(mockResults.length > 0 ? "mock" : "empty");
+        if (mockResults.length > 0) setRecentSearches(writeRecentSearch(normalizedQuery));
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [normalizedQuery, retryKey]);
+
+  const handleLoadMoreResults = () => {
+    if (!normalizedQuery || !hasNextResults || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    setLoadMoreError("");
+    searchUnifiedPage({
+      query: normalizedQuery,
+      cursor: nextCursor,
+      size: SEARCH_PAGE_SIZE,
+    })
+      .then((page) => {
+        setResults(current => {
+          const seen = new Set(current.map(item => `${item.targetType}-${item.id}`));
+          const merged = [...current];
+          page.content.forEach((item) => {
+            const key = `${item.targetType}-${item.id}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(item);
+            }
+          });
+          return merged;
+        });
+        setNextCursor(page.nextCursor);
+        setHasNextResults(page.hasNext);
+      })
+      .catch((error) => {
+        setLoadMoreError(getApiErrorHint(error) || "다음 검색 결과를 불러오지 못했습니다.");
+      })
+      .finally(() => setIsLoadingMore(false));
+  };
 
   const handleSearchResultClick = (item) => {
     if (item.targetType === "SHOP" || item.targetType === "MENU") {
@@ -796,10 +878,23 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
   return (
     <div style={S.screen} className="search-local-page">
       <div className="search-local-hero">
-        <div className="search-local-top">
+        <form className="search-local-top" onSubmit={handleSearchSubmit}>
           <span onClick={onBack}>←</span>
-          <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="광장시장 밤골목, 먹자골목 검색..." />
-        </div>
+          <div className="search-input-panel">
+            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="광장시장 밤골목, 먹자골목 검색..." />
+            {draftQuery && suggestions.length > 0 && (
+              <div className="search-hero-suggest-row">
+                {suggestions.map(item => (
+                  <button key={item} type="button" onClick={() => submitSearch(item)}>
+                    <span>추천</span>
+                    <strong>{item}</strong>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button type="submit">검색</button>
+        </form>
         <div className="search-local-copy">
           <span>LOCAL SEARCH</span>
           <strong>붕어빵 냄새 따라 걷는 골목을 찾아보세요.</strong>
@@ -815,7 +910,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
             </div>
             <div className="search-suggestion-grid">
               {SEARCH_SUGGESTIONS.map(s => (
-                <button key={s.label} type="button" onClick={() => setQuery(s.query)}>
+                <button key={s.label} type="button" onClick={() => submitSearch(s.query)}>
                   <strong>{s.label}</strong>
                   <span>{s.meta}</span>
                 </button>
@@ -826,7 +921,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
                 <strong>인기 검색어</strong>
                 <div>
                   {popularSearches.map((item, index) => (
-                    <button key={`${item}-${index}`} type="button" onClick={() => setQuery(item)}>
+                    <button key={`${item}-${index}`} type="button" onClick={() => submitSearch(item)}>
                       <b>{index + 1}</b>
                       {item}
                     </button>
@@ -845,7 +940,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
                     <span className="search-empty-keyword">아직 최근 검색어가 없습니다.</span>
                   ) : recentSearches.map(item => (
                     <span key={item} className="search-recent-chip">
-                      <button type="button" onClick={() => setQuery(item)}>{item}</button>
+                      <button type="button" onClick={() => submitSearch(item)}>{item}</button>
                       <button type="button" aria-label={`${item} 최근 검색어 삭제`} onClick={() => handleDeleteRecentSearch(item)}>×</button>
                     </span>
                   ))}
@@ -898,14 +993,6 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
                 </button>
               ))}
             </div>
-            {suggestions.length > 0 && (
-              <div className="search-suggest-row">
-                <span>자동완성</span>
-                {suggestions.map(item => (
-                  <button key={item} type="button" onClick={() => setQuery(item)}>{item}</button>
-                ))}
-              </div>
-            )}
             {visibleResults.map(p => {
               const placeImage = getPlaceImageUrl(p);
               return (
@@ -925,6 +1012,14 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
                 <button type="button">{p.targetType === "PLACE" ? "장소 보기" : "가게 보기"}</button>
               </div>
             );})}
+            {hasNextResults && activeResultType === "ALL" && (
+              <div className="search-result-more">
+                {loadMoreError && <span>{loadMoreError}</span>}
+                <button type="button" onClick={handleLoadMoreResults} disabled={isLoadingMore}>
+                  {isLoadingMore ? "불러오는 중..." : "더 보기"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

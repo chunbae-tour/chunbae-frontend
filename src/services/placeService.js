@@ -22,29 +22,40 @@ class PlaceApiError extends Error {
   }
 }
 
+function formatDistance(distanceMeters) {
+  if (distanceMeters == null || Number.isNaN(Number(distanceMeters))) return null;
+  const meters = Number(distanceMeters);
+  if (meters < 1000) return `${Math.round(meters)}m`;
+  return `${(meters / 1000).toFixed(1)}km`;
+}
+
 export function normalizePlace(place = {}) {
   const id = place.placeId ?? place.id;
   const latitude = place.latitude ?? place.lat ?? null;
   const longitude = place.longitude ?? place.lng ?? null;
+  const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
+  const targetType = place.targetType ?? "PLACE";
 
   return {
     ...place,
     id,
     placeId: id,
+    targetType,
     latitude,
     longitude,
     lat: latitude,
     lng: longitude,
     name: place.name ?? "",
-    type: place.type ?? "관광지",
-    dist: place.dist ?? place.distanceText ?? "주변",
+    type: place.type ?? (targetType === "TRADITIONAL_MARKET" ? "전통시장" : "관광지"),
+    dist: distanceText ?? "주변",
     rating: place.rating ?? 0,
     reviews: place.reviewCount ?? place.reviews ?? 0,
-    emoji: place.emoji ?? "📍",
+    emoji: place.emoji ?? (targetType === "TRADITIONAL_MARKET" ? "🛍️" : "📍"),
     addr: place.address ?? place.addr ?? "",
     hours: place.operatingHours ?? place.hours ?? "",
     desc: place.description ?? place.desc ?? "",
     isLiked: Boolean(place.isLiked),
+    imageUrl: place.imageUrl ?? place.thumbnailUrl ?? "",
     imageUrls: place.imageUrls ?? [],
   };
 }
@@ -52,8 +63,7 @@ export function normalizePlace(place = {}) {
 function normalizePlaceList(data) {
   if (Array.isArray(data)) return data.map(normalizePlace);
 
-  // TODO: /places/nearby 응답이 커서 객체라면 data.items/data.content 중 실제 필드로 확정해 정리합니다.
-  const list = getPageContent(data?.places ? { content: data.places } : data);
+  const list = getPageContent(data?.places || data?.markets ? { content: data.places ?? data.markets } : data);
   return Array.isArray(list) ? list.map(normalizePlace) : [];
 }
 
@@ -73,15 +83,57 @@ export function getMockNearbyStores() {
   return MOCK_NEARBY_STORES;
 }
 
-export async function fetchNearbyPlaces({ lat, lng, radius = 3000, size = 20 }) {
+export async function fetchNearbyPlaces({ lat, lng, radius = 3000, page = 0, size = 20 }) {
   const params = new URLSearchParams({
     lat: String(lat),
     lng: String(lng),
     radius: String(radius),
+    page: String(page),
     size: String(size),
   });
   const data = await apiRequest(`/places/nearby?${params.toString()}`);
   return normalizePlaceList(data);
+}
+
+export async function fetchNearbyTraditionalMarkets({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    radius: String(radius),
+    page: String(page),
+    size: String(size),
+  });
+  const data = await apiRequest(`/traditional-markets/nearby?${params.toString()}`);
+  return normalizePlaceList(data).map(market => ({
+    ...market,
+    targetType: "TRADITIONAL_MARKET",
+    type: "전통시장",
+    rating: market.rating ?? 0,
+    reviews: market.reviews ?? 0,
+  }));
+}
+
+export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+  const [placesResult, marketsResult] = await Promise.allSettled([
+    fetchNearbyPlaces({ lat, lng, radius, page, size }),
+    fetchNearbyTraditionalMarkets({ lat, lng, radius, page, size }),
+  ]);
+
+  if (placesResult.status === "rejected" && marketsResult.status === "rejected") {
+    throw placesResult.reason;
+  }
+
+  const places = placesResult.status === "fulfilled" ? placesResult.value : [];
+  const markets = marketsResult.status === "fulfilled" ? marketsResult.value : [];
+
+  return [...places, ...markets]
+    .sort((a, b) => {
+      const aDistance = Number(a.distanceMeters ?? a.distance ?? Number.POSITIVE_INFINITY);
+      const bDistance = Number(b.distanceMeters ?? b.distance ?? Number.POSITIVE_INFINITY);
+      if (aDistance !== bDistance) return aDistance - bDistance;
+      return String(a.name).localeCompare(String(b.name), "ko");
+    })
+    .slice(0, size);
 }
 
 export async function fetchPlaceDetail(placeId) {

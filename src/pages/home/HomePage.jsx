@@ -7,7 +7,7 @@ import CertifiedMark from "../../assets/brand/chunbae-certified-mark.svg";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchFestivals, getMockFestivals } from "../../services/festivalService.js";
-import { fetchNearbyPlaces, getDefaultLocation, getMockPlaces } from "../../services/placeService.js";
+import { fetchNearbyTravelSpots, getDefaultLocation, getMockPlaces } from "../../services/placeService.js";
 import { fetchCertifiedStorePromotions, getMockCertifiedStorePromotions } from "../../services/promotionService.js";
 
 const QUICK_ACTIONS = [
@@ -90,7 +90,7 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
       setNearbyStatus("loading");
 
       try {
-        const places = await fetchNearbyPlaces({ lat, lng, size: 10 });
+        const places = await fetchNearbyTravelSpots({ lat, lng, size: 10 });
         if (ignore) return;
 
         setNearbyPlaces(places.length > 0 ? places : []);
