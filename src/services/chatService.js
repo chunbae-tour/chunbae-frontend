@@ -73,6 +73,10 @@ function getPostId(postOrId) {
   return typeof postOrId === "object" ? postOrId?.id ?? postOrId?.postId : postOrId;
 }
 
+function normalizeTextKey(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function getDemoRoomById(chatRoomId) {
   return readDemoRooms().find(room => String(room.chatRoomId ?? room.id) === String(chatRoomId));
 }
@@ -183,7 +187,13 @@ export function getCompanionJoinState({ postId, user = getStoredAuthSession("USE
   return "pending";
 }
 
-export function requestCompanionJoin({ post, user = getStoredAuthSession("USER"), message = "참여 신청합니다." }) {
+export function requestCompanionJoin({
+  post,
+  user = getStoredAuthSession("USER"),
+  message = "참여 신청합니다.",
+  delivery = "local",
+  backendChatRoomId = null,
+}) {
   const postId = getPostId(post);
   if (!postId) throw new ChatApiError("게시글 ID가 없습니다.", "MISSING_POST_ID", 400);
 
@@ -196,6 +206,8 @@ export function requestCompanionJoin({ post, user = getStoredAuthSession("USER")
     id: existing?.id ?? `demo-join-${postId}-${actorKey}`,
     joinRequestId: existing?.joinRequestId ?? `demo-join-${postId}-${actorKey}`,
     postId,
+    postTitle: post?.title ?? "",
+    place: post?.place ?? "",
     actorKey,
     userId: user?.userId,
     name: actorName,
@@ -206,6 +218,8 @@ export function requestCompanionJoin({ post, user = getStoredAuthSession("USER")
     count: user?.companionReviewCount ?? 0,
     avatar: "👤",
     status: existing?.status === "APPROVED" ? "APPROVED" : "PENDING",
+    delivery,
+    backendChatRoomId,
     requestedAt: existing?.requestedAt ?? new Date().toISOString(),
   };
 
@@ -213,6 +227,7 @@ export function requestCompanionJoin({ post, user = getStoredAuthSession("USER")
     nextRequest,
     ...requests.filter(item => !(String(item.postId) === String(postId) && item.actorKey === actorKey)),
   ]);
+  console.info("[Chunbae demo] companion join request saved", nextRequest);
 
   return nextRequest;
 }
@@ -220,21 +235,71 @@ export function requestCompanionJoin({ post, user = getStoredAuthSession("USER")
 export async function submitCompanionJoinRequest({ post, user = getStoredAuthSession("USER"), message = "참여 신청합니다." }) {
   const postId = getPostId(post);
   const room = getDemoRoomByPostId(postId);
+  const postTitleKey = normalizeTextKey(post?.title);
+  const chatRoomId = post?.chatRoomId ?? post?.roomId ?? post?.chatRoom?.chatRoomId ?? room?.chatRoomId;
+  let deliveredByApi = false;
+  let backendChatRoomId = null;
 
-  if (room?.chatRoomId && !String(room.chatRoomId).startsWith("demo-room-")) {
+  // 채팅방 ID가 있으면 백엔드 참여 신청 API 호출 (demo 방이 아닌 경우)
+  if (chatRoomId && !String(chatRoomId).startsWith("demo-room-")) {
     try {
-      await apiRequest(`/chat/rooms/${room.chatRoomId}/join-requests`, {
+      await apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, {
         method: "POST",
         auth: true,
         role: "USER",
         body: { message },
       });
+      deliveredByApi = true;
+      backendChatRoomId = chatRoomId;
     } catch {
-      // 백엔드 참여 신청 API가 실패해도 로컬 시연 흐름은 유지합니다.
+      // 백엔드 실패해도 로컬 시연 흐름 유지
+    }
+  } else if (!chatRoomId) {
+    // 로컬에 방 정보가 없는 경우 — postId를 통해 채팅방 ID를 백엔드에서 조회 후 신청 시도
+    try {
+      const rooms = await apiRequest("/chat/rooms?size=50", { auth: true, role: "USER" });
+      const list = Array.isArray(rooms) ? rooms : getPageContent(rooms);
+      const matchedRoom = list.find((r) => {
+        const roomPostId = r.postId ?? r.companionPostId ?? r.post?.id ?? r.post?.postId;
+        if (roomPostId && String(roomPostId) === String(postId)) return true;
+        return Boolean(postTitleKey && normalizeTextKey(r.title) === postTitleKey);
+      });
+      if (matchedRoom) {
+        const backendRoomId = matchedRoom.chatRoomId ?? matchedRoom.id;
+        if (backendRoomId) {
+          await apiRequest(`/chat/rooms/${backendRoomId}/join-requests`, {
+            method: "POST",
+            auth: true,
+            role: "USER",
+            body: { message },
+          });
+          deliveredByApi = true;
+          backendChatRoomId = backendRoomId;
+        }
+      }
+    } catch {
+      // 백엔드 실패해도 로컬 시연 흐름 유지
     }
   }
 
-  return requestCompanionJoin({ post, user, message });
+  // 항상 로컬에도 저장
+  const localRequest = requestCompanionJoin({
+    post,
+    user,
+    message,
+    delivery: deliveredByApi ? "api+local" : "local",
+    backendChatRoomId,
+  });
+  console.info("[Chunbae] companion join request delivery", {
+    postId,
+    chatRoomId: backendChatRoomId ?? chatRoomId,
+    delivery: deliveredByApi ? "api+local" : "local",
+  });
+  return {
+    ...localRequest,
+    delivery: deliveredByApi ? "api+local" : "local",
+    chatRoomId: backendChatRoomId ?? chatRoomId ?? room?.chatRoomId,
+  };
 }
 
 export function getCompanionRoomForPost({ postId, user = getStoredAuthSession("USER") }) {
@@ -245,12 +310,20 @@ export function getCompanionRoomForPost({ postId, user = getStoredAuthSession("U
   return normalizeDemoRoomForUser(room, user);
 }
 
-function getDemoJoinRequestsForRoom(chatRoomId) {
+function getDemoJoinRequestsForRoom(chatRoomId, { postId, title } = {}) {
+  // chatRoomId로 방을 찾아 postId 추출
   const room = getDemoRoomById(chatRoomId);
-  if (!room?.postId) return [];
+  // 방을 못 찾으면 chatRoomId 자체를 postId로 시도 (postId가 직접 전달된 경우)
+  const targetPostId = room?.postId ?? postId ?? chatRoomId;
+  const targetTitle = normalizeTextKey(room?.title ?? title);
+  if (!targetPostId && !targetTitle) return [];
 
   return readDemoJoinRequests()
-    .filter(request => String(request.postId) === String(room.postId) && request.status === "PENDING")
+    .filter((request) => {
+      if (request.status !== "PENDING") return false;
+      if (targetPostId && String(request.postId) === String(targetPostId)) return true;
+      return Boolean(targetTitle && normalizeTextKey(request.postTitle) === targetTitle);
+    })
     .map(request => ({
       id: request.joinRequestId ?? request.id,
       name: request.nickname ?? request.name ?? "여행자",
@@ -258,6 +331,9 @@ function getDemoJoinRequestsForRoom(chatRoomId) {
       score: request.score ?? 0,
       count: request.count ?? 0,
       avatar: request.avatar ?? "👤",
+      requestedAt: request.requestedAt,
+      delivery: request.delivery ?? "local",
+      backendChatRoomId: request.backendChatRoomId,
       localDemo: true,
     }));
 }
@@ -508,9 +584,14 @@ export async function fetchChatParticipants(chatRoomId) {
   return getPageContent(data.members ?? data).map(normalizeChatParticipant);
 }
 
-export async function fetchJoinRequests(chatRoomId) {
+export async function fetchJoinRequests(chatRoomId, { postId, title } = {}) {
   if (!chatRoomId) return [];
-  const demoRequests = getDemoJoinRequestsForRoom(chatRoomId);
+  const demoRequests = getDemoJoinRequestsForRoom(chatRoomId, { postId, title });
+  // chatRoomId로 못 찾으면 postId로 재시도
+  const extraDemoRequests = postId && demoRequests.length === 0
+    ? getDemoJoinRequestsForRoom(postId, { title })
+    : [];
+  const allDemoRequests = demoRequests.length > 0 ? demoRequests : extraDemoRequests;
 
   try {
     const data = await apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, { auth: true, role: "USER" });
@@ -523,9 +604,9 @@ export async function fetchJoinRequests(chatRoomId) {
         count: request.companionReviewCount ?? request.count ?? 0,
         avatar: request.avatar ?? "👤",
       }));
-    return mergeJoinRequests(apiRequests, demoRequests);
+    return mergeJoinRequests(apiRequests, allDemoRequests);
   } catch (error) {
-    if (demoRequests.length > 0) return demoRequests;
+    if (allDemoRequests.length > 0) return allDemoRequests;
     throw error;
   }
 }

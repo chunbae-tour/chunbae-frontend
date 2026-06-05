@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPosts, getMockCommunityComments, getMockCommunityPosts } from "../../services/communityService.js";
 
@@ -184,10 +184,17 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
   }
 
   const isCompanion = post.type === "동행";
-  const isAuthor = isCompanion && (
-    String(post.writerId ?? post.authorId ?? post.userId ?? "") === String(user?.userId ?? "no-user")
-    || post.author === (user?.nickname || "여행자지수")
-  );
+  const isAuthor = isCompanion && (() => {
+    // 1순위: writerId와 userId 직접 비교
+    if (post.writerId && user?.userId) {
+      return String(post.writerId) === String(user.userId);
+    }
+    // 2순위: 닉네임 비교 (백엔드 응답에 writerId 없을 때 fallback)
+    if (post.author && user?.nickname) {
+      return post.author === user.nickname;
+    }
+    return false;
+  })();
   const routeItems = post.route ?? [post.place, "주변 명소 둘러보기", "시장 먹거리 탐방"];
   const goodPoints = post.goodPoints ?? ["동선을 공유했어요", "여행 팁을 남겼어요", "주변 상권과 함께 보기 좋아요"];
   const companionAction = {
@@ -214,24 +221,7 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
         lastMsg: registeredRoom.lastMsg || "동행 채팅방이 열렸습니다.",
       });
     } catch (error) {
-      if (!shouldUseMockFallback(error)) {
-        showToast(getApiErrorHint(error));
-        setCreatingRoom(false);
-        return;
-      }
-      const mockRoom = {
-        id: `mock-room-${post.id}`,
-        chatRoomId: `mock-room-${post.id}`,
-        title: post.title,
-        members: post.current || 1,
-        maxMembers: post.max || 4,
-        lastMsg: "동행 채팅방이 열렸습니다.",
-        unread: 0,
-        tags: [post.place].filter(Boolean),
-      };
-      const registeredRoom = registerCompanionChatRoom({ post, room: mockRoom, user });
-      showToast("채팅방 API 연결 전 데모 채팅방으로 이동합니다.");
-      onChatRoom?.(registeredRoom);
+      showToast(getApiErrorHint(error) || "채팅방 생성에 실패했습니다.");
     } finally {
       setCreatingRoom(false);
     }
@@ -256,9 +246,11 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
         user,
         message: `${user?.nickname || user?.email || "여행자"} 님이 동행 참여를 신청했습니다.`,
       })
-        .then(() => {
+        .then((request) => {
           setJoinState("pending");
-          showToast("채팅방 참여 신청을 보냈습니다.");
+          showToast(request?.delivery === "api+local"
+            ? "채팅방 참여 신청을 보냈습니다. 방장 신청 목록에서 확인할 수 있어요."
+            : "참여 신청을 저장했습니다. 백엔드 방 연결 전까지 로컬 신청 목록에 표시됩니다.");
         })
         .catch((error) => {
           showToast(getApiErrorHint(error));

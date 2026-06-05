@@ -136,9 +136,11 @@ function normalizeCompanionPost(post = {}) {
   return {
     ...post,
     id: post.postId ?? post.companionPostId ?? post.id,
+    chatRoomId: post.chatRoomId ?? post.roomId ?? post.chatRoom?.chatRoomId ?? null,
     type: "동행",
     title: post.title ?? "",
-    author: post.writerNickname ?? post.author ?? "여행자",
+    author: post.writerNickname ?? post.writer?.nickname ?? post.author ?? "여행자",
+    writerId: post.writerId ?? post.writer?.userId ?? post.userId ?? post.authorId ?? null,
     date: post.meetingDate ?? post.createdAt ?? post.date ?? "",
     current: post.currentMembers ?? post.current ?? 1,
     max: post.maxMembers ?? post.max ?? 4,

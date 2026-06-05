@@ -16,7 +16,7 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
     setStatus("loading");
     setErrorMessage("");
 
-    fetchJoinRequests(roomId)
+    fetchJoinRequests(roomId, { postId: room?.postId, title: room?.title })
       .then((data) => {
         setRequests(data.length > 0 ? data : []);
         setStatus(data.length > 0 ? "success" : "empty");
@@ -108,6 +108,11 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
                 <div style={{ background: COLORS.bg, borderRadius: 10, padding: "10px 14px", fontSize: 14, color: COLORS.textSub, marginBottom: 12 }}>
                   "{r.msg}"
                 </div>
+                {r.localDemo && (
+                  <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12 }}>
+                    {r.delivery === "api+local" ? "백엔드 신청 API 전송됨" : "로컬 테스트 신청"}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="button" disabled={actioningId === r.id} onClick={() => setRejectConfirmTarget(r)} style={{ flex: 1, background: "#fff", border: "1.5px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: actioningId === r.id ? "wait" : "pointer", color: COLORS.textMuted }}>거절</button>
                   <button type="button" disabled={actioningId === r.id} onClick={() => handle(r.id, "수락")} style={{ flex: 2, background: COLORS.primary, border: 0, borderRadius: 12, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: actioningId === r.id ? "wait" : "pointer", color: "#fff" }}>{actioningId === r.id ? "처리 중" : "수락"}</button>
