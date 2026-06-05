@@ -36,12 +36,17 @@ const ROLE_ENDPOINTS = {
 };
 
 function normalizeAuthData(data, fallbackRole) {
+  const nickname = data.nickname
+    ?? data.name
+    ?? data.username
+    ?? (data.email ? String(data.email).split("@")[0] : undefined);
+
   return {
     accessToken: data.accessToken,
     role: data.role ?? fallbackRole,
     userId: data.userId ?? data.id ?? data.accountId,
     email: data.email,
-    nickname: data.nickname ?? "여행자",
+    nickname: nickname ?? "",
     profileImageUrl: data.profileImageUrl,
     language: data.language,
     companionScore: data.companionScore,
@@ -108,6 +113,22 @@ export async function fetchCurrentUser() {
   return authData;
 }
 
+export async function updateCurrentUserProfile({ nickname, language, profileImageUrl }) {
+  const body = {};
+  if (nickname !== undefined) body.nickname = nickname;
+  if (language !== undefined) body.language = language;
+  if (profileImageUrl !== undefined) body.profileImageUrl = profileImageUrl;
+
+  await apiRequest("/users/me", {
+    method: "PATCH",
+    auth: true,
+    role: "USER",
+    body,
+  });
+
+  return fetchCurrentUser();
+}
+
 export function shouldClearSessionForError(error) {
   return isAuthError(error);
 }
@@ -131,6 +152,13 @@ export async function login({ role, email, password }) {
     });
     const authData = normalizeAuthData(data, normalizedRole);
     saveSession(authData);
+    if (normalizedRole === "USER") {
+      try {
+        return await fetchCurrentUser();
+      } catch {
+        return authData;
+      }
+    }
     return authData;
   } catch (error) {
     const matched = DUMMY_ACCOUNTS.find(
@@ -170,7 +198,12 @@ export async function signupAndLogin({ email, password, nickname }) {
   }
 
   try {
-    return await login({ role: "USER", email, password });
+    const authData = await login({ role: "USER", email, password });
+    if (authData.nickname) return authData;
+
+    const fallbackAuthData = normalizeAuthData({ ...authData, nickname }, "USER");
+    saveSession(fallbackAuthData);
+    return fallbackAuthData;
   } catch (error) {
     if (!usedMockSignup || (error.status && error.status !== 404)) {
       throw error;

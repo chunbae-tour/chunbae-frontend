@@ -189,7 +189,7 @@ export default function App() {
         {screen === "store"            && <StorePage onProduct={handleProductClick} />}
         {screen === "storeProduct"     && <StoreProductPage product={selectedProduct} onBack={() => go("store")} showToast={showToast} />}
         {screen === "storeShop"        && <StoreShopDetailPage shop={selectedShop} onBack={() => go(tab)} showToast={showToast} onQrPay={() => go("qrpay")} />}
-        {screen === "my"               && <MyPage onTab={handleTab} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
+        {screen === "my"               && <MyPage onTab={handleTab} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} onProfileUpdate={setUser} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
         {screen === "wishlist"         && <WishlistPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} />}
         {screen === "myReview"         && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "ownedItems"       && <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />}

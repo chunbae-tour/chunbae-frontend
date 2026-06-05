@@ -764,6 +764,57 @@ button:disabled,
   background: var(--color-error);
 }
 
+.profile-edit-dialog {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-edit-dialog p {
+  margin: 0;
+}
+
+.profile-edit-field {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-edit-field span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.profile-edit-field input,
+.profile-edit-field select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 0 14px;
+  outline: none;
+}
+
+.profile-edit-field input:focus,
+.profile-edit-field select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(45, 131, 91, 0.14);
+}
+
+.profile-edit-error {
+  border-radius: var(--radius-md);
+  background: rgba(226, 75, 74, 0.1);
+  color: var(--color-error);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+  padding: 10px 12px;
+}
+
 .app-toast {
   box-shadow: var(--shadow-lg);
   font-weight: 800;

@@ -5,18 +5,25 @@ import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient
 import { fetchFestivals, getMockFestivals } from "../../services/festivalService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, getMockNotificationSettings, getMockNotifications, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
+import { updateCurrentUserProfile } from "../../services/authService.js";
 import YeopjeonImg from "../../assets/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
 
 // ─── 마이페이지 ───────────────────────────────────────────────────────
-export function MyPage({ onTab, showToast, onLogout, onLogin, user, comfortableView = false, onComfortableViewChange = () => {} }) {
+const NICKNAME_PATTERN = /^[\p{L}\p{N}_-]{2,20}$/u;
+
+export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = () => {}, user, comfortableView = false, onComfortableViewChange = () => {} }) {
   const isLoggedIn = Boolean(user);
   const role = String(user?.role || "USER").toUpperCase();
   const [balance, setBalance] = useState(0);
   const [balanceStatus, setBalanceStatus] = useState("loading");
   const [balanceError, setBalanceError] = useState("");
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({ nickname: "", language: "ko", profileImageUrl: "" });
+  const [profileError, setProfileError] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const tripSummary = [
     { label: "찜한 골목", value: "4", action: "wishlist" },
     { label: "동행 대기", value: "1", action: "community" },
@@ -51,6 +58,49 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, user, comfortableV
   const confirmLogout = () => {
     setLogoutConfirmOpen(false);
     onLogout();
+  };
+
+  const openProfileEditor = () => {
+    setProfileForm({
+      nickname: user?.nickname || "",
+      language: user?.language || "ko",
+      profileImageUrl: user?.profileImageUrl || "",
+    });
+    setProfileError("");
+    setProfileModalOpen(true);
+  };
+
+  const saveProfile = async () => {
+    const nickname = profileForm.nickname.trim();
+    const profileImageUrl = profileForm.profileImageUrl.trim();
+
+    if (!NICKNAME_PATTERN.test(nickname)) {
+      setProfileError("닉네임은 2~20자의 한글, 영문, 숫자, _, -만 사용할 수 있습니다.");
+      return;
+    }
+
+    if (profileImageUrl && !/^https?:\/\/\S+$/i.test(profileImageUrl)) {
+      setProfileError("프로필 이미지는 http 또는 https URL만 입력할 수 있습니다.");
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileError("");
+
+    try {
+      const updatedUser = await updateCurrentUserProfile({
+        nickname,
+        language: profileForm.language || "ko",
+        profileImageUrl: profileImageUrl || undefined,
+      });
+      onProfileUpdate(updatedUser);
+      setProfileModalOpen(false);
+      showToast("프로필을 수정했습니다.");
+    } catch (error) {
+      setProfileError(getApiErrorHint(error));
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   return (
@@ -105,7 +155,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, user, comfortableV
               {role === "ADMIN" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>👑 관리자</span>}
             </div>
             <div style={{ fontSize: 14, color: COLORS.textMuted }}>★ 동행 점수 4.7</div>
-            <div onClick={() => showToast("프로필 수정 화면으로 이동합니다")} style={{ marginTop: 6, display: "inline-block", fontSize: 14, color: COLORS.primary, border: "1px solid rgba(0,0,0,0.15)", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>프로필 수정</div>
+            <button type="button" onClick={openProfileEditor} style={{ marginTop: 6, display: "inline-block", fontSize: 14, color: COLORS.primary, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>프로필 수정</button>
           </div>
         </div>
         <div className="my-balance-card" style={{ background: COLORS.primary, margin: "0 16px 12px", borderRadius: 16, padding: 18 }}>
@@ -228,6 +278,47 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, user, comfortableV
         onConfirm={confirmLogout}
         onCancel={() => setLogoutConfirmOpen(false)}
       />
+      {profileModalOpen && (
+        <div className="confirm-dialog-backdrop" role="presentation" onMouseDown={() => !profileSaving && setProfileModalOpen(false)}>
+          <div className="confirm-dialog profile-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title" onMouseDown={(event) => event.stopPropagation()}>
+            <strong id="profile-edit-title">프로필 수정</strong>
+            <p>마이페이지와 채팅에 표시되는 정보를 바꿀 수 있어요.</p>
+            <label className="profile-edit-field">
+              <span>닉네임</span>
+              <input
+                value={profileForm.nickname}
+                maxLength={20}
+                onChange={(event) => setProfileForm(prev => ({ ...prev, nickname: event.target.value }))}
+                placeholder="닉네임"
+              />
+            </label>
+            <label className="profile-edit-field">
+              <span>기본 언어</span>
+              <select
+                value={profileForm.language}
+                onChange={(event) => setProfileForm(prev => ({ ...prev, language: event.target.value }))}
+              >
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+              </select>
+            </label>
+            <label className="profile-edit-field">
+              <span>프로필 이미지 URL</span>
+              <input
+                value={profileForm.profileImageUrl}
+                onChange={(event) => setProfileForm(prev => ({ ...prev, profileImageUrl: event.target.value }))}
+                placeholder="https://..."
+              />
+            </label>
+            {profileError && <div className="profile-edit-error">{profileError}</div>}
+            <div className="confirm-dialog-actions">
+              <button type="button" className="secondary" disabled={profileSaving} onClick={() => setProfileModalOpen(false)}>취소</button>
+              <button type="button" className="primary" disabled={profileSaving} onClick={saveProfile}>{profileSaving ? "저장 중" : "저장"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
