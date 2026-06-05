@@ -30,6 +30,11 @@ class ChatApiError extends Error {
 
 export function normalizeChatRoom(room = {}) {
   const id = room.chatRoomId ?? room.id;
+  const lastMessage = room.lastMessage ?? room.lastMsg ?? room.latestMessage ?? room.recentMessage;
+  const lastMessageText = typeof lastMessage === "object" && lastMessage !== null
+    ? lastMessage.content ?? lastMessage.text ?? lastMessage.message ?? ""
+    : lastMessage;
+  const unreadCount = room.unreadCount ?? room.unread;
 
   return {
     ...room,
@@ -38,22 +43,25 @@ export function normalizeChatRoom(room = {}) {
     title: room.title ?? "",
     members: room.currentMembers ?? room.members ?? 0,
     maxMembers: room.maxMembers ?? 0,
-    lastMsg: room.lastMessage ?? room.lastMsg ?? "",
-    unread: room.unreadCount ?? room.unread ?? 0,
+    lastMsg: lastMessageText ?? "",
+    unread: typeof unreadCount === "number" ? unreadCount : null,
     tags: room.tags ?? [],
   };
 }
 
 export function normalizeChatMessage(message = {}) {
+  const unreadCount = message.unreadCount ?? message.unreadMemberCount ?? message.notReadCount ?? message.unread;
+
   return {
     ...message,
     id: message.messageId ?? message.id,
-    userId: message.senderId ?? message.userId,
+    userId: message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId,
     user: message.senderNickname ?? message.user ?? "여행자",
     text: message.content ?? message.text ?? "",
     time: message.sentAt ?? message.time ?? "",
-    me: Boolean(message.isMine ?? message.me),
-    read: Boolean(message.isRead ?? message.read ?? message.readByMe),
+    me: message.isMine ?? message.me ?? message.mine ?? null,
+    read: message.isRead ?? message.read ?? message.readByMe ?? null,
+    unreadCount: typeof unreadCount === "number" ? unreadCount : null,
   };
 }
 

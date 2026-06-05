@@ -16,39 +16,173 @@ import {
   reportChatMessage,
   reportChatParticipant,
   reportChatRoom,
-  sendChatMessage,
 } from "../../services/chatService.js";
+import { getStoredAuthSession } from "../../services/authService.js";
 import { LANG_CODE_MAP, translateText } from "../../services/translationService.js";
+import { createChatRealtimeClient } from "../../services/chatRealtimeService.js";
+
+function getMessageTimestamp(message = {}) {
+  const raw = message.sentAt ?? message.createdAt ?? message.timestamp ?? message.time;
+  const parsed = Date.parse(raw);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function formatChatTime(message = {}) {
+  const raw = message.sentAt ?? message.createdAt ?? message.timestamp ?? message.time;
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) return raw || "";
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(parsed));
+}
+
+function sortMessages(messages = []) {
+  return [...messages].sort((a, b) => getMessageTimestamp(a) - getMessageTimestamp(b));
+}
+
+function getMessageKey(message = {}) {
+  const id = message.messageId ?? message.id;
+  if (id && !String(id).startsWith("local-")) return `id:${id}`;
+  const sender = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId ?? message.user ?? "";
+  const text = message.content ?? message.text ?? "";
+  const timestamp = getMessageTimestamp(message);
+  return `fallback:${sender}:${text}:${timestamp}`;
+}
+
+function getLocalReplacementKey(message = {}) {
+  const text = message.content ?? message.text ?? "";
+  const sender = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId ?? message.user ?? "";
+  return `${sender}:${text}`;
+}
+
+function mergeMessages(prevMessages = [], nextMessages = []) {
+  const merged = new Map();
+  const localMessageKeys = new Map();
+
+  prevMessages.forEach((message) => {
+    const id = message.messageId ?? message.id;
+    if (id && String(id).startsWith("local-")) {
+      localMessageKeys.set(getLocalReplacementKey(message), getMessageKey(message));
+    }
+  });
+
+  [...prevMessages, ...nextMessages].forEach((message) => {
+    const replacementKey = getLocalReplacementKey(message);
+    const localKey = localMessageKeys.get(replacementKey);
+    if (localKey) {
+      merged.delete(localKey);
+    }
+    merged.set(getMessageKey(message), message);
+  });
+  return sortMessages([...merged.values()]);
+}
+
+function isSameUser(a, b) {
+  return a != null && b != null && String(a) === String(b);
+}
+
+function getReadReceiptText(message = {}) {
+  if (typeof message.unreadCount === "number") {
+    if (message.unreadCount <= 0) return "읽음";
+    return `${message.unreadCount}명 안읽음`;
+  }
+  if (typeof message.read === "boolean") return message.read ? "읽음" : "";
+  return "";
+}
+
+function getRoomReadStorageKey(roomId) {
+  return `chat:lastReadAt:${roomId}`;
+}
+
+function getRoomLastReadAt(roomId) {
+  const value = Number(localStorage.getItem(getRoomReadStorageKey(roomId)));
+  return Number.isFinite(value) ? value : 0;
+}
+
+function setRoomLastReadAt(roomId, timestamp = Date.now()) {
+  if (!roomId) return;
+  localStorage.setItem(getRoomReadStorageKey(roomId), String(timestamp));
+}
+
+function formatRoomLastMessage(message, currentUserId) {
+  if (!message) return "";
+  const text = message.text ?? message.content ?? "";
+  if (!text) return "";
+  const senderId = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
+  const senderName = isSameUser(senderId, currentUserId) || message.me ? "나" : message.user;
+  return senderName ? `${senderName}: ${text}` : text;
+}
 
 export function ChatListPage({ onChatRoom, showToast }) {
   const [rooms, setRooms] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const currentUserId = getStoredAuthSession("USER")?.userId;
 
-  const loadRooms = () => {
-    setStatus("loading");
+  const enrichRooms = async (baseRooms) => {
+    return Promise.all(baseRooms.map(async (room) => {
+      if (room.lastMsg && typeof room.unread === "number") return room;
+
+      try {
+        const messages = sortMessages(await fetchChatMessages(room.chatRoomId ?? room.id, { size: 30 }));
+        const lastMessage = messages[messages.length - 1];
+        const lastReadAt = getRoomLastReadAt(room.chatRoomId ?? room.id);
+        const derivedUnread = messages.filter((message) => {
+          const senderId = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
+          return getMessageTimestamp(message) > lastReadAt && !isSameUser(senderId, currentUserId);
+        }).length;
+
+        return {
+          ...room,
+          lastMsg: room.lastMsg || formatRoomLastMessage(lastMessage, currentUserId),
+          unread: typeof room.unread === "number" ? room.unread : derivedUnread,
+        };
+      } catch {
+        return room;
+      }
+    }));
+  };
+
+  const loadRooms = ({ silent = false } = {}) => {
+    if (!silent) {
+      setStatus("loading");
+    }
     setErrorMessage("");
     fetchMyChatRooms({ size: 10 })
-      .then((data) => {
-        setRooms(data);
-        setStatus(data.length > 0 ? "success" : "empty");
+      .then(async (data) => {
+        const enrichedRooms = await enrichRooms(data);
+        setRooms(enrichedRooms);
+        setStatus(enrichedRooms.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
         if (!shouldUseMockFallback(error)) {
-          setRooms([]);
+          if (!silent) {
+            setRooms([]);
+          }
           setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
+          if (!silent) {
+            setStatus("error");
+          }
           return;
         }
-        setRooms(getMockChatRooms());
-        setStatus("mock");
+        if (!silent) {
+          setRooms(getMockChatRooms());
+          setStatus("mock");
+        }
       });
   };
 
   useEffect(() => {
-    let ignore = false;
-    if (!ignore) loadRooms();
-    return () => { ignore = true; };
+    loadRooms();
+    const intervalId = window.setInterval(() => {
+      loadRooms({ silent: true });
+    }, 2000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   return (
@@ -81,11 +215,15 @@ export function ChatListPage({ onChatRoom, showToast }) {
             {rooms.map(c => (
               <button key={c.id} type="button" className="chat-room-row" onClick={() => onChatRoom(c)}>
                 <div>
-                  <strong>{c.title}</strong>
-                  <span>{c.lastMsg}</span>
+                  <div className="chat-room-title-line">
+                    <strong>{c.title}</strong>
+                    {c.unread > 0 && <em>{c.unread}개 새 메시지</em>}
+                  </div>
+                  <span className={c.lastMsg ? "chat-room-last-message" : "chat-room-last-message empty"}>
+                    {c.lastMsg || "아직 주고받은 메시지가 없습니다."}
+                  </span>
                 </div>
                 <div className="chat-room-meta">
-                  {c.unread > 0 && <em>{c.unread}</em>}
                   <small>👥 {c.members}/{c.maxMembers}</small>
                 </div>
               </button>
@@ -111,10 +249,17 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
   const [participants, setParticipants] = useState([]);
   const [participantStatus, setParticipantStatus] = useState("idle");
   const [participantPanelOpen, setParticipantPanelOpen] = useState(false);
+  const [roomMenuOpen, setRoomMenuOpen] = useState(false);
+  const [profileTarget, setProfileTarget] = useState(null);
+  const [messageMenuId, setMessageMenuId] = useState(null);
+  const [realtimeStatus, setRealtimeStatus] = useState("idle");
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [kickConfirmTarget, setKickConfirmTarget] = useState(null);
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const realtimeClientRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const currentUserId = getStoredAuthSession("USER")?.userId;
 
   const roomId = room?.chatRoomId ?? room?.id;
   const currentRoom = {
@@ -123,11 +268,39 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     maxMembers: room?.maxMembers ?? 0,
     hostId: room?.hostId,
   };
+  const displayedMessages = sortMessages(messages);
+
+  const refreshMessages = ({ silent = true } = {}) => {
+    if (!roomId) return Promise.resolve([]);
+
+    return fetchChatMessages(roomId)
+      .then((data) => {
+        setMessages(prev => mergeMessages(prev, data));
+        return data;
+      })
+      .catch((error) => {
+        if (!silent) {
+          showToast?.(getApiErrorHint(error));
+        }
+        return [];
+      });
+  };
+
+  const resolveMessageMine = (message) => {
+    if (typeof message.isMine === "boolean") return message.isMine;
+    if (typeof message.me === "boolean") return message.me;
+    return isSameUser(message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId, currentUserId);
+  };
 
   useEffect(() => {
     let ignore = false;
     fetchChatMessages(roomId).then((data) => {
-      if (!ignore) setMessages(data.length > 0 ? data : getMockMessages());
+      if (!ignore) {
+        const sortedMessages = sortMessages(data);
+        setMessages(sortedMessages.length > 0 ? sortedMessages : getMockMessages());
+        const latestTimestamp = getMessageTimestamp(sortedMessages[sortedMessages.length - 1]);
+        setRoomLastReadAt(roomId, latestTimestamp || Date.now());
+      }
     }).catch((error) => {
       if (ignore) return;
       if (!shouldUseMockFallback(error)) {
@@ -141,10 +314,57 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
   }, [roomId]);
 
   useEffect(() => {
+    if (!roomId) return undefined;
+
+    let polling = false;
+    const intervalId = window.setInterval(() => {
+      if (polling) return;
+      polling = true;
+      refreshMessages().finally(() => {
+        polling = false;
+      });
+    }, 700);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!roomId) return undefined;
+
+    const client = createChatRealtimeClient({
+      chatRoomId: roomId,
+      onStatus: setRealtimeStatus,
+      onMessage: (message) => {
+        setMessages(prev => mergeMessages(prev, [message]));
+      },
+      onError: (error) => {
+        console.error("Chat realtime failed", error);
+      },
+    });
+
+    realtimeClientRef.current = client;
+    client.connect();
+
+    return () => {
+      client.disconnect();
+      if (realtimeClientRef.current === client) {
+        realtimeClientRef.current = null;
+      }
+    };
+  }, [roomId]);
+
+  useEffect(() => {
     markChatRoomRead(roomId).catch(() => {
       // TODO: 읽음 처리 API 확정 전까지 화면 진입은 막지 않습니다.
     });
+    setRoomLastReadAt(roomId);
   }, [roomId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length]);
 
   useEffect(() => {
     if (!translateOn) return;
@@ -155,7 +375,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
       const content = message.text ?? message.content;
       const cacheKey = `${messageId}:${targetLanguage}`;
 
-      return !message.me
+      return !resolveMessageMine(message)
         && messageId
         && content
         && !translationResults[cacheKey]
@@ -222,17 +442,35 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
       }
 
       const attachmentIds = uploadedAttachments.map(item => item.uploadId).filter(Boolean);
-      const message = await sendChatMessage({ chatRoomId: roomId, content, attachmentIds });
-      setMessages(prev => [...prev, { ...message, text: message.text || content || "첨부파일", attachments: uploadedAttachments, me: true, read: false }]);
+      if (!realtimeClientRef.current?.isConnected()) {
+        showToast?.("실시간 채팅 서버에 연결되지 않았습니다. WebSocket 설정을 확인해주세요.");
+        return;
+      }
+
+      realtimeClientRef.current.send({ content, attachmentIds });
+      setMessages(prev => [...prev, {
+        id: `local-${Date.now()}`,
+        userId: currentUserId,
+        senderId: currentUserId,
+        user: "여행자지수",
+        text: content || "첨부파일",
+        time: "지금",
+        createdAt: new Date().toISOString(),
+        me: true,
+        attachments: uploadedAttachments,
+      }]);
       setInput("");
       setPendingAttachments([]);
+      window.setTimeout(() => {
+        refreshMessages();
+      }, 150);
     } catch (error) {
       if (!shouldUseMockFallback(error)) {
         showToast?.(getApiErrorHint(error));
         return;
       }
       // TODO: WebSocket/STOMP 전환 전까지 API 미연결 환경에서는 mock 메시지로 대화 흐름을 유지합니다.
-      setMessages(prev => [...prev, { id: Date.now(), user: "여행자지수", text: content || "첨부파일", time: "지금", me: true, read: false, attachments: pendingAttachments }]);
+      setMessages(prev => [...prev, { id: Date.now(), userId: currentUserId, senderId: currentUserId, user: "여행자지수", text: content || "첨부파일", time: "지금", createdAt: new Date().toISOString(), me: true, attachments: pendingAttachments }]);
       setInput("");
       setPendingAttachments([]);
     } finally {
@@ -323,6 +561,30 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     });
   };
 
+  const openParticipantPanel = () => {
+    setParticipantPanelOpen(true);
+    setRoomMenuOpen(false);
+  };
+
+  const openProfile = (target) => {
+    setProfileTarget(target);
+    setMessageMenuId(null);
+  };
+
+  const getMessageProfile = (message) => {
+    const userId = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
+    const matchedParticipant = participants.find(participant => isSameUser(participant.userId, userId));
+    return {
+      ...matchedParticipant,
+      userId: matchedParticipant?.userId ?? userId,
+      nickname: matchedParticipant?.nickname ?? message.user ?? "상대방",
+      avatar: matchedParticipant?.avatar ?? "👤",
+      language: matchedParticipant?.language,
+      score: matchedParticipant?.score,
+      role: matchedParticipant?.role,
+    };
+  };
+
   const handleKick = (participant) => {
     if (!participant?.userId) {
       showToast?.("상대방 내보내기는 참여자 userId가 필요합니다.");
@@ -350,17 +612,26 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
           <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{currentRoom.title}</div>
           <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>👥 {currentRoom.members}/{currentRoom.maxMembers}명</div>
         </div>
-        <div onClick={() => showToast("참여 신청 목록으로 이동합니다")} style={{ color: COLORS.accent, fontSize: 14, cursor: "pointer", background: "rgba(255,234,54,0.16)", padding: "6px 12px", borderRadius: 20 }}>신청 {currentRoom.members}</div>
+        <div className="chat-room-menu-wrap">
+          <button type="button" className="chat-room-menu-button" onClick={() => setRoomMenuOpen(open => !open)} aria-label="채팅방 메뉴">
+            ☰
+          </button>
+          {roomMenuOpen && (
+            <div className="chat-room-menu" role="menu">
+              <button type="button" onClick={() => { setTranslateOn(!translateOn); setRoomMenuOpen(false); }}>
+                번역 {translateOn ? "끄기" : "켜기"}
+              </button>
+              <button type="button" onClick={openParticipantPanel}>참여자 보기</button>
+              <button type="button" onClick={() => { setRoomMenuOpen(false); onRequest?.(); }}>참여 신청 관리</button>
+              <button type="button" onClick={openParticipantPanel}>상대방 내보내기</button>
+              <button type="button" disabled={Boolean(actioning)} onClick={() => { setRoomMenuOpen(false); handleRoomReport(); }}>채팅방 신고</button>
+              <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setRoomMenuOpen(false); setLeaveConfirmOpen(true); }}>채팅방 나가기</button>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="chat-room-tools">
-        <button type="button" className={translateOn ? "active" : ""} onClick={() => setTranslateOn(!translateOn)}>
-          번역 {translateOn ? "ON" : "OFF"}
-        </button>
-        <button type="button" className={participantPanelOpen ? "active" : ""} onClick={() => setParticipantPanelOpen(!participantPanelOpen)}>참여자 {participants.length || currentRoom.members}명</button>
-        <button type="button" onClick={() => onRequest?.()}>신청 관리</button>
-        <button type="button" disabled={Boolean(actioning)} onClick={() => setParticipantPanelOpen(true)}>상대방 내보내기</button>
-        <button type="button" disabled={Boolean(actioning)} onClick={handleRoomReport}>채팅방 신고</button>
-        <button type="button" disabled={Boolean(actioning)} onClick={() => setLeaveConfirmOpen(true)}>채팅방 나가기</button>
+      <div className={`chat-realtime-status ${realtimeStatus}`}>
+        {realtimeStatus === "connected" ? "실시간 연결됨" : realtimeStatus === "connecting" ? "실시간 연결 중" : "실시간 연결 확인 필요"}
       </div>
       {participantPanelOpen && (
         <div className="chat-participant-panel">
@@ -378,13 +649,13 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
           )}
           {participants.map((participant) => (
             <div key={participant.userId} className="chat-participant-row">
-              <div>
+              <button type="button" className="chat-participant-profile" onClick={() => openProfile(participant)}>
                 <b>{participant.avatar}</b>
                 <div>
                   <strong>{participant.nickname}</strong>
                   <span>{participant.role === "HOST" ? "방장" : "참여자"} · {participant.language || "언어 미설정"} · 동행지수 {participant.score || "-"}</span>
                 </div>
-              </div>
+              </button>
               <div>
                 <button type="button" onClick={() => handleProfileReport(participant)}>신고</button>
                 <button type="button" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
@@ -394,22 +665,53 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
         </div>
       )}
       <div className="web-chat-room-body" style={{ ...S.scrollArea, padding: 16 }}>
-        {messages.map(m => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.me ? "flex-end" : "flex-start", marginBottom: 12 }}>
-            {!m.me && <button type="button" onClick={() => handleProfileReport(m)} style={{ width: 32, height: 32, borderRadius: "50%", background: COLORS.bg, border: 0, display: "flex", alignItems: "center", justifyContent: "center", marginRight: 8, fontSize: 14, flexShrink: 0, cursor: "pointer" }}>👤</button>}
-            <div>
-              {!m.me && <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 3 }}>{m.user}</div>}
-              <div className="web-message-bubble" style={{ background: m.me ? COLORS.primary : "#fff", color: m.me ? "#fff" : COLORS.primary, borderRadius: m.me ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "10px 14px", maxWidth: 220, fontSize: 14, border: m.me ? "none" : "0.5px solid rgba(0,0,0,0.08)" }}>
-                {m.text}
-                {m.attachments?.length > 0 && (
-                  <div className="chat-attachment-preview">
-                    {m.attachments.map(file => (
-                      <span key={file.id}>{file.type === "image" ? "사진" : "파일"} · {file.name}</span>
-                    ))}
+        {displayedMessages.map(m => {
+          const mine = resolveMessageMine(m);
+          const readReceiptText = getReadReceiptText(m);
+          const messageId = m.messageId ?? m.id;
+          const messageProfile = !mine ? getMessageProfile(m) : null;
+          return (
+          <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+            {!mine && <button type="button" onClick={() => openProfile(messageProfile)} style={{ width: 32, height: 32, borderRadius: "50%", background: COLORS.bg, border: 0, display: "flex", alignItems: "center", justifyContent: "center", marginRight: 8, fontSize: 14, flexShrink: 0, cursor: "pointer" }}>{messageProfile?.avatar ?? "👤"}</button>}
+            <div className={mine ? "chat-message-stack mine" : "chat-message-stack"}>
+              {!mine && <button type="button" className="chat-message-sender" onClick={() => openProfile(messageProfile)}>{messageProfile?.nickname ?? m.user}</button>}
+              <div className={mine ? "chat-message-line mine" : "chat-message-line"}>
+                {mine && (
+                  <div className="chat-message-side-meta">
+                    {readReceiptText && <span>{readReceiptText}</span>}
+                    <span>{formatChatTime(m)}</span>
+                  </div>
+                )}
+                <div className="web-message-bubble" style={{ background: mine ? COLORS.primary : "#fff", color: mine ? "#fff" : COLORS.primary, borderRadius: mine ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "10px 14px", maxWidth: 220, fontSize: 14, border: mine ? "none" : "0.5px solid rgba(0,0,0,0.08)" }}>
+                  {m.text}
+                  {m.attachments?.length > 0 && (
+                    <div className="chat-attachment-preview">
+                      {m.attachments.map(file => (
+                        <span key={file.id}>{file.type === "image" ? "사진" : "파일"} · {file.name}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {!mine && (
+                  <div className="chat-message-side-meta">
+                    <span>{formatChatTime(m)}</span>
+                  </div>
+                )}
+                {!mine && (
+                  <div className="chat-message-action-wrap">
+                    <button type="button" className="chat-message-action-button" onClick={() => setMessageMenuId(current => current === messageId ? null : messageId)} aria-label="메시지 더보기">
+                      ⋯
+                    </button>
+                    {messageMenuId === messageId && (
+                      <div className="chat-message-menu" role="menu">
+                        <button type="button" disabled={Boolean(actioning)} onClick={() => { setMessageMenuId(null); handleMessageReport(m); }}>메시지 신고</button>
+                        <button type="button" onClick={() => { setMessageMenuId(null); openProfile(messageProfile); }}>프로필 보기</button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-              {translateOn && !m.me && (() => {
+              {translateOn && !mine && (() => {
                 const targetLanguage = LANG_CODE_MAP[lang] ?? "KO";
                 const cacheKey = `${m.id ?? m.messageId}:${targetLanguage}`;
                 const translated = translationResults[cacheKey];
@@ -420,12 +722,11 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
                   </div>
                 );
               })()}
-              <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 3, textAlign: m.me ? "right" : "left" }}>{m.time}</div>
-              {m.me && <div className="chat-read-state">{m.read ? "읽음" : "안읽음"}</div>}
-              {!m.me && <button type="button" className="chat-message-report" disabled={Boolean(actioning)} onClick={() => handleMessageReport(m)}>채팅 신고</button>}
             </div>
           </div>
-        ))}
+          );
+        })}
+        <div ref={messagesEndRef} />
       </div>
       <div className="web-chat-input" style={{ padding: "12px 16px 28px", background: "#fff", borderTop: "0.5px solid rgba(0,0,0,0.08)", display: "flex", gap: 10 }}>
         <input ref={imageInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => addLocalAttachments(event, "image")} />
@@ -474,6 +775,18 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
         onConfirm={() => handleKick(kickConfirmTarget)}
         onCancel={() => setKickConfirmTarget(null)}
       />
+      {profileTarget && (
+        <div className="chat-profile-modal" role="dialog" aria-modal="true">
+          <div className="chat-profile-card">
+            <button type="button" className="chat-profile-close" onClick={() => setProfileTarget(null)} aria-label="닫기">×</button>
+            <div className="chat-profile-avatar">{profileTarget.avatar ?? "👤"}</div>
+            <strong>{profileTarget.nickname ?? "상대방"}</strong>
+            <span>{profileTarget.role === "HOST" ? "방장" : "참여자"}</span>
+            <p>{profileTarget.language || "언어 미설정"} · 동행지수 {profileTarget.score || "-"}</p>
+            <button type="button" onClick={() => { handleProfileReport(profileTarget); setProfileTarget(null); }}>사용자 신고하기</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
