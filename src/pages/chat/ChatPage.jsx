@@ -89,6 +89,10 @@ function getReadReceiptText(message = {}) {
   return "";
 }
 
+function isSystemMessage(message = {}) {
+  return String(message.messageType ?? message.type ?? "").toUpperCase() === "SYSTEM";
+}
+
 function getRoomReadStorageKey(roomId) {
   return `chat:lastReadAt:${roomId}`;
 }
@@ -483,7 +487,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
       showToast?.(successMessage);
       afterSuccess?.();
     } catch (error) {
-      if (!shouldUseMockFallback(error)) {
+      if (!mockMessage || !shouldUseMockFallback(error)) {
         showToast?.(getApiErrorHint(error));
         return;
       }
@@ -498,7 +502,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     key: "report-room",
     action: () => reportChatRoom({ chatRoomId: roomId }),
     successMessage: "채팅방 신고가 접수되었습니다.",
-    mockMessage: "채팅방 신고 API 연결 전 mock 신고로 표시합니다.",
   });
 
   const handleLeaveRoom = () => runRoomAction({
@@ -518,7 +521,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     key: `report-message-${message.id}`,
     action: () => reportChatMessage({ chatRoomId: roomId, messageId: message.id }),
     successMessage: "채팅 신고가 접수되었습니다.",
-    mockMessage: "채팅 신고 API 연결 전 mock 신고로 표시합니다.",
   });
 
   const handleProfileReport = (target) => {
@@ -530,7 +532,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
       key: `report-user-${target.userId}`,
       action: () => reportChatParticipant({ userId: target.userId }),
       successMessage: "사용자 신고가 접수되었습니다.",
-      mockMessage: "사용자 신고 API 연결 전 mock 신고로 표시합니다.",
     });
   };
 
@@ -646,6 +647,13 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
           />
         )}
         {displayedMessages.map(m => {
+          if (isSystemMessage(m)) {
+            return (
+              <div key={m.id} className="chat-system-message">
+                <span>{m.text}</span>
+              </div>
+            );
+          }
           const mine = resolveMessageMine(m);
           const readReceiptText = getReadReceiptText(m);
           const messageId = m.messageId ?? m.id;

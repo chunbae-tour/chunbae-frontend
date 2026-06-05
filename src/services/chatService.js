@@ -101,6 +101,8 @@ export function normalizeChatMessage(message = {}) {
     id: message.messageId ?? message.id,
     userId: message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId,
     user: message.senderNickname ?? message.user ?? "여행자",
+    avatar: message.senderProfileImageUrl ?? message.profileImageUrl ?? message.avatar ?? "👤",
+    messageType: message.messageType ?? message.type ?? "TEXT",
     text: message.content ?? message.text ?? "",
     time: message.sentAt ?? message.time ?? "",
     me: message.isMine ?? message.me ?? message.mine ?? null,
@@ -198,38 +200,47 @@ export async function closeChatRoom(chatRoomId) {
   return true;
 }
 
-export async function reportChatRoom({ chatRoomId, reason = "USER_REPORT" }) {
+const DEFAULT_REPORT_REASON = "OTHER";
+
+async function createReport({ targetType, targetId, reason = DEFAULT_REPORT_REASON, description = "" }) {
+  return apiRequest("/reports", {
+    method: "POST",
+    auth: true,
+    role: "USER",
+    body: {
+      targetType,
+      targetId,
+      reason,
+      description,
+    },
+  });
+}
+
+export async function reportChatRoom({ chatRoomId }) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
-  // TODO: 신고 사유 enum/본문 필드 확정 필요.
-  await apiRequest(`/chat/rooms/${chatRoomId}/reports`, {
-    method: "POST",
-    auth: true,
-    role: "USER",
-    body: { reason },
-  });
-  return true;
+  throw new ChatApiError(
+    "현재 신고 API는 채팅방 대상 타입을 지원하지 않습니다. ReportTargetType에 CHAT_ROOM 추가가 필요합니다.",
+    "REPORT_TARGET_TYPE_UNSUPPORTED",
+    400,
+  );
 }
 
-export async function reportChatMessage({ chatRoomId, messageId, reason = "USER_REPORT" }) {
+export async function reportChatMessage({ chatRoomId, messageId }) {
   if (!chatRoomId || !messageId) throw new ChatApiError("채팅방 또는 메시지 ID가 없습니다.", "MISSING_REPORT_TARGET", 400);
-  // TODO: 채팅 메시지 신고 endpoint 확정 필요.
-  await apiRequest(`/chat/rooms/${chatRoomId}/messages/${messageId}/reports`, {
-    method: "POST",
-    auth: true,
-    role: "USER",
-    body: { reason },
-  });
-  return true;
+  throw new ChatApiError(
+    "현재 신고 API는 채팅 메시지 대상 타입을 지원하지 않습니다. ReportTargetType에 CHAT_MESSAGE 추가가 필요합니다.",
+    "REPORT_TARGET_TYPE_UNSUPPORTED",
+    400,
+  );
 }
 
-export async function reportChatParticipant({ userId, reason = "USER_REPORT" }) {
+export async function reportChatParticipant({ userId, reason = DEFAULT_REPORT_REASON, description = "사용자 신고" }) {
   if (!userId) throw new ChatApiError("사용자 ID가 없습니다.", "MISSING_USER_ID", 400);
-  // TODO: 사용자 신고 endpoint와 신고 사유 enum 확정 필요.
-  await apiRequest(`/users/${userId}/reports`, {
-    method: "POST",
-    auth: true,
-    role: "USER",
-    body: { reason },
+  await createReport({
+    targetType: "USER",
+    targetId: userId,
+    reason,
+    description,
   });
   return true;
 }
