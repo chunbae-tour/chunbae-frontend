@@ -33,6 +33,7 @@ export const MOCK_ADMIN_CONTENTS = [
   { id: 2, type: "전통시장", name: "광장시장", status: "공개", updatedAt: "2025.05.14" },
   { id: 3, type: "관광지", name: "창덕궁", status: "공개", updatedAt: "2025.05.10" },
   { id: 4, type: "전통시장", name: "통인시장", status: "비공개", updatedAt: "2025.05.08" },
+  { id: 5, type: "축제", name: "서울빛초롱축제", status: "공개", updatedAt: "2025.05.08" },
 ];
 
 export function normalizeAdminUser(user = {}) {
@@ -89,6 +90,18 @@ export function normalizeAdminTraditionalMarket(market = {}) {
     updatedAt: market.updatedAt ?? market.createdAt ?? "",
     readOnly: true,
     source: "traditional-market",
+  };
+}
+
+export function normalizeAdminFestival(festival = {}) {
+  return {
+    id: festival.festivalId ?? festival.id,
+    type: "축제",
+    name: festival.name ?? festival.title ?? festival.festivalName ?? "축제",
+    status: festival.deleted || festival.status === "HIDDEN" || festival.status === "DELETED" ? "비공개" : "공개",
+    updatedAt: festival.updatedAt ?? festival.createdAt ?? festival.startDate ?? "",
+    readOnly: festival.source && festival.source !== "MANUAL",
+    source: "festival",
   };
 }
 
@@ -184,6 +197,44 @@ async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, maxItems
   return markets;
 }
 
+export async function fetchAdminFestivals({ size = 100, maxItems = 1000 } = {}) {
+  const festivals = [];
+  let cursor = null;
+  let hasNext = true;
+
+  while (hasNext && festivals.length < maxItems) {
+    const params = new URLSearchParams({ size: String(size) });
+    if (cursor) params.set("cursor", cursor);
+
+    const data = await apiRequest(`/admin/festivals?${params.toString()}`, { auth: true, role: "ADMIN" });
+    const pageItems = getPageContent(data);
+    festivals.push(...pageItems.map(normalizeAdminFestival));
+    cursor = data?.nextCursor ?? data?.cursor ?? null;
+    hasNext = Boolean(data?.hasNext && cursor);
+  }
+
+  return festivals;
+}
+
+export async function fetchAdminContents({ keyword = "", category = "" } = {}) {
+  if (category === "축제") {
+    return fetchAdminFestivals();
+  }
+
+  const places = await fetchAdminPlaces({ keyword, category });
+
+  if (category === "전체" || !category) {
+    try {
+      const festivals = await fetchAdminFestivals();
+      return [...places, ...festivals];
+    } catch {
+      return places;
+    }
+  }
+
+  return places;
+}
+
 export async function fetchAdminPlaces({ keyword = "", category = "" } = {}) {
   if (category === "전통시장") {
     return fetchAdminTraditionalMarkets({ keyword });
@@ -217,6 +268,14 @@ export async function deleteAdminPlace(placeId) {
 
 export async function syncTraditionalMarkets() {
   return apiRequest("/admin/traditional-markets/sync", {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function fetchFestivalsNow() {
+  return apiRequest("/admin/festivals/fetch", {
     method: "POST",
     auth: true,
     role: "ADMIN",

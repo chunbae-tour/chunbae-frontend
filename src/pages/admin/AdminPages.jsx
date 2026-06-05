@@ -4,10 +4,11 @@ import { COLORS, S } from "../../constants/colors";
 import {
   approveMerchantApplication,
   deleteAdminPlace,
+  fetchAdminContents,
   fetchAdminDashboard,
-  fetchAdminPlaces,
   fetchAdminReports,
   fetchAdminUsers,
+  fetchFestivalsNow,
   fetchMerchantApplications,
   MOCK_ADMIN_DASHBOARD,
   MOCK_ADMIN_CONTENTS,
@@ -281,10 +282,11 @@ export function AdminContentPage({ onBack, showToast }) {
   const [filter, setFilter] = useState("전체");
   const [status, setStatus] = useState("loading");
   const [syncingMarkets, setSyncingMarkets] = useState(false);
+  const [syncingFestivals, setSyncingFestivals] = useState(false);
 
   const loadContents = () => {
     setStatus("loading");
-    return fetchAdminPlaces({ category: filter })
+    return fetchAdminContents({ category: filter })
       .then((data) => {
         setContents(data);
         setStatus(data.length > 0 ? "success" : "empty");
@@ -299,7 +301,7 @@ export function AdminContentPage({ onBack, showToast }) {
     let ignore = false;
 
     setStatus("loading");
-    fetchAdminPlaces({ category: filter })
+    fetchAdminContents({ category: filter })
       .then((data) => {
         if (ignore) return;
         setContents(data);
@@ -332,6 +334,24 @@ export function AdminContentPage({ onBack, showToast }) {
     }
   };
 
+  const handleFestivalFetch = async () => {
+    if (syncingFestivals) return;
+
+    setSyncingFestivals(true);
+    try {
+      await fetchFestivalsNow();
+      showToast("축제 데이터를 수집했습니다.");
+      await loadContents();
+      if (filter !== "전체" && filter !== "축제") {
+        setFilter("축제");
+      }
+    } catch {
+      showToast("축제 수집에 실패했습니다. 관리자 권한, 공공데이터 키, 백엔드 로그를 확인해주세요.");
+    } finally {
+      setSyncingFestivals(false);
+    }
+  };
+
   const toggle = (id) => {
     // TODO: 공개/비공개 전환 API가 별도로 확정되면 DELETE 대신 PATCH/PUT로 연결합니다.
     setContents(prev => prev.map(c => {
@@ -353,16 +373,19 @@ export function AdminContentPage({ onBack, showToast }) {
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>콘텐츠 관리</span>
       </div>
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-        {["전체", "관광지", "전통시장"].map(f => (
+        {["전체", "관광지", "전통시장", "축제"].map(f => (
           <div key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: filter === f ? COLORS.primary : COLORS.bg, color: filter === f ? "#fff" : COLORS.textMuted }}>{f}</div>
         ))}
       </div>
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
             <button type="button" onClick={() => showToast("관광지/시장 추가 (준비 중)")} style={{ border: 0, background: COLORS.accent, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ 새 콘텐츠 추가</button>
             <button type="button" disabled={syncingMarkets} onClick={handleTraditionalMarketSync} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingMarkets ? "#F7F5F0" : COLORS.greenBg, color: syncingMarkets ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingMarkets ? "wait" : "pointer", fontFamily: "inherit" }}>
               {syncingMarkets ? "전통시장 동기화 중..." : "전통시장 데이터 동기화"}
+            </button>
+            <button type="button" disabled={syncingFestivals} onClick={handleFestivalFetch} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingFestivals ? "#F7F5F0" : COLORS.greenBg, color: syncingFestivals ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingFestivals ? "wait" : "pointer", fontFamily: "inherit" }}>
+              {syncingFestivals ? "축제 수집 중..." : "축제 데이터 수집"}
             </button>
           </div>
           {status === "loading" && <SkeletonList count={4} />}
@@ -374,7 +397,7 @@ export function AdminContentPage({ onBack, showToast }) {
             <div key={c.id} style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 10, border: "0.5px solid rgba(0,0,0,0.06)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14, background: c.type === "관광지" ? "#FEE8E8" : COLORS.greenBg, color: c.type === "관광지" ? "#A32D2D" : COLORS.green, borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{c.type}</span>
+                  <span style={{ fontSize: 14, background: c.type === "관광지" ? "#FEE8E8" : c.type === "축제" ? "#FFF3D0" : COLORS.greenBg, color: c.type === "관광지" ? "#A32D2D" : c.type === "축제" ? "#B87800" : COLORS.green, borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{c.type}</span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{c.name}</span>
                 </div>
                 <div onClick={() => toggle(c.id)} style={{ width: 48, height: 26, borderRadius: 13, background: c.status === "공개" ? COLORS.green : "#ccc", position: "relative", cursor: c.readOnly ? "not-allowed" : "pointer", opacity: c.readOnly ? 0.7 : 1 }}>
@@ -385,13 +408,13 @@ export function AdminContentPage({ onBack, showToast }) {
                 <div style={{ display: "flex", gap: 8 }}>
                   <span style={{ fontSize: 14, color: c.status === "공개" ? COLORS.green : COLORS.textMuted, fontWeight: 600 }}>{c.status}</span>
                   <span style={{ fontSize: 14, color: COLORS.textMuted }}>· {c.updatedAt}</span>
-                  {c.readOnly && <span style={{ fontSize: 14, color: COLORS.textMuted }}>· 동기화 데이터</span>}
+                  {c.readOnly && <span style={{ fontSize: 14, color: COLORS.textMuted }}>· 외부 수집 데이터</span>}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <span onClick={() => showToast(c.readOnly ? "전통시장 동기화 데이터 수정 API가 필요합니다." : "콘텐츠 수정")} style={{ fontSize: 18, cursor: "pointer", opacity: c.readOnly ? 0.55 : 1 }}>✏️</span>
+                  <span onClick={() => showToast(c.readOnly ? "외부 수집 데이터 수정은 백엔드 정책 확인이 필요합니다." : "콘텐츠 수정")} style={{ fontSize: 18, cursor: "pointer", opacity: c.readOnly ? 0.55 : 1 }}>✏️</span>
                   <span onClick={async () => {
                     if (c.readOnly) {
-                      showToast("전통시장 동기화 데이터 삭제 API가 필요합니다.");
+                      showToast("외부 수집 데이터 삭제 API가 필요합니다.");
                       return;
                     }
                     await deleteAdminPlace(c.id).catch(() => {});
