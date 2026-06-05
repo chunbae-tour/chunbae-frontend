@@ -39,7 +39,7 @@ function normalizeAuthData(data, fallbackRole) {
   return {
     accessToken: data.accessToken,
     role: data.role ?? fallbackRole,
-    userId: data.userId,
+    userId: data.userId ?? data.id ?? data.accountId,
     email: data.email,
     nickname: data.nickname ?? "여행자",
     profileImageUrl: data.profileImageUrl,
