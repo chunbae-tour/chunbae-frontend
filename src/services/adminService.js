@@ -80,6 +80,18 @@ export function normalizeAdminPlace(place = {}) {
   };
 }
 
+export function normalizeAdminTraditionalMarket(market = {}) {
+  return {
+    id: market.marketId ?? market.id,
+    type: "전통시장",
+    name: market.marketName ?? market.name ?? "전통시장",
+    status: market.deleted || market.status === "HIDDEN" ? "비공개" : "공개",
+    updatedAt: market.updatedAt ?? market.createdAt ?? "",
+    readOnly: true,
+    source: "traditional-market",
+  };
+}
+
 export async function fetchAdminDashboard() {
   const data = await apiRequest("/admin/dashboard", { auth: true, role: "ADMIN" });
   return { ...MOCK_ADMIN_DASHBOARD, ...data };
@@ -149,17 +161,63 @@ export async function rejectMerchantApplication(applicationId, rejectReason = "�
   });
 }
 
+async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, maxItems = 2000 } = {}) {
+  const markets = [];
+  let cursor = null;
+  let hasNext = true;
+
+  while (hasNext && markets.length < maxItems) {
+    const params = new URLSearchParams({
+      q: keyword || "시장",
+      type: "TRADITIONAL_MARKET",
+      size: String(size),
+    });
+    if (cursor) params.set("cursor", cursor);
+
+    const data = await apiRequest(`/search?${params.toString()}`);
+    const pageItems = getPageContent(data);
+    markets.push(...pageItems.map(normalizeAdminTraditionalMarket));
+    cursor = data?.nextCursor ?? data?.cursor ?? null;
+    hasNext = Boolean(data?.hasNext && cursor);
+  }
+
+  return markets;
+}
+
 export async function fetchAdminPlaces({ keyword = "", category = "" } = {}) {
+  if (category === "전통시장") {
+    return fetchAdminTraditionalMarkets({ keyword });
+  }
+
   const params = new URLSearchParams({ size: "20" });
   if (keyword) params.set("keyword", keyword);
   if (category && category !== "전체") params.set("category", category);
   const data = await apiRequest(`/admin/places?${params.toString()}`, { auth: true, role: "ADMIN" });
-  return getPageContent(data).map(normalizeAdminPlace);
+  const places = getPageContent(data).map(normalizeAdminPlace);
+
+  if (category === "전체" || !category) {
+    try {
+      const markets = await fetchAdminTraditionalMarkets({ keyword });
+      return [...places, ...markets];
+    } catch {
+      return places;
+    }
+  }
+
+  return places;
 }
 
 export async function deleteAdminPlace(placeId) {
   return apiRequest(`/admin/places/${placeId}`, {
     method: "DELETE",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function syncTraditionalMarkets() {
+  return apiRequest("/admin/traditional-markets/sync", {
+    method: "POST",
     auth: true,
     role: "ADMIN",
   });

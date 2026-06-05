@@ -17,6 +17,7 @@ import {
   rejectMerchantApplication,
   resolveAdminReport,
   suspendAdminUser,
+  syncTraditionalMarkets,
   unsuspendAdminUser,
 } from "../../services/adminService.js";
 
@@ -279,10 +280,25 @@ export function AdminContentPage({ onBack, showToast }) {
   const [contents, setContents] = useState(MOCK_ADMIN_CONTENTS);
   const [filter, setFilter] = useState("전체");
   const [status, setStatus] = useState("loading");
+  const [syncingMarkets, setSyncingMarkets] = useState(false);
+
+  const loadContents = () => {
+    setStatus("loading");
+    return fetchAdminPlaces({ category: filter })
+      .then((data) => {
+        setContents(data);
+        setStatus(data.length > 0 ? "success" : "empty");
+      })
+      .catch(() => {
+        setContents(MOCK_ADMIN_CONTENTS);
+        setStatus("mock");
+      });
+  };
 
   useEffect(() => {
     let ignore = false;
 
+    setStatus("loading");
     fetchAdminPlaces({ category: filter })
       .then((data) => {
         if (ignore) return;
@@ -298,9 +314,34 @@ export function AdminContentPage({ onBack, showToast }) {
     return () => { ignore = true; };
   }, [filter]);
 
+  const handleTraditionalMarketSync = async () => {
+    if (syncingMarkets) return;
+
+    setSyncingMarkets(true);
+    try {
+      await syncTraditionalMarkets();
+      showToast("전통시장 데이터를 동기화했습니다.");
+      await loadContents();
+      if (filter !== "전체" && filter !== "전통시장") {
+        setFilter("전통시장");
+      }
+    } catch {
+      showToast("전통시장 동기화에 실패했습니다. 관리자 권한과 백엔드 상태를 확인해주세요.");
+    } finally {
+      setSyncingMarkets(false);
+    }
+  };
+
   const toggle = (id) => {
     // TODO: 공개/비공개 전환 API가 별도로 확정되면 DELETE 대신 PATCH/PUT로 연결합니다.
-    setContents(prev => prev.map(c => c.id === id ? { ...c, status: c.status === "공개" ? "비공개" : "공개" } : c));
+    setContents(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      if (c.readOnly) {
+        showToast("전통시장 동기화 데이터는 현재 읽기 전용입니다.");
+        return c;
+      }
+      return { ...c, status: c.status === "공개" ? "비공개" : "공개" };
+    }));
   };
 
   const filtered = filter === "전체" ? contents : contents.filter(c => c.type === filter);
@@ -318,7 +359,12 @@ export function AdminContentPage({ onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
-          <div onClick={() => showToast("관광지/시장 추가 (준비 중)")} style={{ background: COLORS.accent, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>+ 새 콘텐츠 추가</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
+            <button type="button" onClick={() => showToast("관광지/시장 추가 (준비 중)")} style={{ border: 0, background: COLORS.accent, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ 새 콘텐츠 추가</button>
+            <button type="button" disabled={syncingMarkets} onClick={handleTraditionalMarketSync} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingMarkets ? "#F7F5F0" : COLORS.greenBg, color: syncingMarkets ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingMarkets ? "wait" : "pointer", fontFamily: "inherit" }}>
+              {syncingMarkets ? "전통시장 동기화 중..." : "전통시장 데이터 동기화"}
+            </button>
+          </div>
           {status === "loading" && <SkeletonList count={4} />}
           {status === "mock" && <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 10 }}>관리자 콘텐츠 API 연결 전 mock 목록입니다.</div>}
           {status === "empty" && (
@@ -331,7 +377,7 @@ export function AdminContentPage({ onBack, showToast }) {
                   <span style={{ fontSize: 14, background: c.type === "관광지" ? "#FEE8E8" : COLORS.greenBg, color: c.type === "관광지" ? "#A32D2D" : COLORS.green, borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{c.type}</span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{c.name}</span>
                 </div>
-                <div onClick={() => toggle(c.id)} style={{ width: 48, height: 26, borderRadius: 13, background: c.status === "공개" ? COLORS.green : "#ccc", position: "relative", cursor: "pointer" }}>
+                <div onClick={() => toggle(c.id)} style={{ width: 48, height: 26, borderRadius: 13, background: c.status === "공개" ? COLORS.green : "#ccc", position: "relative", cursor: c.readOnly ? "not-allowed" : "pointer", opacity: c.readOnly ? 0.7 : 1 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: c.status === "공개" ? 25 : 3, transition: "left 0.2s" }} />
                 </div>
               </div>
@@ -339,10 +385,19 @@ export function AdminContentPage({ onBack, showToast }) {
                 <div style={{ display: "flex", gap: 8 }}>
                   <span style={{ fontSize: 14, color: c.status === "공개" ? COLORS.green : COLORS.textMuted, fontWeight: 600 }}>{c.status}</span>
                   <span style={{ fontSize: 14, color: COLORS.textMuted }}>· {c.updatedAt}</span>
+                  {c.readOnly && <span style={{ fontSize: 14, color: COLORS.textMuted }}>· 동기화 데이터</span>}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <span onClick={() => showToast("콘텐츠 수정")} style={{ fontSize: 18, cursor: "pointer" }}>✏️</span>
-                  <span onClick={async () => { await deleteAdminPlace(c.id).catch(() => {}); setContents(prev => prev.filter(x => x.id !== c.id)); showToast("삭제되었습니다."); }} style={{ fontSize: 18, cursor: "pointer" }}>🗑️</span>
+                  <span onClick={() => showToast(c.readOnly ? "전통시장 동기화 데이터 수정 API가 필요합니다." : "콘텐츠 수정")} style={{ fontSize: 18, cursor: "pointer", opacity: c.readOnly ? 0.55 : 1 }}>✏️</span>
+                  <span onClick={async () => {
+                    if (c.readOnly) {
+                      showToast("전통시장 동기화 데이터 삭제 API가 필요합니다.");
+                      return;
+                    }
+                    await deleteAdminPlace(c.id).catch(() => {});
+                    setContents(prev => prev.filter(x => x.id !== c.id));
+                    showToast("삭제되었습니다.");
+                  }} style={{ fontSize: 18, cursor: "pointer", opacity: c.readOnly ? 0.55 : 1 }}>🗑️</span>
                 </div>
               </div>
             </div>
