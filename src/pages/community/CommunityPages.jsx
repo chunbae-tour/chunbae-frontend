@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
-import { getApiErrorHint } from "../../services/apiClient.js";
+import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
 import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPosts, getMockCommunityComments, getMockCommunityPosts } from "../../services/communityService.js";
 
@@ -246,11 +246,9 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
         user,
         message: `${user?.nickname || user?.email || "여행자"} 님이 동행 참여를 신청했습니다.`,
       })
-        .then((request) => {
+        .then(() => {
           setJoinState("pending");
-          showToast(request?.delivery === "api+local"
-            ? "채팅방 참여 신청을 보냈습니다. 방장 신청 목록에서 확인할 수 있어요."
-            : "참여 신청을 저장했습니다. 백엔드 방 연결 전까지 로컬 신청 목록에 표시됩니다.");
+          showToast("채팅방 참여 신청을 보냈습니다. 방장 신청 목록에서 확인할 수 있어요.");
         })
         .catch((error) => {
           showToast(getApiErrorHint(error));

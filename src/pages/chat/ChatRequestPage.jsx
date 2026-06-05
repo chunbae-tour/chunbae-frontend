@@ -1,8 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog, EmptyState, ErrorState, SkeletonList } from "../../components/common";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
-import { approveJoinRequest, fetchJoinRequests, getMockJoinRequests, rejectJoinRequest } from "../../services/chatService.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
+import { approveJoinRequest, fetchJoinRequests, rejectJoinRequest } from "../../services/chatService.js";
 
 export default function ChatRequestPage({ room, onBack, showToast }) {
   const [requests, setRequests] = useState([]);
@@ -16,20 +16,15 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
     setStatus("loading");
     setErrorMessage("");
 
-    fetchJoinRequests(roomId, { postId: room?.postId, title: room?.title })
+    fetchJoinRequests(roomId)
       .then((data) => {
         setRequests(data.length > 0 ? data : []);
         setStatus(data.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
-        if (!shouldUseMockFallback(error)) {
-          setRequests([]);
-          setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        setRequests(getMockJoinRequests());
-        setStatus("mock");
+        setRequests([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
   };
 
@@ -49,13 +44,9 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
         await rejectJoinRequest({ chatRoomId: roomId, joinRequestId: id, reason: "HOST_REJECTED" });
       }
     } catch (error) {
-      // TODO: 승인/거절 API 최종 응답 확정 전까지 mock fallback에서는 목록만 갱신합니다.
-      // strict 모드에서는 백엔드 에러를 확인할 수 있도록 목록을 유지합니다.
-      if (!shouldUseMockFallback(error)) {
-        showToast?.(getApiErrorHint(error));
-        setActioningId(null);
-        return;
-      }
+      showToast?.(getApiErrorHint(error));
+      setActioningId(null);
+      return;
     }
     showToast(action === "수락" ? "✅ 참여 신청을 수락했습니다!" : "❌ 참여 신청을 거절했습니다.");
     setRequests(prev => prev.filter(r => r.id !== id));
@@ -93,9 +84,6 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
           </div>
         ) : (
           <div style={{ padding: 16 }}>
-            {status === "mock" && (
-              <div className="chat-api-note">참여 신청 API 연결 전까지 목업 신청 목록을 보여줍니다.</div>
-            )}
             {requests.map(r => (
               <div key={r.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, border: "0.5px solid rgba(0,0,0,0.06)" }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
@@ -108,11 +96,6 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
                 <div style={{ background: COLORS.bg, borderRadius: 10, padding: "10px 14px", fontSize: 14, color: COLORS.textSub, marginBottom: 12 }}>
                   "{r.msg}"
                 </div>
-                {r.localDemo && (
-                  <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12 }}>
-                    {r.delivery === "api+local" ? "백엔드 신청 API 전송됨" : "로컬 테스트 신청"}
-                  </div>
-                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="button" disabled={actioningId === r.id} onClick={() => setRejectConfirmTarget(r)} style={{ flex: 1, background: "#fff", border: "1.5px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: actioningId === r.id ? "wait" : "pointer", color: COLORS.textMuted }}>거절</button>
                   <button type="button" disabled={actioningId === r.id} onClick={() => handle(r.id, "수락")} style={{ flex: 2, background: COLORS.primary, border: 0, borderRadius: 12, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: actioningId === r.id ? "wait" : "pointer", color: "#fff" }}>{actioningId === r.id ? "처리 중" : "수락"}</button>
@@ -135,3 +118,4 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
     </div>
   );
 }
+

@@ -7,9 +7,6 @@ import {
   fetchChatMessages,
   fetchChatParticipants,
   fetchMyChatRooms,
-  getMockChatParticipants,
-  getMockChatRooms,
-  getMockMessages,
   kickChatParticipant,
   leaveChatRoom,
   markChatRoomRead,
@@ -157,20 +154,11 @@ export function ChatListPage({ onChatRoom, showToast }) {
         setStatus(enrichedRooms.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
-        if (!shouldUseMockFallback(error)) {
-          if (!silent) {
-            setRooms([]);
-          }
-          setErrorMessage(getApiErrorHint(error));
-          if (!silent) {
-            setStatus("error");
-          }
-          return;
-        }
         if (!silent) {
-          setRooms(getMockChatRooms());
-          setStatus("mock");
+          setRooms([]);
+          setStatus("error");
         }
+        setErrorMessage(getApiErrorHint(error));
       });
   };
 
@@ -297,21 +285,17 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     fetchChatMessages(roomId).then((data) => {
       if (!ignore) {
         const sortedMessages = sortMessages(data);
-        setMessages(sortedMessages.length > 0 || room?.localDemo ? sortedMessages : getMockMessages());
+        setMessages(sortedMessages);
         const latestTimestamp = getMessageTimestamp(sortedMessages[sortedMessages.length - 1]);
         setRoomLastReadAt(roomId, latestTimestamp || Date.now());
       }
     }).catch((error) => {
       if (ignore) return;
-      if (!shouldUseMockFallback(error)) {
-        setMessages([]);
-        showToast?.(getApiErrorHint(error));
-        return;
-      }
-      setMessages(room?.localDemo ? [] : getMockMessages());
+      setMessages([]);
+      showToast?.(getApiErrorHint(error));
     });
     return () => { ignore = true; };
-  }, [roomId, room?.localDemo]);
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return undefined;
@@ -412,18 +396,13 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     fetchChatParticipants(roomId)
       .then((data) => {
         if (ignore) return;
-        setParticipants(data.length > 0 ? data : getMockChatParticipants());
+        setParticipants(data);
         setParticipantStatus(data.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
         if (ignore) return;
-        if (!shouldUseMockFallback(error)) {
-          setParticipants([]);
-          setParticipantStatus("error");
-          return;
-        }
-        setParticipants(getMockChatParticipants());
-        setParticipantStatus("mock");
+        setParticipants([]);
+        setParticipantStatus("error");
       });
 
     return () => { ignore = true; };
@@ -465,14 +444,8 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
         refreshMessages();
       }, 150);
     } catch (error) {
-      if (!shouldUseMockFallback(error)) {
-        showToast?.(getApiErrorHint(error));
-        return;
-      }
-      // TODO: WebSocket/STOMP 전환 전까지 API 미연결 환경에서는 mock 메시지로 대화 흐름을 유지합니다.
-      setMessages(prev => [...prev, { id: Date.now(), userId: currentUserId, senderId: currentUserId, user: "여행자지수", text: content || "첨부파일", time: "지금", createdAt: new Date().toISOString(), me: true, attachments: pendingAttachments }]);
-      setInput("");
-      setPendingAttachments([]);
+      showToast?.(getApiErrorHint(error));
+      return;
     } finally {
       setSending(false);
     }
