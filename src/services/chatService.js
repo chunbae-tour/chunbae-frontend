@@ -188,6 +188,16 @@ export async function leaveChatRoom(chatRoomId) {
   return true;
 }
 
+export async function closeChatRoom(chatRoomId) {
+  if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  await apiRequest(`/chat/rooms/${chatRoomId}/close`, {
+    method: "PATCH",
+    auth: true,
+    role: "USER",
+  });
+  return true;
+}
+
 export async function reportChatRoom({ chatRoomId, reason = "USER_REPORT" }) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
   // TODO: 신고 사유 enum/본문 필드 확정 필요.
@@ -236,8 +246,8 @@ export async function kickChatParticipant({ chatRoomId, userId }) {
 
 export async function fetchChatParticipants(chatRoomId) {
   if (!chatRoomId) return [];
-  const data = await apiRequest(`/chat/rooms/${chatRoomId}`, { auth: true, role: "USER" });
-  return getPageContent(data.members ?? data).map(normalizeChatParticipant);
+  const data = await apiRequest(`/chat/rooms/${chatRoomId}/members`, { auth: true, role: "USER" });
+  return getPageContent(data).map(normalizeChatParticipant);
 }
 
 export async function fetchJoinRequests(chatRoomId) {
@@ -262,11 +272,19 @@ export async function approveJoinRequest({ chatRoomId, joinRequestId }) {
   });
 }
 
-export async function rejectJoinRequest({ chatRoomId, joinRequestId, reason }) {
+export async function cancelJoinRequest({ chatRoomId, joinRequestId }) {
+  await apiRequest(`/chat/rooms/${chatRoomId}/join-requests/${joinRequestId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "USER",
+  });
+  return true;
+}
+
+export async function rejectJoinRequest({ chatRoomId, joinRequestId }) {
   return apiRequest(`/chat/rooms/${chatRoomId}/join-requests/${joinRequestId}/reject`, {
     method: "POST",
     auth: true,
     role: "USER",
-    body: { reason },
   });
 }
