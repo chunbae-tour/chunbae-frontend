@@ -297,7 +297,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     fetchChatMessages(roomId).then((data) => {
       if (!ignore) {
         const sortedMessages = sortMessages(data);
-        setMessages(sortedMessages.length > 0 ? sortedMessages : getMockMessages());
+        setMessages(sortedMessages.length > 0 || room?.localDemo ? sortedMessages : getMockMessages());
         const latestTimestamp = getMessageTimestamp(sortedMessages[sortedMessages.length - 1]);
         setRoomLastReadAt(roomId, latestTimestamp || Date.now());
       }
@@ -308,10 +308,10 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
         showToast?.(getApiErrorHint(error));
         return;
       }
-      setMessages(getMockMessages());
+      setMessages(room?.localDemo ? [] : getMockMessages());
     });
     return () => { ignore = true; };
-  }, [roomId]);
+  }, [roomId, room?.localDemo]);
 
   useEffect(() => {
     if (!roomId) return undefined;
@@ -665,6 +665,13 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
         </div>
       )}
       <div className="web-chat-room-body" style={{ ...S.scrollArea, padding: 16 }}>
+        {displayedMessages.length === 0 && (
+          <EmptyState
+            icon="💬"
+            title="아직 채팅 기록이 없습니다."
+            description="참여자가 승인되면 이 방에서 메시지를 주고받을 수 있어요."
+          />
+        )}
         {displayedMessages.map(m => {
           const mine = resolveMessageMine(m);
           const readReceiptText = getReadReceiptText(m);

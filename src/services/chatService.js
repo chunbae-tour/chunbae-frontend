@@ -1,5 +1,9 @@
 import { MOCK_CHATS } from "../constants/mockData.js";
 import { apiRequest, getPageContent } from "./apiClient.js";
+import { getStoredAuthSession } from "./authService.js";
+
+const DEMO_CHAT_ROOMS_KEY = "chunbae:demo:companionChatRooms";
+const DEMO_JOIN_REQUESTS_KEY = "chunbae:demo:companionJoinRequests";
 
 const MOCK_MESSAGES = [
   { id: 1, user: "Emma", text: "Hello! I'm excited about this tour!", time: "10:02", me: false },
@@ -26,6 +30,301 @@ class ChatApiError extends Error {
     this.code = code;
     this.status = status;
   }
+}
+
+function readJsonStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJsonStorage(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getActorKey(user = getStoredAuthSession("USER")) {
+  return String(user?.userId ?? user?.email ?? user?.nickname ?? "anonymous");
+}
+
+function getActorName(user = getStoredAuthSession("USER")) {
+  return user?.nickname ?? user?.email ?? "여행자";
+}
+
+function readDemoRooms() {
+  return readJsonStorage(DEMO_CHAT_ROOMS_KEY, []);
+}
+
+function writeDemoRooms(rooms) {
+  writeJsonStorage(DEMO_CHAT_ROOMS_KEY, rooms);
+}
+
+function readDemoJoinRequests() {
+  return readJsonStorage(DEMO_JOIN_REQUESTS_KEY, []);
+}
+
+function writeDemoJoinRequests(requests) {
+  writeJsonStorage(DEMO_JOIN_REQUESTS_KEY, requests);
+}
+
+function getPostId(postOrId) {
+  return typeof postOrId === "object" ? postOrId?.id ?? postOrId?.postId : postOrId;
+}
+
+function getDemoRoomById(chatRoomId) {
+  return readDemoRooms().find(room => String(room.chatRoomId ?? room.id) === String(chatRoomId));
+}
+
+function getDemoRoomByPostId(postId) {
+  return readDemoRooms().find(room => String(room.postId) === String(postId));
+}
+
+export function getCompanionRoomByPostId(postId) {
+  const room = getDemoRoomByPostId(postId);
+  return room ? normalizeChatRoom(room) : null;
+}
+
+function normalizeDemoRoomForUser(room, user = getStoredAuthSession("USER")) {
+  const actorKey = getActorKey(user);
+  const approvedMemberKeys = room.approvedMemberKeys ?? [];
+  const pendingCount = readDemoJoinRequests().filter(request => (
+    String(request.postId) === String(room.postId) && request.status === "PENDING"
+  )).length;
+
+  return normalizeChatRoom({
+    ...room,
+    members: approvedMemberKeys.length || room.members || 1,
+    currentMembers: approvedMemberKeys.length || room.currentMembers || 1,
+    unread: room.hostKey === actorKey ? pendingCount : room.unread ?? 0,
+  });
+}
+
+function mergeChatRooms(primaryRooms = [], extraRooms = []) {
+  const merged = new Map();
+  [...primaryRooms, ...extraRooms].forEach((room) => {
+    const key = String(room.chatRoomId ?? room.id);
+    if (!key) return;
+    merged.set(key, normalizeChatRoom(room));
+  });
+  return [...merged.values()];
+}
+
+function mergeJoinRequests(primaryRequests = [], demoRequests = []) {
+  const merged = new Map();
+  [...primaryRequests, ...demoRequests].forEach((request) => {
+    const key = request.id ? `id:${request.id}` : `name:${request.name}:${request.msg}`;
+    if (!merged.has(key)) {
+      merged.set(key, request);
+      return;
+    }
+    merged.set(key, { ...request, ...merged.get(key) });
+  });
+  return [...merged.values()];
+}
+
+export function getDemoChatRoomsForCurrentUser(user = getStoredAuthSession("USER")) {
+  const actorKey = getActorKey(user);
+  return readDemoRooms()
+    .filter(room => room.hostKey === actorKey || (room.approvedMemberKeys ?? []).includes(actorKey))
+    .map(room => normalizeDemoRoomForUser(room, user));
+}
+
+export function registerCompanionChatRoom({ post, room = {}, user = getStoredAuthSession("USER") }) {
+  const postId = getPostId(post);
+  if (!postId) return normalizeChatRoom(room);
+
+  const hostKey = getActorKey(user);
+  const hostName = getActorName(user);
+  const roomId = room.chatRoomId ?? room.id ?? `demo-room-${postId}`;
+  const rooms = readDemoRooms();
+  const existing = rooms.find(item => String(item.postId) === String(postId));
+  const nextRoom = {
+    ...existing,
+    ...room,
+    id: roomId,
+    chatRoomId: roomId,
+    postId,
+    title: room.title || post?.title || existing?.title || "동행 채팅",
+    description: room.description || post?.content || existing?.description || "",
+    maxMembers: room.maxMembers || post?.max || existing?.maxMembers || 4,
+    members: existing?.members || 1,
+    currentMembers: existing?.currentMembers || 1,
+    hostKey,
+    hostName,
+    approvedMemberKeys: Array.from(new Set([hostKey, ...(existing?.approvedMemberKeys ?? [])])),
+    lastMsg: room.lastMsg || existing?.lastMsg || "아직 주고받은 메시지가 없습니다.",
+    unread: room.unread ?? existing?.unread ?? 0,
+    tags: room.tags ?? [post?.place].filter(Boolean),
+    localDemo: true,
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+  };
+
+  writeDemoRooms([
+    nextRoom,
+    ...rooms.filter(item => String(item.postId) !== String(postId)),
+  ]);
+
+  return normalizeDemoRoomForUser(nextRoom, user);
+}
+
+export function getCompanionJoinState({ postId, user = getStoredAuthSession("USER") }) {
+  const actorKey = getActorKey(user);
+  const room = getDemoRoomByPostId(postId);
+  if (room?.hostKey === actorKey || (room?.approvedMemberKeys ?? []).includes(actorKey)) return "approved";
+
+  const request = readDemoJoinRequests().find(item => (
+    String(item.postId) === String(postId) && item.actorKey === actorKey
+  ));
+  if (!request) return "idle";
+  if (request.status === "APPROVED") return "approved";
+  if (request.status === "REJECTED") return "rejected";
+  return "pending";
+}
+
+export function requestCompanionJoin({ post, user = getStoredAuthSession("USER"), message = "참여 신청합니다." }) {
+  const postId = getPostId(post);
+  if (!postId) throw new ChatApiError("게시글 ID가 없습니다.", "MISSING_POST_ID", 400);
+
+  const actorKey = getActorKey(user);
+  const actorName = getActorName(user);
+  const requests = readDemoJoinRequests();
+  const existing = requests.find(item => String(item.postId) === String(postId) && item.actorKey === actorKey);
+  const nextRequest = {
+    ...existing,
+    id: existing?.id ?? `demo-join-${postId}-${actorKey}`,
+    joinRequestId: existing?.joinRequestId ?? `demo-join-${postId}-${actorKey}`,
+    postId,
+    actorKey,
+    userId: user?.userId,
+    name: actorName,
+    nickname: actorName,
+    msg: message,
+    message,
+    score: user?.companionScore ?? 4.7,
+    count: user?.companionReviewCount ?? 0,
+    avatar: "👤",
+    status: existing?.status === "APPROVED" ? "APPROVED" : "PENDING",
+    requestedAt: existing?.requestedAt ?? new Date().toISOString(),
+  };
+
+  writeDemoJoinRequests([
+    nextRequest,
+    ...requests.filter(item => !(String(item.postId) === String(postId) && item.actorKey === actorKey)),
+  ]);
+
+  return nextRequest;
+}
+
+export async function submitCompanionJoinRequest({ post, user = getStoredAuthSession("USER"), message = "참여 신청합니다." }) {
+  const postId = getPostId(post);
+  const room = getDemoRoomByPostId(postId);
+
+  if (room?.chatRoomId && !String(room.chatRoomId).startsWith("demo-room-")) {
+    try {
+      await apiRequest(`/chat/rooms/${room.chatRoomId}/join-requests`, {
+        method: "POST",
+        auth: true,
+        role: "USER",
+        body: { message },
+      });
+    } catch {
+      // 백엔드 참여 신청 API가 실패해도 로컬 시연 흐름은 유지합니다.
+    }
+  }
+
+  return requestCompanionJoin({ post, user, message });
+}
+
+export function getCompanionRoomForPost({ postId, user = getStoredAuthSession("USER") }) {
+  const room = getDemoRoomByPostId(postId);
+  if (!room) return null;
+  const actorKey = getActorKey(user);
+  if (room.hostKey !== actorKey && !(room.approvedMemberKeys ?? []).includes(actorKey)) return null;
+  return normalizeDemoRoomForUser(room, user);
+}
+
+function getDemoJoinRequestsForRoom(chatRoomId) {
+  const room = getDemoRoomById(chatRoomId);
+  if (!room?.postId) return [];
+
+  return readDemoJoinRequests()
+    .filter(request => String(request.postId) === String(room.postId) && request.status === "PENDING")
+    .map(request => ({
+      id: request.joinRequestId ?? request.id,
+      name: request.nickname ?? request.name ?? "여행자",
+      msg: request.message ?? request.msg ?? "",
+      score: request.score ?? 0,
+      count: request.count ?? 0,
+      avatar: request.avatar ?? "👤",
+      localDemo: true,
+    }));
+}
+
+function getDemoParticipantsForRoom(chatRoomId) {
+  const room = getDemoRoomById(chatRoomId);
+  if (!room) return [];
+
+  const approvedRequests = readDemoJoinRequests().filter(request => (
+    String(request.postId) === String(room.postId) && request.status === "APPROVED"
+  ));
+
+  return [
+    {
+      userId: room.hostKey,
+      nickname: room.hostName || "방장",
+      role: "HOST",
+      companionScore: 4.8,
+      language: "한국어",
+      joinedAt: "방장",
+    },
+    ...approvedRequests.map(request => ({
+      userId: request.userId ?? request.actorKey,
+      nickname: request.nickname ?? request.name ?? "여행자",
+      role: "MEMBER",
+      companionScore: request.score ?? 0,
+      companionReviewCount: request.count ?? 0,
+      language: "한국어",
+      joinedAt: request.approvedAt ?? request.requestedAt ?? "",
+    })),
+  ].map(normalizeChatParticipant);
+}
+
+function approveDemoJoinRequest({ chatRoomId, joinRequestId }) {
+  const room = getDemoRoomById(chatRoomId);
+  if (!room) return false;
+
+  const requests = readDemoJoinRequests();
+  const target = requests.find(request => String(request.joinRequestId ?? request.id) === String(joinRequestId));
+  if (!target) return false;
+
+  const rooms = readDemoRooms();
+  const approvedMemberKeys = Array.from(new Set([...(room.approvedMemberKeys ?? []), target.actorKey]));
+  writeDemoRooms(rooms.map(item => (
+    String(item.chatRoomId ?? item.id) === String(chatRoomId)
+      ? { ...item, approvedMemberKeys, members: approvedMemberKeys.length, currentMembers: approvedMemberKeys.length }
+      : item
+  )));
+  writeDemoJoinRequests(requests.map(request => (
+    String(request.joinRequestId ?? request.id) === String(joinRequestId)
+      ? { ...request, status: "APPROVED", approvedAt: new Date().toISOString() }
+      : request
+  )));
+  return true;
+}
+
+function rejectDemoJoinRequest({ joinRequestId, reason }) {
+  const requests = readDemoJoinRequests();
+  const target = requests.find(request => String(request.joinRequestId ?? request.id) === String(joinRequestId));
+  if (!target) return false;
+
+  writeDemoJoinRequests(requests.map(request => (
+    String(request.joinRequestId ?? request.id) === String(joinRequestId)
+      ? { ...request, status: "REJECTED", reason, rejectedAt: new Date().toISOString() }
+      : request
+  )));
+  return true;
 }
 
 export function normalizeChatRoom(room = {}) {
@@ -94,9 +393,15 @@ export function getMockChatRooms() {
 export async function fetchMyChatRooms({ cursor = "", size = 10 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/chat/rooms?${params.toString()}`, { auth: true, role: "USER" });
+  const demoRooms = getDemoChatRoomsForCurrentUser();
 
-  return normalizeChatRoomList(data);
+  try {
+    const data = await apiRequest(`/chat/rooms?${params.toString()}`, { auth: true, role: "USER" });
+    return mergeChatRooms(normalizeChatRoomList(data), demoRooms);
+  } catch (error) {
+    if (demoRooms.length > 0) return demoRooms;
+    throw error;
+  }
 }
 
 export async function createChatRoom({ postId, title, description, maxMembers }) {
@@ -197,25 +502,38 @@ export async function kickChatParticipant({ chatRoomId, userId }) {
 
 export async function fetchChatParticipants(chatRoomId) {
   if (!chatRoomId) return [];
+  const demoParticipants = getDemoParticipantsForRoom(chatRoomId);
+  if (demoParticipants.length > 0) return demoParticipants;
   const data = await apiRequest(`/chat/rooms/${chatRoomId}`, { auth: true, role: "USER" });
   return getPageContent(data.members ?? data).map(normalizeChatParticipant);
 }
 
 export async function fetchJoinRequests(chatRoomId) {
   if (!chatRoomId) return [];
-  const data = await apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, { auth: true, role: "USER" });
-  const list = Array.isArray(data) ? data : getPageContent(data);
-  return list.map(request => ({
-    id: request.joinRequestId ?? request.id,
-    name: request.nickname ?? request.name ?? "여행자",
-    msg: request.message ?? request.msg ?? "",
-    score: request.companionScore ?? request.score ?? 0,
-    count: request.companionReviewCount ?? request.count ?? 0,
-    avatar: request.avatar ?? "👤",
-  }));
+  const demoRequests = getDemoJoinRequestsForRoom(chatRoomId);
+
+  try {
+    const data = await apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, { auth: true, role: "USER" });
+    const list = Array.isArray(data) ? data : getPageContent(data);
+    const apiRequests = list.map(request => ({
+        id: request.joinRequestId ?? request.id,
+        name: request.nickname ?? request.name ?? "여행자",
+        msg: request.message ?? request.msg ?? "",
+        score: request.companionScore ?? request.score ?? 0,
+        count: request.companionReviewCount ?? request.count ?? 0,
+        avatar: request.avatar ?? "👤",
+      }));
+    return mergeJoinRequests(apiRequests, demoRequests);
+  } catch (error) {
+    if (demoRequests.length > 0) return demoRequests;
+    throw error;
+  }
 }
 
 export async function approveJoinRequest({ chatRoomId, joinRequestId }) {
+  if (approveDemoJoinRequest({ chatRoomId, joinRequestId })) {
+    return true;
+  }
   return apiRequest(`/chat/rooms/${chatRoomId}/join-requests/${joinRequestId}/approve`, {
     method: "POST",
     auth: true,
@@ -224,6 +542,9 @@ export async function approveJoinRequest({ chatRoomId, joinRequestId }) {
 }
 
 export async function rejectJoinRequest({ chatRoomId, joinRequestId, reason }) {
+  if (rejectDemoJoinRequest({ joinRequestId, reason })) {
+    return true;
+  }
   return apiRequest(`/chat/rooms/${chatRoomId}/join-requests/${joinRequestId}/reject`, {
     method: "POST",
     auth: true,

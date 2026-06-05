@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
-import { createChatRoom } from "../../services/chatService.js";
+import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPosts, getMockCommunityComments, getMockCommunityPosts } from "../../services/communityService.js";
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
@@ -144,6 +144,14 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
     return () => { ignore = true; };
   }, [post?.id, post?.type]);
 
+  useEffect(() => {
+    if (!post?.id || post?.type !== "동행" || !user) {
+      setJoinState("idle");
+      return;
+    }
+    setJoinState(getCompanionJoinState({ postId: post.id, user }));
+  }, [post?.id, post?.type, user?.userId, user?.email, user?.nickname]);
+
   const sendComment = async () => {
     if (!input.trim()) return;
     let comment;
@@ -176,7 +184,10 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
   }
 
   const isCompanion = post.type === "동행";
-  const isAuthor = isCompanion && post.author === (user?.nickname || "여행자지수");
+  const isAuthor = isCompanion && (
+    String(post.writerId ?? post.authorId ?? post.userId ?? "") === String(user?.userId ?? "no-user")
+    || post.author === (user?.nickname || "여행자지수")
+  );
   const routeItems = post.route ?? [post.place, "주변 명소 둘러보기", "시장 먹거리 탐방"];
   const goodPoints = post.goodPoints ?? ["동선을 공유했어요", "여행 팁을 남겼어요", "주변 상권과 함께 보기 좋아요"];
   const companionAction = {
@@ -196,13 +207,11 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
         description: post.content,
         maxMembers: post.max,
       });
+      const registeredRoom = registerCompanionChatRoom({ post, room, user });
       showToast("동행 채팅방이 생성되었습니다.");
       onChatRoom?.({
-        ...room,
-        title: room.title || post.title,
-        members: room.members || post.current || 1,
-        maxMembers: room.maxMembers || post.max,
-        lastMsg: room.lastMsg || "동행 채팅방이 열렸습니다.",
+        ...registeredRoom,
+        lastMsg: registeredRoom.lastMsg || "동행 채팅방이 열렸습니다.",
       });
     } catch (error) {
       if (!shouldUseMockFallback(error)) {
@@ -220,8 +229,9 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
         unread: 0,
         tags: [post.place].filter(Boolean),
       };
-      showToast("채팅방 API 연결 전 mock 채팅방으로 이동합니다.");
-      onChatRoom?.(mockRoom);
+      const registeredRoom = registerCompanionChatRoom({ post, room: mockRoom, user });
+      showToast("채팅방 API 연결 전 데모 채팅방으로 이동합니다.");
+      onChatRoom?.(registeredRoom);
     } finally {
       setCreatingRoom(false);
     }
@@ -232,22 +242,40 @@ export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom })
       showToast("장소 상세 연결은 준비 중입니다.");
       return;
     }
+    if (!user) {
+      showToast("로그인 후 참여 신청을 보낼 수 있습니다.");
+      return;
+    }
     if (isAuthor) {
       handleCreateChatRoom();
       return;
     }
     if (joinState === "idle") {
-      setJoinState("pending");
-      showToast("채팅방 참여 신청을 보냈습니다.");
+      submitCompanionJoinRequest({
+        post,
+        user,
+        message: `${user?.nickname || user?.email || "여행자"} 님이 동행 참여를 신청했습니다.`,
+      })
+        .then(() => {
+          setJoinState("pending");
+          showToast("채팅방 참여 신청을 보냈습니다.");
+        })
+        .catch((error) => {
+          showToast(getApiErrorHint(error));
+        });
       return;
     }
     if (joinState === "pending") {
-      setJoinState("approved");
-      showToast("시연용으로 참여가 승인되었습니다.");
+      showToast("아직 방장 승인을 기다리고 있습니다.");
       return;
     }
     if (joinState === "approved") {
-      showToast("채팅방 화면으로 연결 예정입니다.");
+      const room = getCompanionRoomForPost({ postId: post.id, user });
+      if (room) {
+        onChatRoom?.(room);
+        return;
+      }
+      showToast("승인된 채팅방 정보를 찾지 못했습니다. 채팅 목록을 확인해주세요.");
       return;
     }
     setJoinState("idle");
