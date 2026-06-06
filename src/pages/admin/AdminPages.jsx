@@ -18,6 +18,7 @@ import {
   rejectMerchantApplication,
   resolveAdminReport,
   suspendAdminUser,
+  syncTouristPlaces,
   syncTraditionalMarkets,
   unsuspendAdminUser,
 } from "../../services/adminService.js";
@@ -281,6 +282,7 @@ export function AdminContentPage({ onBack, showToast }) {
   const [contents, setContents] = useState(MOCK_ADMIN_CONTENTS);
   const [filter, setFilter] = useState("전체");
   const [status, setStatus] = useState("loading");
+  const [syncingPlaces, setSyncingPlaces] = useState(false);
   const [syncingMarkets, setSyncingMarkets] = useState(false);
   const [syncingFestivals, setSyncingFestivals] = useState(false);
 
@@ -315,6 +317,25 @@ export function AdminContentPage({ onBack, showToast }) {
 
     return () => { ignore = true; };
   }, [filter]);
+
+  const handleTouristPlaceSync = async () => {
+    if (syncingPlaces) return;
+
+    setSyncingPlaces(true);
+    try {
+      const result = await syncTouristPlaces();
+      showToast(`관광지 수집 완료 · 수신 ${result.fetched ?? 0} · 신규 ${result.created ?? 0} · 갱신 ${result.updated ?? 0} · 제외 ${result.skipped ?? 0}`);
+      if (filter !== "전체" && filter !== "관광지") {
+        setFilter("관광지");
+      } else {
+        await loadContents();
+      }
+    } catch {
+      showToast("관광지 수집에 실패했습니다. 관리자 권한, 관광공사 API 키, 백엔드 로그를 확인해주세요.");
+    } finally {
+      setSyncingPlaces(false);
+    }
+  };
 
   const handleTraditionalMarketSync = async () => {
     if (syncingMarkets) return;
@@ -379,8 +400,11 @@ export function AdminContentPage({ onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
             <button type="button" onClick={() => showToast("관광지/시장 추가 (준비 중)")} style={{ border: 0, background: COLORS.accent, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ 새 콘텐츠 추가</button>
+            <button type="button" disabled={syncingPlaces} onClick={handleTouristPlaceSync} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingPlaces ? "#F7F5F0" : COLORS.greenBg, color: syncingPlaces ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingPlaces ? "wait" : "pointer", fontFamily: "inherit" }}>
+              {syncingPlaces ? "관광지 수집 중..." : "관광지 데이터 수집"}
+            </button>
             <button type="button" disabled={syncingMarkets} onClick={handleTraditionalMarketSync} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingMarkets ? "#F7F5F0" : COLORS.greenBg, color: syncingMarkets ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingMarkets ? "wait" : "pointer", fontFamily: "inherit" }}>
               {syncingMarkets ? "전통시장 동기화 중..." : "전통시장 데이터 동기화"}
             </button>

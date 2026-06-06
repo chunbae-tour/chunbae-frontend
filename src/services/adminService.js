@@ -266,6 +266,14 @@ export async function deleteAdminPlace(placeId) {
   });
 }
 
+export async function syncTouristPlaces() {
+  return apiRequest("/admin/places/sync", {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
 export async function syncTraditionalMarkets() {
   return apiRequest("/admin/traditional-markets/sync", {
     method: "POST",
