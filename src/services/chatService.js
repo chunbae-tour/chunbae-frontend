@@ -14,10 +14,6 @@ function getPostId(postOrId) {
   return typeof postOrId === "object" ? postOrId?.id ?? postOrId?.postId : postOrId;
 }
 
-function normalizeTextKey(value) {
-  return String(value ?? "").trim().toLowerCase();
-}
-
 export function registerCompanionChatRoom({ post, room = {}, user = getStoredAuthSession("USER") }) {
   const postId = getPostId(post);
   if (!postId) return normalizeChatRoom(room);
@@ -41,23 +37,14 @@ export function getCompanionJoinState({ postId, user = getStoredAuthSession("USE
 }
 
 export async function submitCompanionJoinRequest({ post, user = getStoredAuthSession("USER"), message = "참여 신청합니다." }) {
-  const postId = getPostId(post);
-  const postTitleKey = normalizeTextKey(post?.title);
   let chatRoomId = post?.chatRoomId ?? post?.roomId ?? post?.chatRoom?.chatRoomId;
 
   if (!chatRoomId) {
-    const rooms = await apiRequest("/chat/rooms?size=50", { auth: true, role: "USER" });
-    const list = Array.isArray(rooms) ? rooms : getPageContent(rooms);
-    const matchedRoom = list.find((room) => {
-      const roomPostId = room.postId ?? room.companionPostId ?? room.post?.id ?? room.post?.postId;
-      if (roomPostId && String(roomPostId) === String(postId)) return true;
-      return Boolean(postTitleKey && normalizeTextKey(room.title) === postTitleKey);
-    });
-    chatRoomId = matchedRoom?.chatRoomId ?? matchedRoom?.id;
-  }
-
-  if (!chatRoomId) {
-    throw new ChatApiError("참여 신청을 보낼 채팅방을 찾지 못했습니다.", "CHAT_ROOM_NOT_FOUND", 404);
+    throw new ChatApiError(
+      "이 모집글에 연결된 채팅방 정보를 찾지 못했습니다. 동행 게시글 응답에 chatRoomId가 필요합니다.",
+      "COMPANION_CHAT_ROOM_ID_MISSING",
+      409,
+    );
   }
 
   return apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, {
@@ -265,14 +252,20 @@ export async function fetchJoinRequests(chatRoomId) {
   if (!chatRoomId) return [];
   const data = await apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, { auth: true, role: "USER" });
   const list = Array.isArray(data) ? data : getPageContent(data);
-  return list.map(request => ({
-    id: request.joinRequestId ?? request.id,
-    name: request.nickname ?? request.name ?? "여행자",
-    msg: request.message ?? request.msg ?? "",
-    score: request.companionScore ?? request.score ?? 0,
-    count: request.companionReviewCount ?? request.count ?? 0,
-    avatar: request.avatar ?? "👤",
-  }));
+  return list.map(request => {
+    const applicant = request.applicant ?? request.writer ?? {};
+    return {
+      id: request.joinRequestId ?? request.id,
+      userId: applicant.userId ?? request.userId,
+      name: applicant.nickname ?? request.nickname ?? request.name ?? "여행자",
+      msg: request.message ?? request.msg ?? "",
+      score: applicant.companionScore ?? request.companionScore ?? request.score ?? 0,
+      profileImageUrl: applicant.profileImageUrl ?? request.profileImageUrl ?? null,
+      avatar: applicant.profileImageUrl ?? request.profileImageUrl ?? request.avatar ?? "👤",
+      status: request.status ?? "PENDING",
+      createdAt: request.createdAt ?? "",
+    };
+  });
 }
 
 export async function approveJoinRequest({ chatRoomId, joinRequestId }) {

@@ -87,10 +87,14 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
             {requests.map(r => (
               <div key={r.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, border: "0.5px solid rgba(0,0,0,0.06)" }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{r.avatar}</div>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", overflow: "hidden", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                    {r.profileImageUrl
+                      ? <img src={r.profileImageUrl} alt={`${r.name} 프로필`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : "👤"}
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{r.name}</div>
-                    <div style={{ fontSize: 14, color: COLORS.accent }}>★ {r.score} · 동행 {r.count}회</div>
+                    <div style={{ fontSize: 14, color: COLORS.accent }}>★ 동행 점수 {r.score}</div>
                   </div>
                 </div>
                 <div style={{ background: COLORS.bg, borderRadius: 10, padding: "10px 14px", fontSize: 14, color: COLORS.textSub, marginBottom: 12 }}>
