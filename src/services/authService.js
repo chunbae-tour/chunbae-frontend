@@ -142,8 +142,8 @@ export function getDummyAccounts() {
   return DUMMY_ACCOUNTS;
 }
 
-export async function login({ role, email, password }) {
-  const normalizedRole = String(role || "USER").toUpperCase();
+async function loginWithRole({ role, email, password }) {
+  const normalizedRole = String(role).toUpperCase();
   const config = ROLE_CONFIG[normalizedRole];
 
   if (!config) {
@@ -157,7 +157,7 @@ export async function login({ role, email, password }) {
     });
     const authData = normalizeAuthData(data, normalizedRole);
     saveSession(authData);
-    if (normalizedRole === "USER") {
+    if (String(authData.role || normalizedRole).toUpperCase() === "USER") {
       try {
         return await fetchCurrentUser();
       } catch {
@@ -184,6 +184,30 @@ export async function login({ role, email, password }) {
 
     throw error;
   }
+}
+
+export async function login({ role, email, password }) {
+  if (role) {
+    return loginWithRole({ role, email, password });
+  }
+
+  let lastAuthError = null;
+  for (const candidateRole of ["USER", "MERCHANT", "ADMIN"]) {
+    try {
+      return await loginWithRole({ role: candidateRole, email, password });
+    } catch (error) {
+      if (!error.status || error.status >= 500 || error.status === 429) {
+        throw error;
+      }
+      lastAuthError = error;
+    }
+  }
+
+  throw new ApiClientError(
+    "이메일 또는 비밀번호를 확인해주세요.",
+    lastAuthError?.code || "AUTH_LOGIN_FAILED",
+    lastAuthError?.status || 401,
+  );
 }
 
 export async function signupAndLogin({ email, password, nickname }) {
