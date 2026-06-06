@@ -19,6 +19,7 @@ import QRPayPage from "./pages/payment/QRPayPage";
 import { StorePage, StoreProductPage, StoreShopDetailPage } from "./pages/store/StorePages";
 import { WishlistPage, MyReviewPage, OwnedItemsPage } from "./pages/my/MySubPages";
 import FestivalCalendarPage from "./pages/festival/FestivalCalendarPage";
+import FestivalDetailPage from "./pages/festival/FestivalDetailPage";
 import { MerchantShopPage, MerchantMenuPage, MerchantSettlementPage } from "./pages/merchant/MerchantPages";
 import { AdminDashboardPage, AdminUsersPage, AdminReportsPage, AdminMerchantPage, AdminContentPage } from "./pages/admin/AdminPages";
 import { MyPage, FestivalPage, ARPage, NotificationPage, NotificationSettingsPage, FAQPage, SearchPage } from "./pages/misc/MiscPages";
@@ -71,6 +72,7 @@ export default function App() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedShop, setSelectedShop] = useState(null);
+  const [selectedFestival, setSelectedFestival] = useState(null);
   const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(null);
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [lang, setLang] = useState("ko");
@@ -138,7 +140,7 @@ export default function App() {
 
   const noTabScreens = [
     "place", "direction", "chatroom", "chatRequest",
-    "ar", "notif", "search", "fest", "festCalendar",
+    "ar", "notif", "search", "fest", "festCalendar", "festDetail",
     "pay", "payHistory", "qrpay", "storeProduct", "storeShop",
     "community", "communityPost", "communityWrite",
     "wishlist", "myReview", "ownedItems", "notificationSettings", "faq",
@@ -175,8 +177,9 @@ export default function App() {
         {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} />}
         {screen === "direction"        && <DirectionPage place={selectedPlace} onBack={() => go("place")} />}
         {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} />}
-        {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} />}
-        {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} />}
+        {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
+        {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
+        {screen === "festDetail"       && <FestivalDetailPage festival={selectedFestival} onBack={() => go("fest")} />}
         {screen === "community"        && <CommunityListPage onPost={(p) => { setSelectedPost(p); go("communityPost"); }} onWrite={() => go("communityWrite")} onBack={() => go(tab)} />}
         {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => go("community")} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); go("chatroom"); }} />}
         {screen === "communityWrite"   && <CommunityWritePage onBack={() => go("community")} showToast={showToast} />}

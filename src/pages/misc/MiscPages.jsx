@@ -443,7 +443,7 @@ export function FAQPage({ onBack }) {
 }
 
 // ─── 축제 페이지 ──────────────────────────────────────────────────────
-export function FestivalPage({ onBack, onCalendar }) {
+export function FestivalPage({ onBack, onCalendar, onFestival }) {
   const [filter, setFilter] = useState("전체");
   const [festivals, setFestivals] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -520,7 +520,7 @@ export function FestivalPage({ onBack, onCalendar }) {
             />
           )}
           {filteredFestivals.map(f => (
-            <div key={f.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
+            <button type="button" onClick={() => onFestival?.(f)} key={f.id} style={{ width: "100%", background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
               <div style={{ background: f.color, borderRadius: 12, padding: "10px 14px", textAlign: "center", minWidth: 52 }}>
                 <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>{f.month}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: f.accentColor, lineHeight: 1 }}>{f.day}</div>
@@ -531,7 +531,7 @@ export function FestivalPage({ onBack, onCalendar }) {
                 <div style={{ fontSize: 14, color: COLORS.textMuted }}>📅 {f.date}</div>
               </div>
               <span style={{ background: "#FFF3D0", color: "#B87800", fontSize: 14, fontWeight: 700, borderRadius: 8, padding: "4px 10px" }}>{f.dday}</span>
-            </div>
+            </button>
           ))}
         </div>
       </div>

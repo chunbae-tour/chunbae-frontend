@@ -16,7 +16,7 @@ function toDateParam(year, month, day) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export default function FestivalCalendarPage({ onBack }) {
+export default function FestivalCalendarPage({ onBack, onFestival }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -145,13 +145,12 @@ export default function FestivalCalendarPage({ onBack }) {
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>
             {month}월 {selectedDay}일 행사 {festivals.length > 0 ? `(${festivals.length}건)` : ""}
           </div>
-          {status === "error" ? (
-            <ErrorState
-              title="축제 캘린더를 불러오지 못했습니다."
-              description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
-              onRetry={loadMonthFestivals}
-            />
-          ) : dailyStatus === "loading" ? (
+          {status === "error" && (
+            <div style={{ background: "#FFF3D0", color: "#B87800", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 14 }}>
+              월별 축제 표시를 불러오지 못했습니다. 날짜별 축제 목록은 계속 확인할 수 있습니다.
+            </div>
+          )}
+          {dailyStatus === "loading" ? (
             <SkeletonList count={3} />
           ) : dailyStatus === "error" ? (
             <ErrorState
@@ -167,7 +166,7 @@ export default function FestivalCalendarPage({ onBack }) {
             />
           ) : (
             festivals.map(festival => (
-              <div key={festival.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
+              <button type="button" onClick={() => onFestival?.(festival)} key={festival.id} style={{ width: "100%", background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
                 <div style={{ background: festival.color, borderRadius: 12, padding: "10px 14px", textAlign: "center", minWidth: 52 }}>
                   <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>{festival.month}</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: festival.accentColor, lineHeight: 1 }}>{festival.day}</div>
@@ -177,7 +176,7 @@ export default function FestivalCalendarPage({ onBack }) {
                   <div style={{ fontSize: 14, color: COLORS.textMuted }}>📍 {festival.location || "장소 미정"} · {festival.date}</div>
                 </div>
                 <span style={{ background: "#FFF3D0", color: "#B87800", fontSize: 14, fontWeight: 700, borderRadius: 8, padding: "4px 10px", whiteSpace: "nowrap" }}>{PROGRESS_LABELS[festival.dday] ?? festival.dday}</span>
-              </div>
+              </button>
             ))
           )}
         </div>
