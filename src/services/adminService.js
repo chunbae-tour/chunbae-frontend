@@ -72,12 +72,16 @@ export function normalizeMerchantApplication(item = {}) {
 }
 
 export function normalizeAdminPlace(place = {}) {
+  const category = place.category ?? "TOURIST_SPOT";
   return {
     id: place.placeId ?? place.id,
-    type: place.category ?? place.type ?? "관광지",
+    type: category === "TRADITIONAL_MARKET" ? "전통시장" : "관광지",
+    category,
     name: place.name ?? "콘텐츠",
-    status: place.deleted || place.status === "HIDDEN" ? "비공개" : "공개",
+    status: place.deleted || place.status === "HIDDEN" || place.status === "DELETED" ? "비공개" : "공개",
     updatedAt: place.updatedAt ?? place.createdAt ?? "",
+    address: place.address ?? "",
+    source: "place",
   };
 }
 
@@ -240,11 +244,21 @@ export async function fetchAdminPlaces({ keyword = "", category = "" } = {}) {
     return fetchAdminTraditionalMarkets({ keyword });
   }
 
-  const params = new URLSearchParams({ size: "20" });
-  if (keyword) params.set("keyword", keyword);
-  if (category && category !== "전체") params.set("category", category);
-  const data = await apiRequest(`/admin/places?${params.toString()}`, { auth: true, role: "ADMIN" });
-  const places = getPageContent(data).map(normalizeAdminPlace);
+  const places = [];
+  let cursor = "";
+  let hasNext = true;
+
+  while (hasNext && places.length < 2000) {
+    const params = new URLSearchParams({ size: "100" });
+    if (keyword) params.set("keyword", keyword);
+    if (category === "관광지") params.set("category", "TOURIST_SPOT");
+    if (cursor) params.set("cursor", cursor);
+
+    const data = await apiRequest(`/admin/places?${params.toString()}`, { auth: true, role: "ADMIN" });
+    places.push(...getPageContent(data).map(normalizeAdminPlace));
+    cursor = data?.nextCursor ?? "";
+    hasNext = Boolean(data?.hasNext && cursor);
+  }
 
   if (category === "전체" || !category) {
     try {
@@ -256,6 +270,24 @@ export async function fetchAdminPlaces({ keyword = "", category = "" } = {}) {
   }
 
   return places;
+}
+
+export async function createAdminPlace(body) {
+  return apiRequest("/admin/places", {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+    body,
+  });
+}
+
+export async function updateAdminPlace(placeId, body) {
+  return apiRequest(`/admin/places/${placeId}`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body,
+  });
 }
 
 export async function deleteAdminPlace(placeId) {

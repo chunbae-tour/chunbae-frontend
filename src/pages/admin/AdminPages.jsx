@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from "react";
-import { EmptyState, SkeletonList } from "../../components/common";
+import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
 import {
   approveMerchantApplication,
+  createAdminPlace,
   deleteAdminPlace,
   fetchAdminContents,
   fetchAdminDashboard,
@@ -11,7 +12,6 @@ import {
   fetchFestivalsNow,
   fetchMerchantApplications,
   MOCK_ADMIN_DASHBOARD,
-  MOCK_ADMIN_CONTENTS,
   MOCK_ADMIN_REPORTS,
   MOCK_ADMIN_USERS,
   MOCK_MERCHANT_APPLICATIONS,
@@ -21,6 +21,7 @@ import {
   syncTouristPlaces,
   syncTraditionalMarkets,
   unsuspendAdminUser,
+  updateAdminPlace,
 } from "../../services/adminService.js";
 
 // ─── 관리자 대시보드 ──────────────────────────────────────────────────
@@ -278,24 +279,55 @@ export function AdminReportsPage({ onBack, showToast }) {
 }
 
 // ─── 콘텐츠 관리 ─────────────────────────────────────────────────────
+const EMPTY_PLACE_FORM = {
+  name: "",
+  category: "TOURIST_SPOT",
+  description: "",
+  address: "",
+  lat: "",
+  lng: "",
+  thumbnailUrl: "",
+  imageUrls: "",
+  operatingHours: "",
+  closedDays: "",
+  phone: "",
+  admissionFee: "",
+  tags: "",
+};
+
+const PLACE_UPDATE_FIELDS = ["name", "description", "address", "operatingHours", "closedDays", "phone", "admissionFee", "tags"];
+
+function optionalPlaceFields(form, fields) {
+  return Object.fromEntries(fields
+    .filter((field) => String(form[field] ?? "").trim())
+    .map((field) => [field, String(form[field]).trim()]));
+}
+
 export function AdminContentPage({ onBack, showToast }) {
-  const [contents, setContents] = useState(MOCK_ADMIN_CONTENTS);
+  const [contents, setContents] = useState([]);
   const [filter, setFilter] = useState("전체");
   const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
   const [syncingPlaces, setSyncingPlaces] = useState(false);
   const [syncingMarkets, setSyncingMarkets] = useState(false);
   const [syncingFestivals, setSyncingFestivals] = useState(false);
+  const [placeFormMode, setPlaceFormMode] = useState(null);
+  const [editingPlaceId, setEditingPlaceId] = useState(null);
+  const [placeForm, setPlaceForm] = useState(EMPTY_PLACE_FORM);
+  const [savingPlace, setSavingPlace] = useState(false);
 
   const loadContents = () => {
     setStatus("loading");
+    setErrorMessage("");
     return fetchAdminContents({ category: filter })
       .then((data) => {
         setContents(data);
         setStatus(data.length > 0 ? "success" : "empty");
       })
-      .catch(() => {
-        setContents(MOCK_ADMIN_CONTENTS);
-        setStatus("mock");
+      .catch((error) => {
+        setContents([]);
+        setErrorMessage(error?.message || "관리자 콘텐츠 목록을 불러오지 못했습니다.");
+        setStatus("error");
       });
   };
 
@@ -303,16 +335,18 @@ export function AdminContentPage({ onBack, showToast }) {
     let ignore = false;
 
     setStatus("loading");
+    setErrorMessage("");
     fetchAdminContents({ category: filter })
       .then((data) => {
         if (ignore) return;
         setContents(data);
         setStatus(data.length > 0 ? "success" : "empty");
       })
-      .catch(() => {
+      .catch((error) => {
         if (ignore) return;
-        setContents(MOCK_ADMIN_CONTENTS);
-        setStatus("mock");
+        setContents([]);
+        setErrorMessage(error?.message || "관리자 콘텐츠 목록을 불러오지 못했습니다.");
+        setStatus("error");
       });
 
     return () => { ignore = true; };
@@ -373,16 +407,85 @@ export function AdminContentPage({ onBack, showToast }) {
     }
   };
 
-  const toggle = (id) => {
-    // TODO: 공개/비공개 전환 API가 별도로 확정되면 DELETE 대신 PATCH/PUT로 연결합니다.
-    setContents(prev => prev.map(c => {
-      if (c.id !== id) return c;
-      if (c.readOnly) {
-        showToast("전통시장 동기화 데이터는 현재 읽기 전용입니다.");
-        return c;
+  const openCreatePlace = () => {
+    setEditingPlaceId(null);
+    setPlaceForm(EMPTY_PLACE_FORM);
+    setPlaceFormMode("create");
+  };
+
+  const openEditPlace = (place) => {
+    if (place.source !== "place") {
+      showToast("이 화면에서는 관광지만 수정할 수 있습니다.");
+      return;
+    }
+    setEditingPlaceId(place.id);
+    setPlaceForm({ ...EMPTY_PLACE_FORM, name: place.name, address: place.address });
+    setPlaceFormMode("edit");
+  };
+
+  const resetPlaceForm = () => {
+    setPlaceFormMode(null);
+    setEditingPlaceId(null);
+    setPlaceForm(EMPTY_PLACE_FORM);
+  };
+
+  const closePlaceForm = () => {
+    if (savingPlace) return;
+    resetPlaceForm();
+  };
+
+  const savePlace = async () => {
+    if (savingPlace) return;
+
+    setSavingPlace(true);
+    try {
+      if (placeFormMode === "create") {
+        if (!placeForm.name.trim() || !placeForm.address.trim() || placeForm.lat === "" || placeForm.lng === "") {
+          showToast("이름, 주소, 위도, 경도는 필수입니다.");
+          return;
+        }
+        await createAdminPlace({
+          name: placeForm.name.trim(),
+          category: placeForm.category,
+          address: placeForm.address.trim(),
+          lat: Number(placeForm.lat),
+          lng: Number(placeForm.lng),
+          ...optionalPlaceFields(placeForm, [
+            "description", "thumbnailUrl", "imageUrls", "operatingHours",
+            "closedDays", "phone", "admissionFee", "tags",
+          ]),
+        });
+        showToast("관광지를 등록했습니다.");
+      } else {
+        const body = optionalPlaceFields(placeForm, PLACE_UPDATE_FIELDS);
+        if (Object.keys(body).length === 0) {
+          showToast("수정할 값을 입력해주세요.");
+          return;
+        }
+        await updateAdminPlace(editingPlaceId, body);
+        showToast("관광지를 수정했습니다.");
       }
-      return { ...c, status: c.status === "공개" ? "비공개" : "공개" };
-    }));
+      resetPlaceForm();
+      await loadContents();
+    } catch (error) {
+      showToast(error?.message || "관광지 저장에 실패했습니다.");
+    } finally {
+      setSavingPlace(false);
+    }
+  };
+
+  const removePlace = async (place) => {
+    if (place.source !== "place") {
+      showToast("이 화면에서는 관광지만 삭제할 수 있습니다.");
+      return;
+    }
+    try {
+      await deleteAdminPlace(place.id);
+      setContents(prev => prev.filter(item => item.id !== place.id));
+      showToast("관광지를 삭제했습니다.");
+    } catch (error) {
+      showToast(error?.message || "관광지 삭제에 실패했습니다.");
+    }
   };
 
   const filtered = filter === "전체" ? contents : contents.filter(c => c.type === filter);
@@ -401,7 +504,7 @@ export function AdminContentPage({ onBack, showToast }) {
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
-            <button type="button" onClick={() => showToast("관광지/시장 추가 (준비 중)")} style={{ border: 0, background: COLORS.accent, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ 새 콘텐츠 추가</button>
+            <button type="button" onClick={openCreatePlace} style={{ border: 0, background: COLORS.accent, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ 관광지 등록</button>
             <button type="button" disabled={syncingPlaces} onClick={handleTouristPlaceSync} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingPlaces ? "#F7F5F0" : COLORS.greenBg, color: syncingPlaces ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingPlaces ? "wait" : "pointer", fontFamily: "inherit" }}>
               {syncingPlaces ? "관광지 수집 중..." : "관광지 데이터 수집"}
             </button>
@@ -413,7 +516,7 @@ export function AdminContentPage({ onBack, showToast }) {
             </button>
           </div>
           {status === "loading" && <SkeletonList count={4} />}
-          {status === "mock" && <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 10 }}>관리자 콘텐츠 API 연결 전 mock 목록입니다.</div>}
+          {status === "error" && <ErrorState title="콘텐츠 목록을 불러오지 못했습니다." description={errorMessage} onRetry={loadContents} />}
           {status === "empty" && (
             <EmptyState icon="📍" title="표시할 콘텐츠가 없습니다." description="카테고리 필터를 바꾸거나 새 콘텐츠를 추가해보세요." />
           )}
@@ -424,9 +527,7 @@ export function AdminContentPage({ onBack, showToast }) {
                   <span style={{ fontSize: 14, background: c.type === "관광지" ? "#FEE8E8" : c.type === "축제" ? "#FFF3D0" : COLORS.greenBg, color: c.type === "관광지" ? "#A32D2D" : c.type === "축제" ? "#B87800" : COLORS.green, borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{c.type}</span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{c.name}</span>
                 </div>
-                <div onClick={() => toggle(c.id)} style={{ width: 48, height: 26, borderRadius: 13, background: c.status === "공개" ? COLORS.green : "#ccc", position: "relative", cursor: c.readOnly ? "not-allowed" : "pointer", opacity: c.readOnly ? 0.7 : 1 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: c.status === "공개" ? 25 : 3, transition: "left 0.2s" }} />
-                </div>
+                <span style={{ borderRadius: 999, background: c.status === "공개" ? COLORS.greenBg : COLORS.bg, color: c.status === "공개" ? COLORS.green : COLORS.textMuted, padding: "5px 10px", fontSize: 13, fontWeight: 700 }}>{c.status}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -435,22 +536,47 @@ export function AdminContentPage({ onBack, showToast }) {
                   {c.readOnly && <span style={{ fontSize: 14, color: COLORS.textMuted }}>· 외부 수집 데이터</span>}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <span onClick={() => showToast(c.readOnly ? "외부 수집 데이터 수정은 백엔드 정책 확인이 필요합니다." : "콘텐츠 수정")} style={{ fontSize: 18, cursor: "pointer", opacity: c.readOnly ? 0.55 : 1 }}>✏️</span>
-                  <span onClick={async () => {
-                    if (c.readOnly) {
-                      showToast("외부 수집 데이터 삭제 API가 필요합니다.");
-                      return;
-                    }
-                    await deleteAdminPlace(c.id).catch(() => {});
-                    setContents(prev => prev.filter(x => x.id !== c.id));
-                    showToast("삭제되었습니다.");
-                  }} style={{ fontSize: 18, cursor: "pointer", opacity: c.readOnly ? 0.55 : 1 }}>🗑️</span>
+                  <button type="button" onClick={() => openEditPlace(c)} aria-label="관광지 수정" style={{ border: 0, background: "transparent", fontSize: 18, cursor: c.source === "place" ? "pointer" : "not-allowed", opacity: c.source === "place" ? 1 : 0.45 }}>✏️</button>
+                  <button type="button" onClick={() => removePlace(c)} aria-label="관광지 삭제" style={{ border: 0, background: "transparent", fontSize: 18, cursor: c.source === "place" ? "pointer" : "not-allowed", opacity: c.source === "place" ? 1 : 0.45 }}>🗑️</button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+      {placeFormMode && (
+        <div className="admin-place-modal-backdrop" onClick={closePlaceForm}>
+          <div className="admin-place-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-place-modal-head">
+              <strong>{placeFormMode === "create" ? "관광지 등록" : "관광지 수정"}</strong>
+              <button type="button" onClick={closePlaceForm} aria-label="닫기">×</button>
+            </div>
+            <div className="admin-place-form-grid">
+              <label>이름<input value={placeForm.name} onChange={(event) => setPlaceForm(prev => ({ ...prev, name: event.target.value }))} /></label>
+              <label className="wide">주소<input value={placeForm.address} onChange={(event) => setPlaceForm(prev => ({ ...prev, address: event.target.value }))} /></label>
+              {placeFormMode === "create" && (
+                <>
+                  <label>위도<input type="number" step="any" value={placeForm.lat} onChange={(event) => setPlaceForm(prev => ({ ...prev, lat: event.target.value }))} /></label>
+                  <label>경도<input type="number" step="any" value={placeForm.lng} onChange={(event) => setPlaceForm(prev => ({ ...prev, lng: event.target.value }))} /></label>
+                  <label className="wide">썸네일 URL<input value={placeForm.thumbnailUrl} onChange={(event) => setPlaceForm(prev => ({ ...prev, thumbnailUrl: event.target.value }))} /></label>
+                  <label className="wide">이미지 URL JSON 배열<input placeholder='["https://..."]' value={placeForm.imageUrls} onChange={(event) => setPlaceForm(prev => ({ ...prev, imageUrls: event.target.value }))} /></label>
+                </>
+              )}
+              <label className="wide">소개<textarea value={placeForm.description} onChange={(event) => setPlaceForm(prev => ({ ...prev, description: event.target.value }))} /></label>
+              <label>운영시간<input value={placeForm.operatingHours} onChange={(event) => setPlaceForm(prev => ({ ...prev, operatingHours: event.target.value }))} /></label>
+              <label>휴무일<input value={placeForm.closedDays} onChange={(event) => setPlaceForm(prev => ({ ...prev, closedDays: event.target.value }))} /></label>
+              <label>연락처<input value={placeForm.phone} onChange={(event) => setPlaceForm(prev => ({ ...prev, phone: event.target.value }))} /></label>
+              <label>입장료<input value={placeForm.admissionFee} onChange={(event) => setPlaceForm(prev => ({ ...prev, admissionFee: event.target.value }))} /></label>
+              <label className="wide">태그 JSON 배열<input placeholder='["궁궐","서울"]' value={placeForm.tags} onChange={(event) => setPlaceForm(prev => ({ ...prev, tags: event.target.value }))} /></label>
+            </div>
+            {placeFormMode === "edit" && <p className="admin-place-form-note">수정 API가 허용하는 필드만 표시합니다. 입력한 값만 부분 수정됩니다.</p>}
+            <div className="admin-place-modal-actions">
+              <button type="button" onClick={closePlaceForm}>취소</button>
+              <button type="button" disabled={savingPlace} onClick={savePlace}>{savingPlace ? "저장 중..." : "저장"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
