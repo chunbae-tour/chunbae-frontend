@@ -73,6 +73,14 @@ export async function fetchCommunityPosts() {
   return [...companionPosts, ...reviewPosts];
 }
 
+export async function fetchCommunityPostDetail(postId, postType = "free") {
+  if (!postId) return null;
+
+  const typePath = getCommunityPostTypePath(postType);
+  const data = await apiRequest(`/community/posts/${typePath}/${postId}`);
+  return typePath === "companions" ? normalizeCompanionPost(data) : normalizeFreePost(data);
+}
+
 export async function fetchCommunityComments(postId, postType = "free") {
   if (!postId) return [];
 

@@ -3,7 +3,7 @@ import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
 import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
-import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPosts, getMockCommunityComments, getMockCommunityPosts } from "../../services/communityService.js";
+import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, getMockCommunityComments, getMockCommunityPosts } from "../../services/communityService.js";
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
 export function CommunityListPage({ onPost, onWrite, onBack }) {
@@ -126,11 +126,29 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
 }
 
 // ─── 게시글 상세 ──────────────────────────────────────────────────────
-export function CommunityPostPage({ post, onBack, showToast, user, onChatRoom }) {
+export function CommunityPostPage({ post: initialPost, onBack, showToast, user, onChatRoom }) {
+  const [post, setPost] = useState(initialPost);
   const [comments, setComments] = useState([]);
   const [input, setInput] = useState("");
   const [joinState, setJoinState] = useState("idle");
   const [creatingRoom, setCreatingRoom] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    setPost(initialPost);
+
+    if (!initialPost?.id) return () => { ignore = true; };
+
+    fetchCommunityPostDetail(initialPost.id, initialPost.type)
+      .then((detail) => {
+        if (!ignore && detail) setPost(detail);
+      })
+      .catch((error) => {
+        if (!ignore) showToast?.(getApiErrorHint(error));
+      });
+
+    return () => { ignore = true; };
+  }, [initialPost?.id, initialPost?.type]);
 
   useEffect(() => {
     let ignore = false;
