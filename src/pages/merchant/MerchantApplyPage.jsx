@@ -3,6 +3,7 @@ import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { applyMerchant } from "../../services/merchantService.js";
+import { geocodeAddress } from "../../services/placeService.js";
 
 export function MerchantApplyPage({ onBack, showToast, onLogin }) {
   const [form, setForm] = useState({
@@ -16,6 +17,7 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
     description: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -52,6 +54,30 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
       setError(getApiErrorHint(err));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleFindCoordinates = async () => {
+    if (!form.address.trim()) {
+      setError("좌표를 찾을 주소를 입력해주세요.");
+      return;
+    }
+
+    setGeocoding(true);
+    setError("");
+    try {
+      const result = await geocodeAddress(form.address);
+      setForm(prev => ({
+        ...prev,
+        address: result.addressName || prev.address,
+        lat: result.lat == null ? prev.lat : String(result.lat),
+        lng: result.lng == null ? prev.lng : String(result.lng),
+      }));
+      showToast("주소 좌표를 찾았습니다.");
+    } catch (err) {
+      setError(getApiErrorHint(err) || err.message || "주소 좌표를 찾지 못했습니다.");
+    } finally {
+      setGeocoding(false);
     }
   };
 
@@ -104,6 +130,14 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               placeholder="예: 서울특별시 종로구 창경궁로 88"
               style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
             />
+            <button
+              type="button"
+              onClick={handleFindCoordinates}
+              disabled={geocoding}
+              style={{ width: "100%", marginTop: 10, background: COLORS.greenBg, color: COLORS.green, border: "1px solid rgba(15, 116, 84, 0.2)", borderRadius: 8, padding: "10px 12px", fontSize: 14, fontWeight: 700, cursor: geocoding ? "default" : "pointer" }}
+            >
+              {geocoding ? "좌표 찾는 중..." : "주소로 위경도 찾기"}
+            </button>
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>

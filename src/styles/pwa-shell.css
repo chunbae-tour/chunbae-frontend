@@ -70,6 +70,38 @@
   border: 0;
 }
 
+.oauth-signup-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 18px;
+  color: #ffffff;
+}
+
+.oauth-signup-card strong {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.oauth-signup-card p,
+.oauth-signup-card small {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.oauth-signup-card em {
+  color: #ffb4b4;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 button,
 [role="button"],
 [style*="cursor: pointer"] {
@@ -558,7 +590,16 @@ button:disabled,
   margin: 8px auto 4px;
 }
 
+.payment-history-balance-skeleton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 .payment-balance-skeleton .coin,
+.payment-history-balance-skeleton .coin,
 .qr-scan-skeleton .qr-shop-icon {
   width: 64px;
   height: 64px;
@@ -566,11 +607,21 @@ button:disabled,
   background: rgba(255, 255, 255, 0.18);
 }
 
+.payment-history-balance-skeleton .coin {
+  width: 30px;
+  height: 30px;
+}
+
 .payment-balance-skeleton .amount,
+.payment-history-balance-skeleton .amount,
 .my-balance-skeleton .amount {
   width: 160px;
   height: 28px;
   background: rgba(255, 255, 255, 0.2);
+}
+
+.payment-history-balance-skeleton .amount {
+  width: 140px;
 }
 
 .payment-balance-skeleton .caption,
@@ -5540,6 +5591,61 @@ button:disabled,
   margin-bottom: 10px;
 }
 
+.merchant-item-use-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.merchant-item-use-form input {
+  min-height: 44px;
+  border: 1px solid rgba(26, 26, 46, 0.12);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1a1a2e;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 12px;
+  outline: none;
+}
+
+.merchant-item-use-form input:focus {
+  border-color: rgba(47, 133, 95, 0.45);
+  box-shadow: 0 0 0 3px rgba(47, 133, 95, 0.12);
+}
+
+.merchant-item-use-form button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: #2f855f;
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  padding: 0 16px;
+}
+
+.merchant-item-use-result {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #0f6a46;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.merchant-item-use-result strong {
+  color: #1a1a2e;
+  font-size: 16px;
+}
+
 .merchant-empty-payment {
   color: #7c7b75;
   font-size: 14px;
@@ -6735,27 +6841,6 @@ button:disabled,
     #f3efe7;
 }
 
-.map-explorer-hero {
-  width: min(1500px, calc(100% - 56px));
-  margin: 24px auto 0;
-  border-radius: 8px;
-  padding: 34px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 430px;
-  gap: 28px;
-  color: #fff;
-  background:
-    linear-gradient(90deg, rgba(18, 18, 35, 0.9), rgba(18, 18, 35, 0.68) 55%, rgba(18, 18, 35, 0.35)),
-    url("../assets/home/market-night-alley-optimized.jpg") center / cover;
-  box-shadow: 0 20px 50px rgba(26, 26, 46, 0.12);
-}
-
-.map-hero-copy,
-.map-hero-panel {
-  min-width: 0;
-}
-
-.map-hero-kicker,
 .search-local-copy span {
   display: inline-flex;
   width: fit-content;
@@ -6769,30 +6854,6 @@ button:disabled,
   letter-spacing: 0.08em;
 }
 
-.map-hero-copy h1 {
-  margin: 0;
-  max-width: 760px;
-  font-size: clamp(28px, 3.2vw, 48px);
-  line-height: 1.12;
-  letter-spacing: 0;
-}
-
-.map-hero-copy p {
-  max-width: 650px;
-  margin: 14px 0 0;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 16px;
-  line-height: 1.7;
-}
-
-.map-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 24px;
-}
-
-.map-hero-actions button,
 .map-result-card button,
 .search-result-card button {
   border: 0;
@@ -6804,61 +6865,12 @@ button:disabled,
   cursor: pointer;
 }
 
-.map-hero-actions button {
-  min-height: 44px;
-  padding: 0 18px;
-}
-
-.map-hero-actions .secondary {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-}
-
-.map-hero-panel {
-  align-self: end;
-  display: grid;
-  gap: 12px;
-}
-
-.map-search-chip {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  padding: 16px 18px;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.84);
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.map-highlight-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.map-highlight-grid div {
-  border-radius: 8px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.map-highlight-grid span,
 .map-list-head small,
 .search-section-head small {
   display: block;
   color: rgba(26, 26, 46, 0.55);
   font-size: 14px;
   font-weight: 700;
-}
-
-.map-highlight-grid span {
-  color: rgba(255, 255, 255, 0.62);
-}
-
-.map-highlight-grid strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 20px;
 }
 
 .map-location-banner {
@@ -8041,6 +8053,39 @@ button:disabled,
   cursor: pointer;
 }
 
+.owned-item-card button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.owned-item-qr-dialog {
+  display: grid;
+  gap: 12px;
+}
+
+.owned-item-qr-token {
+  border-radius: var(--radius-md);
+  background: #f7f5f0;
+  color: var(--color-text-primary);
+  padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.5;
+  text-align: center;
+  word-break: break-all;
+}
+
+.owned-item-qr-error {
+  border-radius: var(--radius-md);
+  background: #fff1f2;
+  color: var(--color-error);
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
 .owned-items-todo {
   margin: 0 16px 16px;
   border-radius: var(--radius-md);
@@ -8546,7 +8591,6 @@ button:disabled,
     grid-template-columns: 1fr;
   }
 
-  .map-explorer-hero,
   .map-night-board,
   .map-filter-row,
   .map-list-head,
@@ -8557,15 +8601,6 @@ button:disabled,
   .search-result-shell,
   .search-state-card {
     width: calc(100% - 32px);
-  }
-
-  .map-explorer-hero {
-    grid-template-columns: 1fr;
-    padding: 24px;
-  }
-
-  .map-hero-copy h1 {
-    font-size: 34px;
   }
 
   .map-night-board {
@@ -8715,7 +8750,6 @@ button:disabled,
     padding: 20px;
   }
 
-  .map-explorer-hero,
   .map-night-board,
   .map-filter-row,
   .map-list-head,
@@ -8728,25 +8762,17 @@ button:disabled,
     width: calc(100% - 24px);
   }
 
-  .map-explorer-hero,
   .search-local-hero {
     padding: 18px;
   }
 
-  .map-hero-copy h1,
   .search-local-copy strong {
     font-size: 28px;
   }
 
-  .map-hero-actions,
-  .map-highlight-grid,
   .search-section-head {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .map-hero-actions button {
-    width: 100%;
   }
 
   .search-local-top {

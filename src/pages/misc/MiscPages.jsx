@@ -525,11 +525,40 @@ export function FAQPage({ onBack }) {
 }
 
 // ─── 축제 페이지 ──────────────────────────────────────────────────────
+function parseFestivalDate(value) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getMonthRange(year, month) {
+  return {
+    start: new Date(year, month - 1, 1),
+    end: new Date(year, month, 0),
+  };
+}
+
+function festivalOverlapsMonth(festival, year, month, today) {
+  const startDate = parseFestivalDate(festival.startDate);
+  const endDate = parseFestivalDate(festival.endDate) ?? startDate;
+  if (!startDate || !endDate) return false;
+
+  const { start, end } = getMonthRange(year, month);
+  const effectiveStart = year === today.getFullYear() && month === today.getMonth() + 1
+    ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    : start;
+
+  return startDate <= end && endDate >= effectiveStart;
+}
+
 export function FestivalPage({ onBack, onCalendar, onFestival }) {
   const [filter, setFilter] = useState("전체");
   const [festivals, setFestivals] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
 
   const loadFestivals = () => {
     setStatus("loading");
@@ -552,16 +581,13 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
     return () => { ignore = true; };
   }, []);
 
+  const selectedMonth = Number.parseInt(filter, 10);
   const filteredFestivals = filter === "전체"
     ? festivals
-    : festivals.filter(festival => `${festival.monthNumber}월` === filter);
+    : festivals.filter(festival => festivalOverlapsMonth(festival, currentYear, selectedMonth, today));
   const monthFilters = [
     "전체",
-    ...Array.from(new Set(festivals
-      .map(festival => festival.monthNumber)
-      .filter(Boolean)
-      .sort((a, b) => a - b)
-      .map(month => `${month}월`))),
+    ...Array.from({ length: 12 - currentMonth + 1 }, (_, index) => `${currentMonth + index}월`),
   ];
 
   return (

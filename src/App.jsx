@@ -5,6 +5,7 @@ import ChunbaeImg from "./assets/hwangchunbae.png";
 import AppShell from "./components/common/AppShell";
 import { Toast } from "./components/common";
 import LoginPage from "./pages/auth/LoginPage";
+import OauthSignupPage from "./pages/auth/OauthSignupPage";
 import SignupPage from "./pages/auth/SignupPage";
 import HomePage from "./pages/home/HomePage";
 import PublicHomePage from "./pages/home/PublicHomePage";
@@ -22,9 +23,33 @@ import FestivalCalendarPage from "./pages/festival/FestivalCalendarPage";
 import FestivalDetailPage from "./pages/festival/FestivalDetailPage";
 import { MerchantShopPage, MerchantMenuPage, MerchantSettlementPage } from "./pages/merchant/MerchantPages";
 import { MerchantApplyPage } from "./pages/merchant/MerchantApplyPage";
-import { AdminDashboardPage, AdminUsersPage, AdminReportsPage, AdminMerchantPage, AdminContentPage } from "./pages/admin/AdminPages";
+import {
+  AdminAdsPage,
+  AdminBannersPage,
+  AdminCertificationsPage,
+  AdminContentPage,
+  AdminDashboardPage,
+  AdminFaqsPage,
+  AdminFestivalsPage,
+  AdminMerchantPage,
+  AdminProductsPage,
+  AdminRefundsPage,
+  AdminReportsPage,
+  AdminSettlementsPage,
+  AdminShopsPage,
+  AdminSupportPage,
+  AdminUsersPage,
+} from "./pages/admin/AdminPages";
 import { MyPage, FestivalPage, ARPage, NotificationPage, NotificationSettingsPage, FAQPage, SearchPage } from "./pages/misc/MiscPages";
-import { clearAuthSession, completeSocialLoginFromCallback, fetchCurrentUser, getStoredAuthSession, shouldClearSessionForError } from "./services/authService";
+import {
+  clearAuthSession,
+  clearPendingOauthSignup,
+  completeSocialLoginFromCallback,
+  fetchCurrentUser,
+  getPendingOauthSignup,
+  getStoredAuthSession,
+  shouldClearSessionForError,
+} from "./services/authService";
 
 function getInitialScreenForRole(role) {
   const normalizedRole = String(role || "USER").toUpperCase();
@@ -75,7 +100,8 @@ export default function App() {
   const socialCallbackProvider = socialCallbackMatch?.[1];
   const isSocialCallbackPath = Boolean(socialCallbackProvider);
   const [storedSession] = useState(() => getStoredAuthSession());
-  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : "splash");
+  const [hasPendingOauthSignup] = useState(() => !storedSession && Boolean(getPendingOauthSignup()?.signupTicket));
+  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : hasPendingOauthSignup ? "oauthSignup" : "splash");
   const [user, setUser] = useState(storedSession);
   const [tab, setTab] = useState("home");
   const [screen, setScreen] = useState(() => getInitialScreenForRole(storedSession?.role));
@@ -141,6 +167,12 @@ export default function App() {
       })
       .catch((error) => {
         if (ignore) return;
+        if (error.code === "SOCIAL_SIGNUP_REQUIRED") {
+          setAppState("oauthSignup");
+          setToast("소셜 회원가입을 완료해주세요.");
+          window.history.replaceState({ chunbaeTour: true, appState: "oauthSignup", screen: "home", tab: "home" }, "", "/");
+          return;
+        }
         clearAuthSession();
         setUser(null);
         setAppState("login");
@@ -225,6 +257,8 @@ export default function App() {
     "wishlist", "myReview", "ownedItems", "notificationSettings", "faq",
     "merchant", "merchantMenu", "merchantSettlement", "merchantApply",
     "adminDashboard", "adminUsers", "adminReports", "adminMerchant", "adminContent",
+    "adminRefunds", "adminSettlements", "adminAds", "adminCertifications", "adminSupport",
+    "adminBanners", "adminFaqs", "adminProducts", "adminFestivals", "adminShops",
   ];
   const showTab = !noTabScreens.includes(screen);
 
@@ -248,6 +282,7 @@ export default function App() {
   }
   if (appState === "login")  return <div style={S.app}><LoginPage onLogin={handleLogin} onSignup={() => setAppState("signup")} /></div>;
   if (appState === "signup") return <div style={S.app}><SignupPage onBack={() => setAppState("login")} onDone={handleLogin} /></div>;
+  if (appState === "oauthSignup") return <div style={S.app}><OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} /></div>;
 
   return (
     <div style={S.app}>
@@ -289,6 +324,16 @@ export default function App() {
         {screen === "adminReports"     && <AdminReportsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
         {screen === "adminMerchant"    && <AdminMerchantPage onBack={() => go("adminDashboard")} showToast={showToast} />}
         {screen === "adminContent"     && <AdminContentPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminRefunds"     && <AdminRefundsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminSettlements" && <AdminSettlementsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminAds"         && <AdminAdsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminCertifications" && <AdminCertificationsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminSupport"     && <AdminSupportPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminBanners"     && <AdminBannersPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminFaqs"        && <AdminFaqsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminProducts"    && <AdminProductsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminFestivals"   && <AdminFestivalsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "adminShops"       && <AdminShopsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
       </AppShell>
       <Toast msg={toast} />
     </div>

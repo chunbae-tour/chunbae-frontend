@@ -122,6 +122,20 @@ export function getStoredAuthSession(role) {
   return readSession("USER") || readSession("MERCHANT") || readSession("ADMIN");
 }
 
+export function getPendingOauthSignup() {
+  try {
+    const raw = sessionStorage.getItem("oauthSignupPending");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    sessionStorage.removeItem("oauthSignupPending");
+    return null;
+  }
+}
+
+export function clearPendingOauthSignup() {
+  sessionStorage.removeItem("oauthSignupPending");
+}
+
 export function getSocialLoginUrl(provider) {
   const normalizedProvider = String(provider || "").toUpperCase();
   const config = SOCIAL_CONFIG[normalizedProvider];
@@ -310,6 +324,32 @@ export async function signupAndLogin({ email, password, nickname }) {
   const fallbackAuthData = normalizeAuthData({ ...authData, nickname }, "USER");
   saveSession(fallbackAuthData);
   return fallbackAuthData;
+}
+
+export async function completeOauthSignup({ ticket, name, phone, birthdate, nickname }) {
+  const data = await apiRequest("/users/auth/oauth/signup", {
+    method: "POST",
+    body: {
+      ticket,
+      name,
+      phone,
+      birthdate,
+      nickname,
+    },
+  });
+
+  clearPendingOauthSignup();
+
+  const authData = normalizeAuthData(data, "USER");
+  saveSession(authData);
+  if (String(authData.role || "USER").toUpperCase() === "USER") {
+    try {
+      return await fetchCurrentUser();
+    } catch {
+      return authData;
+    }
+  }
+  return authData;
 }
 
 export async function reissueToken() {
