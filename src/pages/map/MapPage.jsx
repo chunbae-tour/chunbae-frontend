@@ -12,7 +12,6 @@ import {
 } from "../../utils/geolocation.js";
 
 const MAP_FILTERS = ["전체", "관광지", "전통시장"];
-const ALLEY_TAGS = ["먹자골목", "야시장", "포차거리", "붕어빵 포인트"];
 
 const getPlaceMeta = (place) => {
   if (place.type === "전통시장") {
@@ -194,10 +193,6 @@ export default function MapPage({ onPlaceClick }) {
             </div>
           </div>
         )}
-      </div>
-
-      <div className="map-alley-tags">
-        {ALLEY_TAGS.map(tag => <span key={tag}>{tag}</span>)}
       </div>
 
       {/* 카테고리 필터 */}

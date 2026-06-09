@@ -1,16 +1,7 @@
-import { useState } from "react";
 import { COLORS } from "../../constants/colors.js";
 import TabBar from "./TabBar.jsx";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import MascotDefault from "../../assets/brand/mascot-default.png";
-import { LANG_CODE_MAP } from "../../services/translationService.js";
-
-const LANGUAGES = [
-  { code: "ko", label: "한국어", flag: "🇰🇷" },
-  { code: "en", label: "English", flag: "🇺🇸" },
-  { code: "ja", label: "日本語", flag: "🇯🇵" },
-  { code: "zh-CN", label: "中文", flag: "🇨🇳" },
-];
 
 const NAV_ITEMS = [
   { key: "home", label: "홈", icon: "🏠" },
@@ -23,7 +14,7 @@ const NAV_ITEMS = [
   { key: "my", label: "마이", icon: "👤" },
 ];
 
-export default function AppShell({ active, screen, onTab, onAR, onHome, user, onLogin, showMobileTab, children, lang, onLangChange }) {
+export default function AppShell({ active, screen, onTab, onAR, onHome, user, onLogin, showMobileTab, children }) {
   const selectedKey = screen === "place" || screen === "direction" ? "map" : screen;
   const hideFaqFloating = [
     "chatroom",
@@ -38,8 +29,6 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
     "login",
     "signup",
   ].includes(screen);
-  const [langOpen, setLangOpen] = useState(false);
-  const currentLang = LANGUAGES.find((l) => l.code === (lang || "ko"));
   const isLoggedIn = Boolean(user);
   const openAuthOrTab = (key) => {
     if (!isLoggedIn && ["my", "pay", "notif"].includes(key)) {
@@ -90,31 +79,6 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
         <header className="desktop-topbar">
           <div className="topbar-spacer" aria-hidden="true" />
           <div className="topbar-actions">
-            <div className="topbar-lang-wrap">
-              <button
-                type="button"
-                className="topbar-lang-btn"
-                onClick={() => setLangOpen((v) => !v)}
-                aria-label="언어 선택"
-              >
-                {currentLang.flag} {currentLang.label}
-                <span className="topbar-lang-caret">{langOpen ? "▲" : "▼"}</span>
-              </button>
-              {langOpen && (
-                <div className="topbar-lang-dropdown">
-                  {LANGUAGES.map((l) => (
-                    <button
-                      key={l.code}
-                      type="button"
-                      className={l.code === (lang || "ko") ? "active" : ""}
-                      onClick={() => { onLangChange?.(l.code); setLangOpen(false); }}
-                    >
-                      {l.flag} {l.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
             {isLoggedIn && (
               <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
                 <span>내 엽전 잔액</span>

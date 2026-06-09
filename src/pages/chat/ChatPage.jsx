@@ -16,7 +16,6 @@ import {
   reportChatRoom,
 } from "../../services/chatService.js";
 import { getStoredAuthSession } from "../../services/authService.js";
-import { LANG_CODE_MAP, translateText } from "../../services/translationService.js";
 import { createChatRealtimeClient } from "../../services/chatRealtimeService.js";
 
 function getMessageTimestamp(message = {}) {
@@ -228,12 +227,9 @@ export function ChatListPage({ onChatRoom, showToast }) {
   );
 }
 
-export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }) {
+export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
-  const [translateOn, setTranslateOn] = useState(false);
-  const [translationResults, setTranslationResults] = useState({});
-  const [translatingMessages, setTranslatingMessages] = useState({});
   const [attachOpen, setAttachOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [actioning, setActioning] = useState("");
@@ -372,45 +368,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length]);
-
-  useEffect(() => {
-    if (!translateOn) return;
-
-    const targetLanguage = LANG_CODE_MAP[lang] ?? "KO";
-    const messagesToTranslate = messages.filter((message) => {
-      const messageId = message.id ?? message.messageId;
-      const content = message.text ?? message.content;
-      const cacheKey = `${messageId}:${targetLanguage}`;
-
-      return !resolveMessageMine(message)
-        && messageId
-        && content
-        && !translationResults[cacheKey]
-        && !translatingMessages[cacheKey];
-    });
-
-    messagesToTranslate.forEach((message) => {
-      const messageId = message.id ?? message.messageId;
-      const content = message.text ?? message.content;
-      const cacheKey = `${messageId}:${targetLanguage}`;
-
-      setTranslatingMessages((prev) => ({ ...prev, [cacheKey]: true }));
-      console.info("Translation request", { messageId, targetLanguage, content });
-      translateText(content, targetLanguage)
-        .then((result) => {
-          const translated = result.translatedContent ?? result.translatedText ?? "";
-          console.info("Translation response", { messageId, targetLanguage, translated });
-          setTranslationResults((prev) => ({ ...prev, [cacheKey]: translated || "번역 결과가 비어 있습니다." }));
-        })
-        .catch((error) => {
-          console.error("Translation failed", error);
-          setTranslationResults((prev) => ({ ...prev, [cacheKey]: getApiErrorHint(error) || "번역에 실패했습니다." }));
-        })
-        .finally(() => {
-          setTranslatingMessages((prev) => ({ ...prev, [cacheKey]: false }));
-        });
-    });
-  }, [messages, translateOn, lang, translationResults, translatingMessages]);
 
   useEffect(() => {
     let ignore = false;
@@ -604,9 +561,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
           </button>
           {roomMenuOpen && (
             <div className="chat-room-menu" role="menu">
-              <button type="button" onClick={() => { setTranslateOn(!translateOn); setRoomMenuOpen(false); }}>
-                번역 {translateOn ? "끄기" : "켜기"}
-              </button>
               <button type="button" onClick={openParticipantPanel}>참여자 보기</button>
               <button type="button" onClick={() => { setRoomMenuOpen(false); onRequest?.(); }}>참여 신청 관리</button>
               <button type="button" onClick={openParticipantPanel}>상대방 내보내기</button>
@@ -710,17 +664,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
                   </div>
                 )}
               </div>
-              {translateOn && !mine && (() => {
-                const targetLanguage = LANG_CODE_MAP[lang] ?? "KO";
-                const cacheKey = `${m.id ?? m.messageId}:${targetLanguage}`;
-                const translated = translationResults[cacheKey];
-
-                return (
-                  <div className="chat-translation-preview">
-                    번역: {translated || (translatingMessages[cacheKey] ? "번역 중..." : "번역 대기 중...")}
-                  </div>
-                );
-              })()}
             </div>
           </div>
           );

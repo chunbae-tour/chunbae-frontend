@@ -231,7 +231,6 @@ button:disabled,
 :root.comfortable-view .chat-room-row span,
 :root.comfortable-view .chat-room-meta small,
 :root.comfortable-view .chat-participant-row span,
-:root.comfortable-view .chat-translation-preview,
 :root.comfortable-view .chat-read-state,
 :root.comfortable-view .chat-message-report,
 :root.comfortable-view .my-section-head small,
@@ -966,74 +965,6 @@ button:disabled,
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.topbar-lang-wrap {
-  position: relative;
-}
-
-.topbar-lang-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  background: var(--color-bg-card);
-  color: var(--color-text-primary);
-  padding: 6px 14px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  white-space: nowrap;
-}
-
-.topbar-lang-caret {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  margin-left: 2px;
-}
-
-.topbar-lang-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: var(--z-dropdown);
-  min-width: 140px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-card);
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-}
-
-.topbar-lang-dropdown button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 40px;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-primary);
-  padding: 0 14px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-}
-
-.topbar-lang-dropdown button:hover {
-  background: var(--color-primary-subtle);
-  color: var(--color-primary-dark);
-}
-
-.topbar-lang-dropdown button.active {
-  background: var(--color-primary-subtle);
-  color: var(--color-primary-dark);
 }
 
 .topbar-yeopjeon {
@@ -6762,18 +6693,6 @@ button:disabled,
   color: inherit;
 }
 
-.chat-translation-preview {
-  max-width: 260px;
-  margin-top: 6px;
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: #fff3d0;
-  color: #8a5a00;
-  font-size: 14px;
-  line-height: 1.45;
-  font-weight: 800;
-}
-
 .web-message-bubble {
   max-width: 520px !important;
   font-size: 15px !important;
@@ -7349,7 +7268,6 @@ button:disabled,
   text-align: center;
 }
 
-.map-alley-tags,
 .map-filter-row,
 .map-list-head,
 .map-result-grid,
@@ -7358,22 +7276,6 @@ button:disabled,
   width: min(1500px, calc(100% - 56px));
   margin-left: auto;
   margin-right: auto;
-}
-
-.map-alley-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.map-alley-tags span {
-  border-radius: 999px;
-  padding: 7px 12px;
-  background: #fff7df;
-  color: #8a4f00;
-  font-size: 14px;
-  font-weight: 900;
 }
 
 .map-filter-row {
@@ -8646,7 +8548,6 @@ button:disabled,
 
   .map-explorer-hero,
   .map-night-board,
-  .map-alley-tags,
   .map-filter-row,
   .map-list-head,
   .map-result-grid,
@@ -8816,7 +8717,6 @@ button:disabled,
 
   .map-explorer-hero,
   .map-night-board,
-  .map-alley-tags,
   .map-filter-row,
   .map-list-head,
   .map-result-grid,
