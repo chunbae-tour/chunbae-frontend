@@ -2,9 +2,9 @@
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import CertifiedMark from "../../assets/brand/chunbae-certified-mark.svg";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
-import { createShopReview, fetchShopDetail, fetchShopReviews, getMockShopDetail, getMockShopReviews } from "../../services/shopService.js";
+import { createShopReview, fetchShopDetail, fetchShopReviews } from "../../services/shopService.js";
 import { fetchStoreProduct, fetchStoreProducts, purchaseStoreProduct } from "../../services/storeService.js";
 
 // ─── 스토어 목록 ──────────────────────────────────────────────────────
@@ -194,12 +194,12 @@ export function StoreProductPage({ product, onBack, showToast }) {
 // ─── 춘배인증 상점 상세 ───────────────────────────────────────────────
 export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
   const shopId = shop?.shopId ?? shop?.id;
-  const [detail, setDetail] = useState(() => getMockShopDetail(shop));
-  const [status, setStatus] = useState(shopId ? "loading" : "mock");
+  const [detail, setDetail] = useState(shop || null);
+  const [status, setStatus] = useState(shopId ? "loading" : "empty");
   const [reviewOpen, setReviewOpen] = useState(Boolean(shop?.reviewIntent && shop?.reviewWritable !== false));
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
-  const [reviews, setReviews] = useState(() => getMockShopReviews(shopId));
+  const [reviews, setReviews] = useState([]);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [detailError, setDetailError] = useState("");
@@ -214,12 +214,12 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
     let ignore = false;
     const nextShopId = shop?.shopId ?? shop?.id;
 
-    setDetail(getMockShopDetail(shop));
+    setDetail(shop || null);
     setReviewOpen(Boolean(shop?.reviewIntent && shop?.reviewWritable !== false));
-    setReviews(getMockShopReviews(nextShopId));
+    setReviews([]);
 
     if (!nextShopId) {
-      setStatus("mock");
+      setStatus("empty");
       return () => { ignore = true; };
     }
 
@@ -238,22 +238,16 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
       })
       .catch((error) => {
         if (ignore) return;
-        if (!shouldUseMockFallback(error)) {
-          setDetailError(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        setDetail(getMockShopDetail(shop));
-        setStatus("mock");
+        setDetailError(getApiErrorHint(error));
+        setStatus("error");
       });
 
     fetchShopReviews(nextShopId)
       .then((data) => {
-        if (!ignore) setReviews(data.length > 0 ? data : getMockShopReviews(nextShopId));
+        if (!ignore) setReviews(data);
       })
-      .catch((error) => {
-        if (!shouldUseMockFallback(error)) return;
-        if (!ignore) setReviews(getMockShopReviews(nextShopId));
+      .catch(() => {
+        if (!ignore) setReviews([]);
       });
 
     return () => { ignore = true; };
@@ -280,12 +274,9 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
         content: reviewText,
       });
     } catch (error) {
-      // TODO: 상점 리뷰 작성 API 확정 전까지 mock 작성 흐름을 유지합니다.
-      if (!shouldUseMockFallback(error)) {
-        setReviewError(getApiErrorHint(error));
-        setReviewSubmitting(false);
-        return;
-      }
+      setReviewError(getApiErrorHint(error));
+      setReviewSubmitting(false);
+      return;
     }
 
     setReviews(prev => [{
@@ -295,7 +286,7 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
       text: reviewText,
       date: "방금",
     }, ...prev]);
-    setDetail(prev => ({ ...prev, reviewWritable: false, reviewId: prev.reviewId || `mock_review_${Date.now()}` }));
+    setDetail(prev => ({ ...prev, reviewWritable: false }));
     setReviewText("");
     setReviewOpen(false);
     setReviewSubmitting(false);
@@ -316,7 +307,13 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
         </div>
         <div className="shop-detail-content">
           {status === "loading" && <SkeletonList count={2} />}
-          {status === "mock" && <div className="shop-review-intent">상점 상세 API 연결 전이라 mock 상점 정보를 보여줍니다.</div>}
+          {status === "empty" && (
+            <EmptyState
+              icon="상점"
+              title="상점 정보를 찾을 수 없습니다."
+              description="목록에서 상점을 다시 선택해주세요."
+            />
+          )}
           {status === "error" && (
             <ErrorState
               title="상점 상세 API를 불러오지 못했습니다."

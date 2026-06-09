@@ -56,12 +56,6 @@ export function getApiErrorHint(error) {
   return error.message || "요청을 처리하지 못했습니다.";
 }
 
-export function shouldUseMockFallback(error, { allowAuthFallback = false } = {}) {
-  if (STRICT_API_MODE) return false;
-  if (isAuthError(error)) return allowAuthFallback;
-  return true;
-}
-
 function buildApiUrl(path) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const versionedPath = /^\/api\/v\d+\//.test(normalizedPath)
@@ -82,6 +76,7 @@ export async function apiRequest(path, { method = "GET", auth = false, role, hea
   try {
     response = await fetch(url, {
       method,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -130,6 +125,7 @@ export async function apiFormRequest(path, { method = "POST", auth = false, role
   try {
     response = await fetch(url, {
       method,
+      credentials: "include",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,

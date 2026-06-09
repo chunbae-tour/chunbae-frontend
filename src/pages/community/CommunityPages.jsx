@@ -1,9 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
-import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, getMockCommunityComments, getMockCommunityPosts } from "../../services/communityService.js";
+import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts } from "../../services/communityService.js";
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
 export function CommunityListPage({ onPost, onWrite, onBack }) {
@@ -21,23 +21,13 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
     setErrorMessage("");
     fetchCommunityPosts()
       .then((data) => {
-        if (data.length === 0) {
-          setPosts(getMockCommunityPosts());
-          setStatus("mock");
-          return;
-        }
         setPosts(data);
-        setStatus("success");
+        setStatus(data.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
-        if (!shouldUseMockFallback(error)) {
-          setPosts([]);
-          setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        setPosts(getMockCommunityPosts());
-        setStatus("mock");
+        setPosts([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
   };
 
@@ -69,14 +59,13 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
       <div style={S.scrollArea}>
         <div className="community-list-shell">
           <div className="community-scope-row">
-            {["전체", "광장시장", "경복궁", "통인시장"].map(item => (
+            {["전체"].map(item => (
               <button key={item} type="button" className={scope === item ? "active" : ""} onClick={() => setScope(item)}>
                 {item}
               </button>
             ))}
           </div>
           {status === "loading" && <SkeletonList count={4} />}
-          {status === "mock" && <div className="community-list-state warning">커뮤니티 API 미확정으로 현재는 목업 게시글입니다.</div>}
           {status === "empty" && (
             <EmptyState
               icon="글"
@@ -157,7 +146,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
         if (!ignore) setComments(data);
       })
       .catch(() => {
-        if (!ignore) setComments(getMockCommunityComments());
+        if (!ignore) setComments([]);
       });
     return () => { ignore = true; };
   }, [post?.id, post?.type]);
@@ -175,8 +164,9 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
     let comment;
     try {
       comment = await createCommunityComment({ postId: post?.id, postType: post?.type, text: input });
-    } catch {
-      comment = { id: Date.now(), author: "여행자지수", text: input, time: "방금", postId: post?.id };
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+      return;
     }
     setComments([...comments, comment]);
     setInput("");
@@ -406,7 +396,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
                 {isCompanion ? (isAuthor ? (creatingRoom ? "채팅방 생성 중..." : "채팅방 생성") : companionAction.label) : "관련 장소 보기"}
               </button>
               {isCompanion && (
-                <button type="button" className="community-sub-action" onClick={() => showToast("신고 API 연결 전까지 mock 안내만 표시합니다.")}>
+                <button type="button" className="community-sub-action" onClick={() => showToast("신고 API가 아직 연결되지 않았습니다.")}>
                   신고하기
                 </button>
               )}
@@ -451,8 +441,9 @@ export function CommunityWritePage({ onBack, showToast }) {
     if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
     try {
       await createCommunityPost({ type, ...form });
-    } catch {
-      // TODO: API 연결 실패 시 현재는 화면 시연을 위해 mock 등록 완료 흐름을 유지합니다.
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+      return;
     }
     showToast("게시글이 등록되었습니다! 🎉");
     setTimeout(onBack, 1200);
@@ -494,7 +485,6 @@ export function CommunityWritePage({ onBack, showToast }) {
             <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>관광지</div>
             <select value={form.place} onChange={e => set("place", e.target.value)} style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}>
               <option value="">관광지 선택</option>
-              {["광장시장", "경복궁", "창덕궁", "통인시장"].map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
           {type === "동행" && (

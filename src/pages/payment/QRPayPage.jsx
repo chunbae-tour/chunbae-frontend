@@ -1,14 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { SkeletonBlock } from "../../components/common";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
-import { fetchQrMerchant, fetchYeopjeonBalance, getMockBalance, getMockQrMerchant, requestQrPayment } from "../../services/paymentService.js";
-
-const QR_MOCK_MENUS = [
-  { id: "bindaetteok", name: "녹두 빈대떡", price: 1200, desc: "광장시장 대표 메뉴" },
-  { id: "tteokbokki", name: "떡볶이 세트", price: 900, desc: "떡볶이와 어묵" },
-  { id: "hotteok", name: "꿀호떡 2개", price: 600, desc: "골목 간식" },
-];
+import { getApiErrorHint } from "../../services/apiClient.js";
+import { fetchQrMerchant, fetchYeopjeonBalance, requestQrPayment } from "../../services/paymentService.js";
 
 const QR_FLOW_STEPS = ["QR 스캔", "가게 확인", "결제 요청", "상인 승인"];
 
@@ -19,12 +13,13 @@ export default function QRPayPage({ onBack, showToast }) {
   const [merchant, setMerchant] = useState(null);
   const [selectedMenuId, setSelectedMenuId] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("IDLE");
-  const [balance, setBalance] = useState(getMockBalance());
+  const [balance, setBalance] = useState(null);
   const [requesting, setRequesting] = useState(false);
   const [scanning, setScanning] = useState(false);
 
   const parsed = parseInt(amount.replace(/,/g, "")) || 0;
-  const remaining = balance - parsed;
+  const remaining = balance == null ? null : balance - parsed;
+  const merchantMenus = Array.isArray(merchant?.menus) ? merchant.menus : [];
 
   useEffect(() => {
     let ignore = false;
@@ -36,26 +31,12 @@ export default function QRPayPage({ onBack, showToast }) {
       })
       .catch((error) => {
         if (ignore) return;
-        if (!shouldUseMockFallback(error)) {
-          showToast?.(getApiErrorHint(error));
-          return;
-        }
-        setBalance(getMockBalance());
+        setBalance(null);
+        showToast?.(getApiErrorHint(error));
       });
 
     return () => { ignore = true; };
   }, []);
-
-  useEffect(() => {
-    if (step !== "waiting") return undefined;
-
-    const timer = setTimeout(() => {
-      setPaymentStatus("COMPLETED");
-      setStep("done");
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [step]);
 
   const handleAmountChange = (val) => {
     const num = val.replace(/[^0-9]/g, "");
@@ -67,28 +48,23 @@ export default function QRPayPage({ onBack, showToast }) {
     setAmount((cur + add).toLocaleString());
   };
 
-  const handleScanMock = async () => {
+  const handleScan = async () => {
     if (scanning) return;
     setScanning(true);
-    let qrMerchant;
     try {
-      qrMerchant = await fetchQrMerchant();
+      const qrMerchant = await fetchQrMerchant();
+      setMerchant(qrMerchant);
+      setPaymentStatus("SHOP_FOUND");
+      setStep("input");
     } catch (error) {
-      if (!shouldUseMockFallback(error)) {
-        showToast?.(getApiErrorHint(error));
-        return;
-      }
-      qrMerchant = getMockQrMerchant();
+      showToast?.(getApiErrorHint(error));
     } finally {
       setScanning(false);
     }
-    setMerchant(qrMerchant);
-    setPaymentStatus("SHOP_FOUND");
-    setStep("input");
   };
 
   const selectMenu = (menu) => {
-    setSelectedMenuId(menu.id);
+    setSelectedMenuId(menu.id ?? menu.name);
     setAmount(menu.price.toLocaleString());
     setMemo(menu.name);
   };
@@ -96,7 +72,8 @@ export default function QRPayPage({ onBack, showToast }) {
   const handleRequest = async () => {
     if (requesting) return;
     if (parsed === 0) { showToast("금액을 입력해주세요!"); return; }
-    if (remaining < 0) { showToast("엽전 잔액이 부족해요!"); return; }
+    if (balance == null) { showToast("엽전 잔액을 확인한 뒤 다시 시도해 주세요."); return; }
+    if (remaining != null && remaining < 0) { showToast("엽전 잔액이 부족해요!"); return; }
 
     setRequesting(true);
     try {
@@ -126,7 +103,6 @@ export default function QRPayPage({ onBack, showToast }) {
             <span key={label} className={index === 0 ? "active" : ""}>{label}</span>
           ))}
         </div>
-        {/* QR 스캔 영역 Mock */}
         <div style={{ width: 240, height: 240, border: `3px solid ${COLORS.accent}`, borderRadius: 24, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24, position: "relative", background: "rgba(0,0,0,0.03)" }}>
           {/* 모서리 강조 */}
           {[{top:0,left:0},{top:0,right:0},{bottom:0,left:0},{bottom:0,right:0}].map((pos, i) => (
@@ -141,9 +117,8 @@ export default function QRPayPage({ onBack, showToast }) {
         <div style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center", marginBottom: 32, lineHeight: 1.6 }}>
           가게에 부착된 QR코드에<br />카메라를 갖다 대세요
         </div>
-        {/* 개발 테스트용: QR 스캔 Mock 버튼 */}
-        <div className="qr-primary-action" onClick={handleScanMock} style={{ background: COLORS.primary, color: "#fff", borderRadius: 14, padding: "14px 40px", fontWeight: 700, fontSize: 15, cursor: scanning ? "wait" : "pointer", marginBottom: 12, opacity: scanning ? 0.72 : 1 }}>
-          {scanning ? "가게 정보를 확인하는 중..." : "📷 QR 스캔 (테스트)"}
+        <div className="qr-primary-action" onClick={handleScan} style={{ background: COLORS.primary, color: "#fff", borderRadius: 14, padding: "14px 40px", fontWeight: 700, fontSize: 15, cursor: scanning ? "wait" : "pointer", marginBottom: 12, opacity: scanning ? 0.72 : 1 }}>
+          {scanning ? "가게 정보를 확인하는 중..." : "📷 QR 정보 확인"}
         </div>
         {scanning && (
           <div className="qr-scan-skeleton" aria-label="QR 가게 정보를 불러오는 중입니다.">
@@ -192,16 +167,20 @@ export default function QRPayPage({ onBack, showToast }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>가게 메뉴 선택</div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 3 }}>메뉴 API 연결 전까지 mock 메뉴를 보여줍니다.</div>
+              <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 3 }}>등록된 메뉴가 있으면 선택할 수 있습니다.</div>
             </div>
-            <span style={{ fontSize: 14, color: "#B87800", background: "#FFF3D0", borderRadius: 20, padding: "5px 9px", fontWeight: 800 }}>TODO API</span>
           </div>
           <div className="qr-menu-grid">
-            {QR_MOCK_MENUS.map(menu => (
+            {merchantMenus.length === 0 && (
+              <div style={{ gridColumn: "1 / -1", color: COLORS.textMuted, fontSize: 14 }}>
+                등록된 메뉴가 없습니다. 결제 금액을 직접 입력해 주세요.
+              </div>
+            )}
+            {merchantMenus.map(menu => (
               <button
-                key={menu.id}
+                key={menu.id ?? menu.name}
                 type="button"
-                className={`qr-menu-card ${selectedMenuId === menu.id ? "active" : ""}`}
+                className={`qr-menu-card ${selectedMenuId === (menu.id ?? menu.name) ? "active" : ""}`}
                 onClick={() => selectMenu(menu)}
               >
                 <strong>{menu.name}</strong>
@@ -253,8 +232,8 @@ export default function QRPayPage({ onBack, showToast }) {
         <div style={{ background: COLORS.primary, margin: "0 16px 16px", borderRadius: 16, padding: 20 }}>
           {[
             ["결제 금액", `🪙 ${parsed.toLocaleString()} 엽전`, COLORS.accent],
-            ["내 잔액", `${balance.toLocaleString()} 엽전`, "#fff"],
-            ["결제 후 잔액", `${remaining.toLocaleString()} 엽전`, remaining < 0 ? "#FF6B6B" : "rgba(255,255,255,0.7)"],
+            ["내 잔액", balance == null ? "확인 필요" : `${balance.toLocaleString()} 엽전`, "#fff"],
+            ["결제 후 잔액", remaining == null ? "확인 필요" : `${remaining.toLocaleString()} 엽전`, remaining != null && remaining < 0 ? "#FF6B6B" : "rgba(255,255,255,0.7)"],
           ].map(([label, value, color]) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 10 }}>
               <span>{label}</span>
@@ -265,7 +244,7 @@ export default function QRPayPage({ onBack, showToast }) {
           <div className="qr-payment-safety-note" style={{ background: "rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 14px", fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 14, lineHeight: 1.6 }}>
             💡 결제 요청 후 상인이 승인하면 자동으로 완료됩니다. 승인 대기 중에는 금액이 임시 보류됩니다.
           </div>
-          <div className="qr-primary-action" onClick={handleRequest} style={{ background: parsed > 0 && remaining >= 0 ? COLORS.accent : "rgba(255,255,255,0.15)", color: parsed > 0 && remaining >= 0 ? COLORS.primary : "rgba(255,255,255,0.3)", borderRadius: 12, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: parsed > 0 && !requesting ? "pointer" : "default", opacity: requesting ? 0.7 : 1 }}>
+          <div className="qr-primary-action" onClick={handleRequest} style={{ background: parsed > 0 && remaining != null && remaining >= 0 ? COLORS.accent : "rgba(255,255,255,0.15)", color: parsed > 0 && remaining != null && remaining >= 0 ? COLORS.primary : "rgba(255,255,255,0.3)", borderRadius: 12, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: parsed > 0 && !requesting ? "pointer" : "default", opacity: requesting ? 0.7 : 1 }}>
             {requesting ? "상인 확인 요청 중..." : `${parsed.toLocaleString()} 엽전 상인 확인 요청`}
           </div>
         </div>
@@ -309,7 +288,7 @@ export default function QRPayPage({ onBack, showToast }) {
           {[
             ["가게", merchant?.name || "가게 정보"],
             ["결제 금액", `🪙 ${parsed.toLocaleString()} 엽전`],
-            ["결제 후 잔액", `${remaining.toLocaleString()} 엽전`],
+            ["결제 후 잔액", remaining == null ? "확인 필요" : `${remaining.toLocaleString()} 엽전`],
             ...(memo ? [["메모", memo]] : []),
           ].map(([k, v]) => (
             <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, marginBottom: 8 }}>

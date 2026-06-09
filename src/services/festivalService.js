@@ -1,4 +1,3 @@
-import { MOCK_FESTIVALS } from "../constants/mockData.js";
 import { apiRequest, getPageContent } from "./apiClient.js";
 
 const MONTH_LABEL_TO_NUMBER = {
@@ -53,10 +52,6 @@ export function normalizeFestival(festival = {}) {
     color: festival.color ?? "#1A1A2E",
     accentColor: festival.accentColor ?? "#FFB41E",
   };
-}
-
-export function getMockFestivals() {
-  return MOCK_FESTIVALS.map(normalizeFestival);
 }
 
 export async function fetchFestivals() {

@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchMyReviews, fetchOwnedItems, fetchWishlist, getMockMyReviews, removeWishlistItem } from "../../services/myService.js";
+import { fetchMyReviews, fetchOwnedItems, fetchWishlist, removeWishlistItem } from "../../services/myService.js";
 
 function isRoleDeniedError(error) {
   return error?.status === 403;
@@ -110,10 +110,10 @@ export function MyReviewPage({ onBack, showToast }) {
         setReviews(data);
         setStatus(data.length > 0 ? "success" : "empty");
       })
-      .catch(() => {
-        // TODO: /users/me/reviews 미구현 — mock 유지
-        setReviews(getMockMyReviews());
-        setStatus("mock");
+      .catch((error) => {
+        setReviews([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
   };
 
@@ -132,7 +132,6 @@ export function MyReviewPage({ onBack, showToast }) {
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
           {status === "loading" && <SkeletonList count={3} />}
-          {status === "mock" && <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 12 }}>내 리뷰 API 미확정으로 현재는 목업 데이터입니다.</div>}
           {status === "empty" && (
             <EmptyState
               icon="✎"
@@ -243,7 +242,7 @@ export function OwnedItemsPage({ onBack, showToast }) {
                 <p>{item.market} · {item.shop}</p>
                 <small>만료일 {item.expires}</small>
               </div>
-              <button type="button" onClick={() => showToast("아이템 사용 API 연결 전 mock 화면입니다.")}>
+              <button type="button" onClick={() => showToast("아이템 사용 API가 아직 연결되지 않았습니다.")}>
                 사용하기
               </button>
             </article>

@@ -1,15 +1,4 @@
-import { MOCK_PAY_HISTORY } from "../constants/mockData.js";
 import { apiRequest, getAccessToken, getPageContent } from "./apiClient.js";
-
-const MOCK_BALANCE = 5000;
-const MOCK_QR_MERCHANT = {
-  id: "merchant_001",
-  name: "영호네 포장마차",
-  market: "광장시장",
-  rating: 4.8,
-  emoji: "🍳",
-  verified: true,
-};
 
 const PAYMENT_METHOD_CODES = {
   "카카오페이": "KAKAO_PAY",
@@ -193,7 +182,7 @@ export async function fetchYeopjeonBalance() {
 
   const data = await apiRequest("/yeopjeon/balance", { auth: true, role: "USER" });
 
-  return data.balance ?? MOCK_BALANCE;
+  return Number(data.balance ?? 0);
 }
 
 export async function requestCharge({ amount, paymentMethod, idempotencyKey }) {
@@ -235,10 +224,6 @@ export async function requestPortOnePayment(payment) {
   }
 
   return result;
-}
-
-export function getMockBalance() {
-  return MOCK_BALANCE;
 }
 
 export async function fetchPaymentHistory() {
@@ -283,12 +268,12 @@ export async function fetchQrPaymentStatus(payRequestId) {
 export async function fetchQrMerchant(shopId = 201) {
   const data = await apiRequest(`/shops/${shopId}`, { auth: true, role: "USER" });
   return {
-    id: data.shopId ?? data.id ?? MOCK_QR_MERCHANT.id,
-    name: data.shopName ?? data.name ?? MOCK_QR_MERCHANT.name,
-    market: data.marketName ?? data.market ?? MOCK_QR_MERCHANT.market,
-    rating: data.rating ?? MOCK_QR_MERCHANT.rating,
-    emoji: data.emoji ?? MOCK_QR_MERCHANT.emoji,
-    verified: Boolean(data.isCertified ?? data.verified ?? MOCK_QR_MERCHANT.verified),
+    id: data.shopId ?? data.id,
+    name: data.shopName ?? data.name ?? "",
+    market: data.marketName ?? data.market ?? "",
+    rating: data.rating ?? 0,
+    emoji: data.emoji ?? "",
+    verified: Boolean(data.isCertified ?? data.verified),
   };
 }
 
@@ -307,12 +292,4 @@ export async function requestQrPayment({ merchantId, amount, memo }) {
     role: "USER",
     body: { shopId: merchantId, amount, memo },
   });
-}
-
-export function getMockPaymentHistory() {
-  return MOCK_PAY_HISTORY.map(normalizePaymentHistoryItem);
-}
-
-export function getMockQrMerchant() {
-  return MOCK_QR_MERCHANT;
 }

@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import ChunbaeImg from "../../assets/hwangchunbae.png";
-import { getMockFestivals } from "../../services/festivalService.js";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -19,7 +18,6 @@ const float = {
 };
 
 export default function PublicHomePage({ onLogin, onSignup, onExplore }) {
-  const festivals = getMockFestivals().slice(0, 3);
   const explore = (target) => () => onExplore(target);
 
   return (
@@ -153,30 +151,11 @@ export default function PublicHomePage({ onLogin, onSignup, onExplore }) {
         <div className="public-section">
           <div className="public-section-head">
             <h2>다가오는 축제</h2>
-            <span>축제 API 확정 전 mock 유지</span>
+            <span>실시간 축제 정보를 준비 중입니다</span>
           </div>
-          <div className="public-festival-row">
-            {festivals.map((festival, i) => (
-              <motion.button
-                key={festival.id}
-                type="button"
-                className="public-festival-card"
-                onClick={explore("fest")}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, delay: 0.6 + i * 0.1 }}
-                whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.10)" }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <div style={{ background: festival.color }}>
-                  <small>{festival.month}</small>
-                  <strong style={{ color: festival.accentColor }}>{festival.day}</strong>
-                </div>
-                <span>{festival.name}</span>
-                <b>{festival.dday}</b>
-              </motion.button>
-            ))}
-          </div>
+          <button type="button" className="public-empty-panel" onClick={explore("fest")}>
+            축제 캘린더에서 최신 일정을 확인해 주세요.
+          </button>
         </div>
       </section>
     </main>

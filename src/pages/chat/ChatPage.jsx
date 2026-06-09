@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog, EmptyState, ErrorState, SkeletonList } from "../../components/common";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
 import { uploadChatAttachments } from "../../services/attachmentService.js";
 import {
   fetchChatMessages,
@@ -188,7 +188,6 @@ export function ChatListPage({ onChatRoom, showToast }) {
         <div className="web-chat-list" style={{ padding: "12px 16px" }}>
           <div className="chat-api-note">채팅방은 동행 게시판 모집글에서 방장이 생성합니다.</div>
           {status === "loading" && <SkeletonList count={3} />}
-          {status === "mock" && <div className="chat-api-note">채팅 API 연결 전까지 목업 채팅방을 보여줍니다.</div>}
           {status === "error" && (
             <ErrorState
               title="채팅방을 불러오지 못했습니다."
@@ -499,7 +498,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     setPendingAttachments(prev => prev.filter(item => item.id !== id));
   };
 
-  const runRoomAction = async ({ key, action, successMessage, mockMessage, afterSuccess }) => {
+  const runRoomAction = async ({ key, action, successMessage, afterSuccess }) => {
     if (actioning) return;
     setActioning(key);
     try {
@@ -507,12 +506,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
       showToast?.(successMessage);
       afterSuccess?.();
     } catch (error) {
-      if (!mockMessage || !shouldUseMockFallback(error)) {
-        showToast?.(getApiErrorHint(error));
-        return;
-      }
-      showToast?.(mockMessage);
-      afterSuccess?.();
+      showToast?.(getApiErrorHint(error));
     } finally {
       setActioning("");
     }
@@ -528,7 +522,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
     key: "leave-room",
     action: () => leaveChatRoom(roomId),
     successMessage: "채팅방에서 나갔습니다.",
-    mockMessage: "채팅방 나가기 API 연결 전 mock 처리 후 목록으로 이동합니다.",
     afterSuccess: onBack,
   });
 
@@ -593,7 +586,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
       key: `kick-${participant.userId}`,
       action: () => kickChatParticipant({ chatRoomId: roomId, userId: participant.userId }),
       successMessage: `${participant.nickname} 님을 채팅방에서 내보냈습니다.`,
-      mockMessage: "상대방 내보내기 API 연결 전 mock 처리입니다.",
       afterSuccess: () => setKickConfirmTarget(null),
     });
   };
@@ -633,7 +625,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
             <strong>참여자</strong>
             <span>
               {participantStatus === "loading" && "불러오는 중"}
-              {participantStatus === "mock" && "mock 목록"}
               {participantStatus === "error" && "API 확인 필요"}
               {(participantStatus === "success" || participantStatus === "empty") && `${participants.length}명`}
             </span>

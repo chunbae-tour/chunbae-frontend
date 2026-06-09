@@ -3,8 +3,8 @@ import { KakaoMap } from "../../components/map";
 import { S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
-import { fetchNearbyTravelSpots, fetchNearbyTravelSpotsWithLikes, getDefaultLocation, getMockPlaces } from "../../services/placeService.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
+import { fetchNearbyTravelSpotsWithLikes, getDefaultLocation } from "../../services/placeService.js";
 import {
   getGeolocationErrorMessage,
   getGeolocationSupport,
@@ -13,11 +13,6 @@ import {
 
 const MAP_FILTERS = ["전체", "관광지", "전통시장"];
 const ALLEY_TAGS = ["먹자골목", "야시장", "포차거리", "붕어빵 포인트"];
-const MAP_HIGHLIGHTS = [
-  { label: "오늘 문 연 골목", value: "4곳" },
-  { label: "야시장 포인트", value: "2곳" },
-  { label: "평균 체류", value: "70분" },
-];
 
 const getPlaceMeta = (place) => {
   if (place.type === "전통시장") {
@@ -65,15 +60,9 @@ export default function MapPage({ onPlaceClick }) {
       setPlaces(result);
       setStatus(result.length > 0 ? "success" : "empty");
     } catch (err) {
-      if (!shouldUseMockFallback(err)) {
-        setPlaces([]);
-        setError(getApiErrorHint(err));
-        setStatus("error");
-        return;
-      }
-      setPlaces(getMockPlaces());
-      setError(err.message || "주변 장소를 불러오지 못했습니다.");
-      setStatus("mock");
+      setPlaces([]);
+      setError(getApiErrorHint(err));
+      setStatus("error");
     }
   };
 
@@ -113,21 +102,27 @@ export default function MapPage({ onPlaceClick }) {
         <div className="map-hero-copy">
           <span className="map-hero-kicker">LOCAL ALLEY MAP</span>
           <h1>오늘은 어느 시장 골목으로 들어갈까요?</h1>
-          <p>광장시장 밤골목부터 궁궐 옆 산책길까지, 지금 걷기 좋은 로컬 포인트를 모았습니다.</p>
+          <p>전통시장 골목부터 산책길까지, 지금 걷기 좋은 로컬 포인트를 모았습니다.</p>
           <div className="map-hero-actions">
             <button type="button">지금 열린 골목 보기</button>
             <button type="button" className="secondary">근처 시장 보기</button>
           </div>
         </div>
         <div className="map-hero-panel">
-          <div className="map-search-chip">🔍 광장시장, 먹자골목, 야시장 검색...</div>
+          <div className="map-search-chip">🔍 시장, 먹자골목, 야시장 검색...</div>
           <div className="map-highlight-grid">
-            {MAP_HIGHLIGHTS.map(item => (
-              <div key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-              </div>
-            ))}
+            <div>
+              <span>위치 기반</span>
+              <strong>{places.length > 0 ? `${places.length}곳` : "조회 전"}</strong>
+            </div>
+            <div>
+              <span>현재 필터</span>
+              <strong>{filter}</strong>
+            </div>
+            <div>
+              <span>조회 상태</span>
+              <strong>{status === "success" ? "연결됨" : "확인 필요"}</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -217,7 +212,7 @@ export default function MapPage({ onPlaceClick }) {
       {/* 장소 목록 */}
       <div style={S.scrollArea}>
         <div className="map-list-head">
-          <span>{status === "mock" ? "기본 추천 골목" : "주변 골목 포인트"} ({filtered.length}개)</span>
+          <span>주변 골목 포인트 ({filtered.length}개)</span>
           <small>거리 · 운영시간 · 리뷰를 보고 바로 들어가세요.</small>
         </div>
         {status === "loading" && <div className="map-result-grid"><SkeletonList count={4} /></div>}
@@ -227,11 +222,6 @@ export default function MapPage({ onPlaceClick }) {
             description={error || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
             onRetry={() => loadPlaces(getDefaultLocation())}
           />
-        )}
-        {status === "mock" && (
-          <div className="map-state-card warning">
-            {error} API 연결 전까지 목업 장소를 보여줍니다.
-          </div>
         )}
         {status === "empty" && (
           <EmptyState

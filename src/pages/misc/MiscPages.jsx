@@ -1,19 +1,25 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog, EmptyState, ErrorState, SkeletonBlock, SkeletonList } from "../../components/common";
-import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
-import { fetchFestivals, getMockFestivals } from "../../services/festivalService.js";
+import { getApiErrorHint } from "../../services/apiClient.js";
+import { fetchFestivals } from "../../services/festivalService.js";
 import { fetchFaqs } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
-import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, getMockNotificationSettings, getMockNotifications, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
+import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
 import { updateCurrentUserProfile } from "../../services/authService.js";
 import YeopjeonImg from "../../assets/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
+import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
 import { fetchUserHomeStats } from "../../services/myService.js";
 
 // ─── 마이페이지 ───────────────────────────────────────────────────────
 const NICKNAME_PATTERN = /^[\p{L}\p{N}_-]{2,20}$/u;
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  payment: false,
+  companion: false,
+  post: false,
+  ad: false,
+};
 
 export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = () => {}, user, comfortableView = false, onComfortableViewChange = () => {} }) {
   const isLoggedIn = Boolean(user);
@@ -356,7 +362,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
 }
 
 export function NotificationSettingsPage({ onBack, showToast }) {
-  const [settings, setSettings] = useState(getMockNotificationSettings);
+  const [settings, setSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS);
   const [status, setStatus] = useState("loading");  const [errorMessage, setErrorMessage] = useState("");
   const items = [
     { key: "payment", title: "결제/엽전 알림", desc: "충전, QR 결제 승인, 잔액 변동" },
@@ -446,13 +452,6 @@ export function FAQPage({ onBack }) {
   const [faqs, setFaqs] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const fallbackFaqs = [
-    { id: 1, q: "엽전 QR 결제는 어떻게 하나요?", a: "현장에서 가게 QR을 스캔하고 금액을 입력하면 상인 확인 후 결제가 완료됩니다." },
-    { id: 2, q: "리뷰는 어디서 남길 수 있나요?", a: "결제내역에서 거래한 상점 상세로 이동하거나, 장소/상점 상세 페이지에서 리뷰를 남기는 흐름으로 연결됩니다." },
-    { id: 3, q: "동행 채팅방은 누가 만들 수 있나요?", a: "동행 게시글 작성자가 게시글 상세에서 채팅방 생성 버튼을 눌러 만들 수 있습니다." },
-    { id: 4, q: "춘배인증 광고는 누가 신청하나요?", a: "춘배인증 상점만 광고 요청이 가능하도록 운영하는 방향입니다. 실제 신청/심사 API는 추후 연결됩니다." },
-  ];
-
   const loadFaqs = () => {
     setStatus("loading");
     setErrorMessage("");
@@ -463,15 +462,10 @@ export function FAQPage({ onBack }) {
         setStatus(items.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
-        if (!shouldUseMockFallback(error)) {
-          setFaqs([]);
-          setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        setFaqs(fallbackFaqs);
-        setOpenId(fallbackFaqs[0]?.id ?? null);
-        setStatus("mock");
+        setFaqs([]);
+        setOpenId(null);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
   };
 
@@ -486,15 +480,10 @@ export function FAQPage({ onBack }) {
       })
       .catch((error) => {
         if (ignore) return;
-        if (!shouldUseMockFallback(error)) {
-          setFaqs([]);
-          setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        setFaqs(fallbackFaqs);
-        setOpenId(fallbackFaqs[0]?.id ?? null);
-        setStatus("mock");
+        setFaqs([]);
+        setOpenId(null);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
 
     return () => { ignore = true; };
@@ -512,11 +501,6 @@ export function FAQPage({ onBack }) {
           <span>자주 묻는 질문을 빠르게 확인하세요.</span>
         </div>
         {status === "loading" && <SkeletonList count={4} />}
-        {status === "mock" && (
-          <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 12 }}>
-            FAQ API 연결 전 기본 도움말입니다.
-          </div>
-        )}
         {status === "empty" && (
           <EmptyState icon="FAQ" title="등록된 FAQ가 없습니다." description="관리자가 FAQ를 등록하면 이곳에 표시됩니다." />
         )}
@@ -556,14 +540,9 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
         setStatus(data.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
-        if (!shouldUseMockFallback(error)) {
-          setFestivals([]);
-          setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        setFestivals(getMockFestivals());
-        setStatus("mock");
+        setFestivals([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
   };
 
@@ -608,11 +587,6 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
             ))}
           </div>
           {status === "loading" && <SkeletonList count={3} />}
-          {status === "mock" && (
-            <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 12 }}>
-              축제 검색 API 연결 실패로 개발용 목업 데이터를 보여줍니다.
-            </div>
-          )}
           {status === "error" && (
             <ErrorState
               title="축제 정보를 불러오지 못했습니다."
@@ -658,10 +632,9 @@ export function ARPage({ onBack }) {
         <div style={{ fontSize: 60, marginBottom: 16 }}>📷</div>
         <div style={{ color: "#fff", fontSize: 16, fontWeight: 700, marginBottom: 8 }}>AR 카메라</div>
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, textAlign: "center", padding: "0 40px", lineHeight: 1.6 }}>카메라를 가게에 갖다 대면<br />가게 정보를 확인할 수 있어요</div>
-        {/* TODO: Web AR / QR 스캔 연동 */}
         <div style={{ marginTop: 32, background: "rgba(255,180,30,0.15)", border: "1px solid rgba(255,180,30,0.4)", borderRadius: 16, padding: "16px 24px", textAlign: "center" }}>
-          <div style={{ color: COLORS.accent, fontWeight: 700, marginBottom: 4 }}>📍 광장시장 — 영호네 포장마차</div>
-          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>★ 4.8 · 빈대떡 5,000엽전</div>
+          <div style={{ color: COLORS.accent, fontWeight: 700, marginBottom: 4 }}>가게 인식 결과가 없습니다.</div>
+          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>AR/QR 스캔 API 연결 후 결과가 표시됩니다.</div>
         </div>
         <div style={{ position: "absolute", bottom: 40, width: 64, height: 64, background: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, cursor: "pointer" }}>📷</div>
       </div>
@@ -686,14 +659,9 @@ export function NotificationPage({ onBack }) {
         setStatus(data.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
-        if (!shouldUseMockFallback(error)) {
-          setNotifications([]);
-          setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        setNotifications(getMockNotifications());
-        setStatus("mock");
+        setNotifications([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
   };
 
@@ -721,7 +689,7 @@ export function NotificationPage({ onBack }) {
     try {
       await deleteAllNotifications(notifications.map(item => item.id));
     } catch (error) {
-      if (!shouldUseMockFallback(error)) return;
+      return;
     }
     setNotifications([]);
   };
@@ -755,7 +723,6 @@ export function NotificationPage({ onBack }) {
           <p>QR 결제 승인, 동행 신청, 리뷰 반응을 이곳에서 확인합니다.</p>
         </div>
         {status === "loading" && <div style={{ padding: "0 16px 16px" }}><SkeletonList count={4} /></div>}
-        {status === "mock" && <div style={{ margin: 16, background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14 }}>알림 API 미확정으로 현재는 목업 알림입니다.</div>}
         {status === "empty" && (
           <div style={{ padding: "0 16px 16px" }}>
             <EmptyState
@@ -802,13 +769,6 @@ export function NotificationPage({ onBack }) {
 }
 
 // ─── 검색 페이지 ──────────────────────────────────────────────────────
-const SEARCH_SUGGESTIONS = [
-  { label: "광장시장 밤골목", query: "광장시장", meta: "빈대떡 · 포차거리 · 야시장" },
-  { label: "통인시장 도시락길", query: "통인시장", meta: "엽전 도시락 · 골목 산책" },
-  { label: "궁궐 옆 산책", query: "경복궁", meta: "북촌 · 한옥 골목 · 야간 산책" },
-  { label: "창덕궁 후원길", query: "창덕궁", meta: "고즈넉한 산책 · 사진 포인트" },
-];
-const POPULAR_SEARCH_FALLBACK = ["광장시장", "통인시장", "경복궁", "창덕궁", "먹자골목"];
 const SEARCH_RESULT_TABS = [
   { key: "ALL", label: "전체" },
   { key: "PLACE", label: "장소" },
@@ -857,10 +817,9 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
   const [hasNextResults, setHasNextResults] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
-  const [popularSearches, setPopularSearches] = useState(POPULAR_SEARCH_FALLBACK);
+  const [popularSearches, setPopularSearches] = useState([]);
   const [recentSearches, setRecentSearches] = useState(readRecentSearches);
   const [suggestions, setSuggestions] = useState([]);
-  // TODO: 검색 API가 확정되면 검색어/필터/정렬/페이지네이션 응답으로 교체합니다.
   const draftQuery = query.trim();
   const normalizedQuery = submittedQuery.trim();
   const resultCounts = SEARCH_RESULT_TABS.reduce((acc, tab) => {
@@ -879,9 +838,9 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
           .map(item => item.keyword || item.query || item.name || item)
           .filter(Boolean)
           .slice(0, 10);
-        setPopularSearches(values.length > 0 ? values : POPULAR_SEARCH_FALLBACK);
+        setPopularSearches(values);
       })
-      .catch(() => setPopularSearches(POPULAR_SEARCH_FALLBACK));
+      .catch(() => setPopularSearches([]));
 
     fetchRecentSearches()
       .then((data) => {
@@ -949,7 +908,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
         })
         .catch(() => {
           if (ignore) return;
-          setSuggestions(POPULAR_SEARCH_FALLBACK.filter(item => item.includes(draftQuery)).slice(0, 5));
+          setSuggestions([]);
         });
     }, 250);
 
@@ -989,18 +948,11 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       })
       .catch((error) => {
         if (ignore) return;
-        if (!shouldUseMockFallback(error)) {
-          setResults([]);
-          setErrorMessage(getApiErrorHint(error));
-          setStatus("error");
-          return;
-        }
-        const mockResults = getMockSearchResults(normalizedQuery);
-        setResults(mockResults);
+        setResults([]);
         setNextCursor(null);
         setHasNextResults(false);
-        setStatus(mockResults.length > 0 ? "mock" : "empty");
-        if (mockResults.length > 0) setRecentSearches(writeRecentSearch(normalizedQuery));
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
 
     return () => {
@@ -1082,7 +1034,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
         <form className="search-local-top" onSubmit={handleSearchSubmit}>
           <span onClick={onBack}>←</span>
           <div className="search-input-panel">
-            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="광장시장 밤골목, 먹자골목 검색..." />
+            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="장소, 가게, 메뉴를 검색해보세요" />
             {draftQuery && suggestions.length > 0 && (
               <div className="search-hero-suggest-row">
                 {suggestions.map(item => (
@@ -1105,23 +1057,13 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       <div style={S.scrollArea}>
         {normalizedQuery === "" ? (
           <div className="search-suggestion-shell">
-            <div className="search-section-head">
-              <span>춘배 추천 검색</span>
-              <small>지금 바로 둘러보기 좋은 로컬 포인트</small>
-            </div>
-            <div className="search-suggestion-grid">
-              {SEARCH_SUGGESTIONS.map(s => (
-                <button key={s.label} type="button" onClick={() => submitSearch(s.query)}>
-                  <strong>{s.label}</strong>
-                  <span>{s.meta}</span>
-                </button>
-              ))}
-            </div>
             <div className="search-keyword-board">
               <div>
                 <strong>인기 검색어</strong>
                 <div>
-                  {popularSearches.map((item, index) => (
+                  {popularSearches.length === 0 ? (
+                    <span className="search-empty-keyword">아직 인기 검색어가 없습니다.</span>
+                  ) : popularSearches.map((item, index) => (
                     <button key={`${item}-${index}`} type="button" onClick={() => submitSearch(item)}>
                       <b>{index + 1}</b>
                       {item}
@@ -1175,7 +1117,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
         ) : (
           <div className="search-result-shell">
             <div className="search-section-head">
-              <span>{status === "mock" ? "목업 " : ""}검색 결과 {results.length}개</span>
+              <span>검색 결과 {results.length}개</span>
               <small>거리와 분위기를 보고 바로 상세로 들어가세요</small>
             </div>
             <div className="search-result-tabs" role="tablist" aria-label="검색 결과 유형">

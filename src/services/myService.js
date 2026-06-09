@@ -1,17 +1,4 @@
-import { getMockPlaces } from "./placeService.js";
 import { apiRequest, getPageContent } from "./apiClient.js";
-
-const MOCK_MY_REVIEWS = [
-  { id: 1, place: "광장시장", emoji: "🛍️", rating: 5, text: "정말 맛있었어요! 빈대떡 강추!", date: "2025.05.10", likes: 12 },
-  { id: 2, place: "경복궁", emoji: "🏯", rating: 4, text: "역사적인 장소라 분위기가 너무 좋았어요.", date: "2025.04.28", likes: 7 },
-  { id: 3, place: "통인시장", emoji: "🐟", rating: 5, text: "엽전 도시락 체험 강추! 외국인 친구들이 너무 좋아했어요.", date: "2025.04.15", likes: 23 },
-];
-
-const MOCK_OWNED_ITEMS = [
-  { id: 1, name: "빈대떡 세트 1,000엽전 쿠폰", shop: "순희네 빈대떡", market: "광장시장", expires: "2026.06.30", status: "사용 가능" },
-  { id: 2, name: "호떡 1개 교환권", shop: "서촌 호떡방앗간", market: "통인시장", expires: "2026.06.12", status: "사용 가능" },
-  { id: 3, name: "엽전 도시락 할인권", shop: "도시락 카페", market: "통인시장", expires: "2026.05.31", status: "곧 만료" },
-];
 
 export async function fetchUserHomeStats() {
   // 찜 목록, 리뷰 등을 병렬로 조회하여 카운트 계산
@@ -90,16 +77,4 @@ export async function fetchOwnedItems() {
     expires: item.expiresAt ?? item.expireAt ?? item.expires ?? "",
     status: item.statusLabel ?? item.status ?? "사용 가능",
   }));
-}
-
-export function getMockWishlist() {
-  return getMockPlaces().slice(0, 3);
-}
-
-export function getMockMyReviews() {
-  return MOCK_MY_REVIEWS;
-}
-
-export function getMockOwnedItems() {
-  return MOCK_OWNED_ITEMS;
 }

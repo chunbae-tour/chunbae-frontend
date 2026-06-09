@@ -75,7 +75,7 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               type="text"
               value={form.shopName}
               onChange={(e) => handleChange("shopName", e.target.value)}
-              placeholder="예: 영호네 포장마차"
+              placeholder="예: 우리 가게"
               style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
             />
           </div>

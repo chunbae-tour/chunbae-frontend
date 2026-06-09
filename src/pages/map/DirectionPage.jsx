@@ -67,11 +67,10 @@ export default function DirectionPage({ place, onBack }) {
     window.open(url, "_blank");
   };
 
-  // TODO: 이동수단별 소요시간/경로 요약 API가 확정되면 mock 요약을 실제 응답으로 교체합니다.
   const modes = [
-    { key: "transit", label: "대중교통", icon: "🚌", time: "약 23분", desc: "지하철 1호선 → 도보 5분" },
-    { key: "walk",    label: "도보",    icon: "🚶", time: "약 41분", desc: "도보 이동 3.2km" },
-    { key: "car",     label: "자동차",  icon: "🚗", time: "약 15분", desc: "경복궁길 경유" },
+    { key: "transit", label: "대중교통", icon: "🚌" },
+    { key: "walk",    label: "도보",    icon: "🚶" },
+    { key: "car",     label: "자동차",  icon: "🚗" },
   ];
 
   return (
@@ -147,10 +146,10 @@ export default function DirectionPage({ place, onBack }) {
           {modes.filter(m2 => m2.key === mode).map(m => (
             <div key={m.key} style={{ background: "#fff", borderRadius: 16, padding: 20, border: "0.5px solid rgba(0,0,0,0.06)", marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: COLORS.primary }}>{m.time}</span>
-                <span style={{ fontSize: 14, background: COLORS.greenBg, color: COLORS.green, borderRadius: 20, padding: "4px 12px", fontWeight: 700 }}>최적경로</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>{m.label} 길찾기</span>
+                <span style={{ fontSize: 14, background: COLORS.greenBg, color: COLORS.green, borderRadius: 20, padding: "4px 12px", fontWeight: 700 }}>외부 지도 연결</span>
               </div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted }}>{m.desc}</div>
+              <div style={{ fontSize: 14, color: COLORS.textMuted }}>상세 소요시간과 경로는 카카오맵에서 확인할 수 있습니다.</div>
             </div>
           ))}
 

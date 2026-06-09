@@ -6,9 +6,9 @@ import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import CertifiedMark from "../../assets/brand/chunbae-certified-mark.svg";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchFestivals, getMockFestivals } from "../../services/festivalService.js";
-import { fetchNearbyTravelSpots, getDefaultLocation, getMockPlaces } from "../../services/placeService.js";
-import { fetchCertifiedStorePromotions, getMockCertifiedStorePromotions } from "../../services/promotionService.js";
+import { fetchFestivals } from "../../services/festivalService.js";
+import { fetchNearbyTravelSpots, getDefaultLocation } from "../../services/placeService.js";
+import { fetchCertifiedStorePromotions } from "../../services/promotionService.js";
 
 const QUICK_ACTIONS = [
   { icon: "📍", label: "지도", desc: "근처 시장과 관광지 찾기", tab: "map" },
@@ -123,15 +123,14 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
     fetchCertifiedStorePromotions()
       .then((items) => {
         if (ignore) return;
-        setPromotions(items.length > 0 ? items : getMockCertifiedStorePromotions());
+        setPromotions(items);
         setPromotionStatus(items.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
         if (ignore) return;
-        // 광고 API 미구현 — mock fallback 유지
-        setPromotions(getMockCertifiedStorePromotions());
+        setPromotions([]);
         setPromotionErrorMessage(getApiErrorHint(error));
-        setPromotionStatus("mock");
+        setPromotionStatus("error");
       });
 
     return () => { ignore = true; };
@@ -149,9 +148,7 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
 
   const activePromotion = promotions[promotionIndex] ?? promotions[0];
   const openActivePromotion = () => {
-    const linkedPlace = getMockPlaces().find(place => String(place.id) === String(activePromotion?.placeId));
-
-    if (!linkedPlace) {
+    if (!activePromotion) {
       onTab("map");
       return;
     }
@@ -160,9 +157,8 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
       ...activePromotion,
       id: activePromotion.shopId,
       name: activePromotion.shopName,
-      imageUrl: getPlaceImageUrl(linkedPlace),
-      place: linkedPlace,
-      placeName: linkedPlace.name,
+      imageUrl: activePromotion.imageUrl || activePromotion.thumbnailUrl,
+      placeName: activePromotion.marketName || activePromotion.placeName,
     });
   };
 
@@ -176,13 +172,12 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
         const items = await fetchFestivals();
         if (ignore) return;
 
-        setFestivals(items.length > 0 ? items : getMockFestivals());
+        setFestivals(items);
         setFestivalStatus(items.length > 0 ? "success" : "empty");
       } catch (error) {
         if (ignore) return;
-        // 축제 전용 API 미확정 — mock fallback 유지
-        setFestivals(getMockFestivals());
-        setFestivalStatus("mock");
+        setFestivals([]);
+        setFestivalStatus("error");
       }
     };
 
@@ -206,12 +201,24 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
             <div className="home-hero-ad-area">
               <button type="button" className="home-hero-main-ad" onClick={openActivePromotion}>
                 <span>{promotionStatus === "error" ? "광고 API 확인 필요" : "춘배인증 광고"}</span>
-                <strong>{promotionStatus === "error" ? "광고 데이터를 불러오지 못했어요" : activePromotion?.shopName ?? "영호네 포장마차"}</strong>
-                <p>{promotionStatus === "error" ? promotionErrorMessage : activePromotion?.headline ?? "빈대떡 냄새 따라오면 만나는 골목점"}</p>
+                <strong>
+                  {promotionStatus === "error"
+                    ? "광고 데이터를 불러오지 못했어요"
+                    : activePromotion?.shopName ?? "등록된 인증 광고가 없습니다"}
+                </strong>
+                <p>
+                  {promotionStatus === "error"
+                    ? promotionErrorMessage
+                    : activePromotion?.headline ?? "인증 가게 광고가 등록되면 이곳에 표시됩니다."}
+                </p>
                 {activePromotion?.benefit && <em>{activePromotion.benefit}</em>}
                 <small>
                   <img src={CertifiedMark} alt="" />
-                  {promotionStatus === "error" ? "백엔드 연결 상태 확인" : `${activePromotion?.marketName ?? "광장시장"} · 현장 QR 가능`}
+                  {promotionStatus === "error"
+                    ? "백엔드 연결 상태 확인"
+                    : activePromotion?.marketName
+                      ? `${activePromotion.marketName} · 현장 QR 가능`
+                      : "실제 광고 응답 대기"}
                 </small>
               </button>
               {promotions.length > 1 && (
@@ -255,7 +262,7 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
             <div className="home-course-hero">
               <div>
                 <span className="home-course-kicker">오늘의 추천</span>
-                <h2>광장시장 밤골목에서 시작하는 로컬 코스</h2>
+                <h2>오늘 걷기 좋은 로컬 코스</h2>
                 <p>장소, 먹거리, 동행으로 이어지는 오늘의 대표 코스만 먼저 보여드릴게요.</p>
               </div>
               <img src={MascotEmpty} alt="" />
@@ -263,8 +270,8 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
             <button type="button" className="home-feature-route-card" onClick={() => onTab("map")}>
               <span className="home-price-tag">오늘 19:00 추천</span>
               <div>
-                <strong>광장시장 밤골목 탐험</strong>
-                <p>빈대떡 골목 → 떡볶이 줄 → 포차거리 → 붕어빵 포인트</p>
+                <strong>근처 골목 탐험</strong>
+                <p>시장 입구 → 먹거리 골목 → 산책 포인트 → 쉬어가는 장소</p>
               </div>
               <ul>
                 <li>도보 1.2km</li>

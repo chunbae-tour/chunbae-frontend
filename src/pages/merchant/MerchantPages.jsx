@@ -447,9 +447,9 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               </div>
               <div className="merchant-shop-form-grid">
                 {[
-                  ["name", "가게명 *", "예) 영호네 포장마차"],
+                  ["name", "가게명 *", "예) 우리 가게"],
                   ["category", "카테고리", "예) 한식"],
-                  ["address", "주소 *", "예) 광장시장 내 B동 123호"],
+                  ["address", "주소 *", "예) 도로명 주소"],
                   ["phone", "전화번호", "예) 02-123-4567"],
                   ["operatingHours", "영업시간", "예) 09:00 ~ 22:00"],
                   ["holiday", "휴무일", "예) 매주 일요일"],

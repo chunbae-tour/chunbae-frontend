@@ -2,15 +2,7 @@
 import { COLORS, S } from "../../constants/colors";
 import { EmptyState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { addMarketLike, addPlaceLike, fetchNearbyStores, fetchPlaceDetail, fetchPlaceReviews, getMockNearbyStores, getMockPlaceReviews, normalizePlace, removeMarketLike, removePlaceLike } from "../../services/placeService.js";
-
-const FOOD_POINTS = ["빈대떡", "떡볶이", "순대", "호떡"];
-const ROUTE_STEPS = ["정문 입구", "먹자골목", "포차거리", "간식 스탬프"];
-const COMPANION_PREVIEWS = [
-  { id: 1, title: "광장시장 먹거리 골목 같이 도실 분!", meta: "오늘 19:00 · 2/4명", status: "모집중" },
-  { id: 2, title: "사진 찍으며 천천히 걷는 시장 산책", meta: "주말 오전 · 1/3명", status: "신규" },
-];
-const STORE_MENU_PREVIEWS = ["빈대떡 세트", "떡볶이·순대", "호떡", "전통차"];
+import { addMarketLike, addPlaceLike, fetchNearbyStores, fetchPlaceDetail, fetchPlaceReviews, normalizePlace, removeMarketLike, removePlaceLike } from "../../services/placeService.js";
 
 export default function PlaceDetailPage({ place, onBack, showToast, onDirection, onQrPay, onShopClick, onLikeChange }) {
   const [detail, setDetail] = useState(place ? normalizePlace(place) : null);
@@ -74,8 +66,8 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
       })
       .catch(() => {
         if (ignore) return;
-        setReviews(getMockPlaceReviews());
-        setNearbyStores(getMockNearbyStores());
+        setReviews([]);
+        setNearbyStores([]);
       });
 
     return () => { ignore = true; };
@@ -122,21 +114,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
       return;
     }
 
-    // TODO: POST /places/{placeId}/reviews 연동 시 rating/content/imageFiles를 FormData 또는 명세 필드에 맞춰 전송합니다.
-    setReviews(prev => [
-      {
-        id: Date.now(),
-        user: "여행자지수",
-        rating: reviewRating,
-        text: reviewText,
-        date: "방금",
-      },
-      ...prev,
-    ]);
-    setReviewText("");
-    setReviewPhotoName("");
-    setReviewFormOpen(false);
-    showToast("리뷰가 mock으로 등록되었습니다.");
+    showToast("리뷰 작성 API가 아직 연결되지 않았습니다.");
   };
   const primaryActions = currentPlace ? [
     {
@@ -162,7 +140,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
       onClick: () => {
         setTab("리뷰");
         setReviewFormOpen(true);
-        showToast("리뷰 작성은 API 연결 전까지 mock 화면으로 유지합니다.");
+        showToast("리뷰 작성 API가 아직 연결되지 않았습니다.");
       },
     },
     {
@@ -252,7 +230,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
             </div>
           </div>
           <div className="web-action-row" style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-            <div onClick={() => showToast("신고 API 연결 전까지 접수 화면은 mock으로 유지합니다.")} style={{ flex: 1, background: COLORS.primary, color: "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer" }}>🚩 정보 신고</div>
+            <div onClick={() => showToast("장소 정보 신고 API가 아직 연결되지 않았습니다.")} style={{ flex: 1, background: COLORS.primary, color: "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer" }}>🚩 정보 신고</div>
             <div onClick={() => showToast("공유 링크가 복사되었습니다!")} style={{ flex: 1, background: COLORS.bg, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", border: "0.5px solid rgba(0,0,0,0.1)" }}>🔗 공유</div>
           </div>
 
@@ -267,23 +245,11 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
             <div>
               <p style={{ fontSize: 14, color: COLORS.textSub, lineHeight: 1.7 }}>{currentPlace.desc || "장소 소개가 아직 준비되지 않았습니다."}</p>
               <div className="place-explore-panel">
-                <div>
-                  <span className="place-panel-kicker">먹거리 포인트</span>
-                  <div className="place-food-grid">
-                    {FOOD_POINTS.map((food) => <span key={food}>{food}</span>)}
-                  </div>
-                </div>
-                <div>
-                  <span className="place-panel-kicker">현지인 코스</span>
-                  <div className="place-route-strip">
-                    {ROUTE_STEPS.map((step, index) => (
-                      <div key={step}>
-                        <b>{index + 1}</b>
-                        <span>{step}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <EmptyState
+                  icon="코스"
+                  title="추천 코스 정보가 없습니다."
+                  description="장소별 먹거리와 코스 API가 연결되면 이곳에 표시됩니다."
+                />
               </div>
               <div style={{ marginTop: 20 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>주변 인증 상점</div>
@@ -296,7 +262,6 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
                     <button type="button" onClick={() => showToast("현장 QR 스캔 화면은 가게 QR을 촬영할 때 사용합니다.")}>현장 QR 안내</button>
                   </div>
                 )}
-                {/* TODO: 장소 주변 상점 API가 확정되면 mock 목록을 실제 응답으로 교체합니다. */}
                 <div className="web-store-list" style={{ display: "flex", gap: 10 }}>
                   {nearbyStores.length === 0 ? (
                     <EmptyState
@@ -312,7 +277,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
                       onClick={() => onShopClick?.({ ...store, imageUrl: heroImage, place: currentPlace, placeName: currentPlace.name, marketName: store.marketName || currentPlace.name })}
                     >
                       🏪 {store.name}<br />
-                      <span style={{ fontSize: 14, color: COLORS.textMuted }}>{STORE_MENU_PREVIEWS[index % STORE_MENU_PREVIEWS.length]}</span><br />
+                      <span style={{ fontSize: 14, color: COLORS.textMuted }}>{store.menu || store.description || "상점 정보"}</span><br />
                       {store.verified && <span style={{ fontSize: 14, color: COLORS.green }}>✅ 인증 상점</span>}
                     </button>
                   ))}
@@ -323,16 +288,11 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
                   <span>이 장소 동행 모집</span>
                   <small>채팅방 참여 신청 흐름 연결 예정</small>
                 </div>
-                {/* TODO: /community/posts/companions API에서 placeId 기반 모집글 조회가 가능해지면 mock을 교체합니다. */}
-                <div className="place-companion-list">
-                  {COMPANION_PREVIEWS.map(item => (
-                    <button key={item.id} type="button" onClick={() => showToast("동행 모집글 상세로 연결 예정입니다.")}>
-                      <span>{item.status}</span>
-                      <strong>{item.title}</strong>
-                      <small>{item.meta}</small>
-                    </button>
-                  ))}
-                </div>
+                <EmptyState
+                  icon="동행"
+                  title="이 장소의 동행 모집글이 없습니다."
+                  description="장소 기반 모집글 조회 API가 연결되면 이곳에 표시됩니다."
+                />
               </div>
             </div>
           ) : (

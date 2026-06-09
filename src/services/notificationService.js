@@ -1,4 +1,3 @@
-import { MOCK_NOTIFICATIONS } from "../constants/mockData.js";
 import { apiRequest, getPageContent } from "./apiClient.js";
 
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -58,16 +57,4 @@ export async function updateNotificationSettings(settings) {
     body: settings,
   });
   return { ...DEFAULT_NOTIFICATION_SETTINGS, ...data };
-}
-
-export function getMockNotifications() {
-  return MOCK_NOTIFICATIONS.map(normalizeNotification);
-}
-
-export function getMockNotificationSettings() {
-  try {
-    return { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(localStorage.getItem("chunbae_notification_settings") || "{}") };
-  } catch {
-    return DEFAULT_NOTIFICATION_SETTINGS;
-  }
 }

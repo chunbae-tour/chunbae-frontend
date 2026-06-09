@@ -1,17 +1,6 @@
-import { MOCK_PLACES } from "../constants/mockData.js";
 import { ApiClientError, apiRequest, getPageContent } from "./apiClient.js";
 
 const DEFAULT_LOCATION = { lat: 37.5796, lng: 126.977 };
-
-const MOCK_PLACE_REVIEWS = [
-  { id: 1, user: "여행자A", rating: 5, text: "정말 좋았어요! 꼭 다시 오고 싶네요.", date: "2025.05.10" },
-  { id: 2, user: "Emma", rating: 4, text: "Great place! Highly recommended for tourists.", date: "2025.05.08" },
-];
-
-const MOCK_NEARBY_STORES = [
-  { id: 201, shopId: 201, name: "영호네 포장마차", shopName: "영호네 포장마차", marketName: "광장시장", menu: "녹두 빈대떡", benefit: "춘배투어 손님 막걸리 1잔 할인", verified: true, acceptsYeopjeon: true },
-  { id: 205, shopId: 205, name: "순희네 빈대떡", shopName: "순희네 빈대떡", marketName: "광장시장", menu: "빈대떡 세트", benefit: "포장 주문 100엽전 할인", verified: true, acceptsYeopjeon: true },
-];
 
 class PlaceApiError extends Error {
   constructor(message, code, status) {
@@ -69,18 +58,6 @@ function normalizePlaceList(data) {
 
 export function getDefaultLocation() {
   return DEFAULT_LOCATION;
-}
-
-export function getMockPlaces() {
-  return MOCK_PLACES.map(normalizePlace);
-}
-
-export function getMockPlaceReviews() {
-  return MOCK_PLACE_REVIEWS;
-}
-
-export function getMockNearbyStores() {
-  return MOCK_NEARBY_STORES;
 }
 
 export async function fetchNearbyPlaces({ lat, lng, radius = 3000, page = 0, size = 20 }) {
