@@ -34,9 +34,13 @@ export async function markAllNotificationsRead() {
   return true;
 }
 
-export async function deleteAllNotifications() {
-  // TODO: 알림 전체 삭제 API 경로 확정 필요. 현재 후보 경로로 연결 준비합니다.
-  await apiRequest("/notifications", { method: "DELETE", auth: true });
+export async function deleteNotification(notificationId) {
+  await apiRequest(`/notifications/${notificationId}`, { method: "DELETE", auth: true });
+  return { notificationId };
+}
+
+export async function deleteAllNotifications(notificationIds = []) {
+  await Promise.all(notificationIds.filter(Boolean).map(deleteNotification));
   return true;
 }
 

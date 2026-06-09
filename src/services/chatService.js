@@ -80,6 +80,23 @@ export function normalizeChatRoom(room = {}) {
   };
 }
 
+export function normalizeChatRoomDetail(room = {}) {
+  const normalizedRoom = normalizeChatRoom(room);
+  const members = Array.isArray(room.members) ? room.members.map(normalizeChatParticipant) : [];
+
+  return {
+    ...normalizedRoom,
+    postId: room.postId,
+    description: room.description ?? "",
+    ownerId: room.ownerId ?? room.hostId,
+    hostId: room.ownerId ?? room.hostId,
+    myMemberState: room.myMemberState,
+    members,
+    currentMembers: room.currentMembers ?? members.length ?? normalizedRoom.members,
+    membersCount: room.currentMembers ?? members.length ?? normalizedRoom.members,
+  };
+}
+
 export function normalizeChatMessage(message = {}) {
   const unreadCount = message.unreadCount ?? message.unreadMemberCount ?? message.notReadCount ?? message.unread;
 
@@ -134,6 +151,12 @@ export async function createChatRoom({ postId, title, description, maxMembers })
     role: "USER",
     body: { postId, title, description, maxMembers },
   });
+}
+
+export async function fetchChatRoomDetail(chatRoomId) {
+  if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  const data = await apiRequest(`/chat/rooms/${chatRoomId}`, { auth: true, role: "USER" });
+  return normalizeChatRoomDetail(data);
 }
 
 export async function fetchChatMessages(chatRoomId, { cursor = "", size = 30 } = {}) {

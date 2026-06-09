@@ -1,40 +1,4 @@
-import { apiRequest, getPageContent } from "./apiClient.js";
-
-export const MOCK_ADMIN_DASHBOARD = {
-  totalUsers: 1250,
-  totalMerchants: 48,
-  pendingReports: 5,
-  pendingMerchantApplications: 3,
-  todayPaymentAmount: 350000,
-  newUsersToday: 12,
-  newChatRoomsToday: 8,
-};
-
-export const MOCK_ADMIN_USERS = [
-  { id: 1, nickname: "여행자지수", email: "user@example.com", date: "2025.05.01", status: "정상" },
-  { id: 2, nickname: "Emma", email: "emma@example.com", date: "2025.05.03", status: "정상" },
-  { id: 3, nickname: "김민준", email: "kim@example.com", date: "2025.04.28", status: "정지" },
-];
-
-export const MOCK_ADMIN_REPORTS = [
-  { id: 1, type: "게시글 신고", reason: "스팸", reporter: "여행자지수", date: "2025.05.15", status: "미처리" },
-  { id: 2, type: "댓글 신고", reason: "욕설/비방", reporter: "Emma", date: "2025.05.14", status: "미처리" },
-  { id: 3, type: "유저 신고", reason: "사기", reporter: "김민준", date: "2025.05.10", status: "처리완료" },
-];
-
-export const MOCK_MERCHANT_APPLICATIONS = [
-  { id: 1, name: "김영호", shopName: "영호네 포장마차", market: "광장시장", date: "2025.05.15", status: "대기" },
-  { id: 2, name: "박순희", shopName: "순희네 빈대떡", market: "광장시장", date: "2025.05.14", status: "대기" },
-  { id: 3, name: "이민수", shopName: "민수 막걸리", market: "통인시장", date: "2025.05.10", status: "승인" },
-];
-
-export const MOCK_ADMIN_CONTENTS = [
-  { id: 1, type: "관광지", name: "경복궁", status: "공개", updatedAt: "2025.05.15" },
-  { id: 2, type: "전통시장", name: "광장시장", status: "공개", updatedAt: "2025.05.14" },
-  { id: 3, type: "관광지", name: "창덕궁", status: "공개", updatedAt: "2025.05.10" },
-  { id: 4, type: "전통시장", name: "통인시장", status: "비공개", updatedAt: "2025.05.08" },
-  { id: 5, type: "축제", name: "서울빛초롱축제", status: "공개", updatedAt: "2025.05.08" },
-];
+import { ApiClientError, apiRequest, getPageContent } from "./apiClient.js";
 
 export function normalizeAdminUser(user = {}) {
   const status = user.status === "SUSPENDED" || user.suspended ? "정지" : "정상";
@@ -110,8 +74,7 @@ export function normalizeAdminFestival(festival = {}) {
 }
 
 export async function fetchAdminDashboard() {
-  const data = await apiRequest("/admin/dashboard", { auth: true, role: "ADMIN" });
-  return { ...MOCK_ADMIN_DASHBOARD, ...data };
+  return apiRequest("/admin/dashboard", { auth: true, role: "ADMIN" });
 }
 
 export async function fetchAdminUsers({ keyword = "", status = "" } = {}) {
@@ -120,6 +83,13 @@ export async function fetchAdminUsers({ keyword = "", status = "" } = {}) {
   if (status && status !== "전체") params.set("status", status === "정지" ? "SUSPENDED" : "ACTIVE");
   const data = await apiRequest(`/admin/users?${params.toString()}`, { auth: true, role: "ADMIN" });
   return getPageContent(data).map(normalizeAdminUser);
+}
+
+export async function fetchAdminUserDetail(userId) {
+  return apiRequest(`/admin/users/${userId}`, {
+    auth: true,
+    role: "ADMIN",
+  });
 }
 
 export async function suspendAdminUser(userId, reason = "관리자 처리") {
@@ -145,6 +115,13 @@ export async function fetchAdminReports(status = "미처리") {
   return getPageContent(data).map(normalizeReport);
 }
 
+export async function fetchAdminReportDetail(reportId) {
+  return apiRequest(`/admin/reports/${reportId}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
 export async function resolveAdminReport(reportId, action) {
   return apiRequest(`/admin/reports/${reportId}/resolve`, {
     method: "POST",
@@ -154,11 +131,27 @@ export async function resolveAdminReport(reportId, action) {
   });
 }
 
+export async function resolveMerchantAdminReport(reportId, payload) {
+  return apiRequest(`/admin/reports/${reportId}/resolve/merchant`, {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
 export async function fetchMerchantApplications(status = "") {
   const params = new URLSearchParams({ size: "20" });
   if (status) params.set("status", status);
   const data = await apiRequest(`/admin/merchant-applications?${params.toString()}`, { auth: true, role: "ADMIN" });
   return getPageContent(data).map(normalizeMerchantApplication);
+}
+
+export async function fetchMerchantApplicationDetail(applicationId) {
+  return apiRequest(`/admin/merchant-applications/${applicationId}`, {
+    auth: true,
+    role: "ADMIN",
+  });
 }
 
 export async function approveMerchantApplication(applicationId) {
@@ -218,6 +211,23 @@ export async function fetchAdminFestivals({ size = 100, maxItems = 1000 } = {}) 
   }
 
   return festivals;
+}
+
+export async function updateAdminFestival(festivalId, payload) {
+  return apiRequest(`/admin/festivals/${festivalId}`, {
+    method: "PUT",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function deleteAdminFestival(festivalId) {
+  return apiRequest(`/admin/festivals/${festivalId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "ADMIN",
+  });
 }
 
 export async function fetchAdminContents({ keyword = "", category = "" } = {}) {
@@ -317,6 +327,334 @@ export async function syncTraditionalMarkets() {
 export async function fetchFestivalsNow() {
   return apiRequest("/admin/festivals/fetch", {
     method: "POST",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function fetchAdminSettlements({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/admin/settlements?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function approveSettlement(settlementId) {
+  return apiRequest(`/admin/settlements/${settlementId}/approve`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function rejectSettlement(settlementId, rejectReason) {
+  return apiRequest(`/admin/settlements/${settlementId}/reject`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { reason: rejectReason },
+  });
+}
+
+export async function fetchAdminRefunds({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/admin/refunds?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function approveRefund(refundId) {
+  return apiRequest(`/admin/refunds/${refundId}/approve`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function rejectRefund(refundId, rejectReason) {
+  return apiRequest(`/admin/refunds/${refundId}/reject`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { reason: rejectReason },
+  });
+}
+
+export async function createAdminProduct(payload) {
+  return apiRequest("/admin/store/products", {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function updateAdminProduct(productId, payload) {
+  return apiRequest(`/admin/store/products/${productId}`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function deleteAdminProduct(productId) {
+  return apiRequest(`/admin/store/products/${productId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function fetchAdminBanners({ size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  const data = await apiRequest(`/admin/banners?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function createAdminBanner(payload) {
+  return apiRequest("/admin/banners", {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function updateAdminBanner(bannerId, payload) {
+  return apiRequest(`/admin/banners/${bannerId}`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function deleteAdminBanner(bannerId) {
+  return apiRequest(`/admin/banners/${bannerId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function fetchAdminAds({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/admin/ads?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function approveAd(adId) {
+  return apiRequest(`/admin/ads/${adId}/approve`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function rejectAd(adId, rejectReason) {
+  return apiRequest(`/admin/ads/${adId}/reject`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { reason: rejectReason },
+  });
+}
+
+export async function fetchAdminShops({ cursor, size = 20 } = {}) {
+  void cursor;
+  void size;
+  throw new ApiClientError("관리자 가게 목록 API는 현재 OpenAPI 명세에 없습니다.", "ADMIN_SHOP_LIST_API_MISSING", 501);
+}
+
+export async function fetchAdminShopDetail(shopId) {
+  return apiRequest(`/admin/shops/${shopId}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function updateAdminShop(shopId, payload) {
+  return apiRequest(`/admin/shops/${shopId}`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function updateAdminShopStatus(shopId, status) {
+  return apiRequest(`/admin/shops/${shopId}/status`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { status },
+  });
+}
+
+export async function updateAdminShopPlace(shopId, placeId) {
+  return apiRequest(`/admin/shops/${shopId}/place`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { placeId },
+  });
+}
+
+export async function fetchAdminCertifications({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/admin/shop-certifications?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function fetchAdminCertificationDetail(certificationId) {
+  return apiRequest(`/admin/shop-certifications/${certificationId}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function approveCertification(certificationId) {
+  return apiRequest(`/admin/shop-certifications/${certificationId}/approve`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function rejectCertification(certificationId, rejectReason) {
+  return apiRequest(`/admin/shop-certifications/${certificationId}/reject`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { reason: rejectReason },
+  });
+}
+
+export async function cancelCertification(certificationId, reason = "관리자 인증 취소") {
+  return apiRequest(`/admin/shop-certifications/${certificationId}/cancel`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { reason },
+  });
+}
+
+export async function fetchAdminSupportRooms({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/admin/support/rooms?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function fetchAdminSupportMessages(supportRoomId, { cursor, size = 50 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/admin/support/rooms/${supportRoomId}/messages?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function sendAdminSupportMessage(supportRoomId, message) {
+  void supportRoomId;
+  void message;
+  throw new ApiClientError("상담 메시지 전송 API는 현재 OpenAPI 명세에 없습니다.", "SUPPORT_MESSAGE_API_MISSING", 501);
+}
+
+export async function closeAdminSupportRoom(supportRoomId) {
+  return apiRequest(`/admin/support/rooms/${supportRoomId}/close`, {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function assignAdminSupportRoom(supportRoomId) {
+  return apiRequest(`/admin/support/rooms/${supportRoomId}/assign`, {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function createSupportRoom(payload) {
+  return apiRequest("/support/rooms", {
+    method: "POST",
+    auth: true,
+    body: payload,
+  });
+}
+
+export async function fetchMySupportRooms({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/support/rooms/me?${params.toString()}`, { auth: true });
+  return getPageContent(data);
+}
+
+export async function fetchSupportMessages(supportRoomId, { cursor, size = 50 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/support/rooms/${supportRoomId}/messages?${params.toString()}`, { auth: true });
+  return getPageContent(data);
+}
+
+export async function fetchFaqs() {
+  const data = await apiRequest("/faqs");
+  return getPageContent(data);
+}
+
+export async function fetchAdminFaqs({ size = 20 } = {}) {
+  const data = await apiRequest(`/admin/faqs?size=${size}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return getPageContent(data);
+}
+
+export async function createAdminFaq(payload) {
+  return apiRequest("/admin/faqs", {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function updateAdminFaq(faqId, payload) {
+  return apiRequest(`/admin/faqs/${faqId}`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function deleteAdminFaq(faqId) {
+  return apiRequest(`/admin/faqs/${faqId}`, {
+    method: "DELETE",
     auth: true,
     role: "ADMIN",
   });

@@ -183,3 +183,61 @@ export function getMockCommunityPosts() {
 export function getMockCommunityComments() {
   return MOCK_COMMENTS;
 }
+
+export async function updateCommunityPost(postId, postType, payload) {
+  const typePath = getCommunityPostTypePath(postType);
+  const data = await apiRequest(`/community/posts/${typePath}/${postId}`, {
+    method: "PATCH",
+    auth: true,
+    role: "USER",
+    body: payload,
+  });
+  return typePath === "companions" ? normalizeCompanionPost(data) : normalizeFreePost(data);
+}
+
+export async function deleteCommunityPost(postId, postType) {
+  const typePath = getCommunityPostTypePath(postType);
+  return apiRequest(`/community/posts/${typePath}/${postId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "USER",
+  });
+}
+
+export async function updateComment(postId, postType, commentId, text) {
+  const typePath = getCommunityPostTypePath(postType);
+  const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}`, {
+    method: "PATCH",
+    auth: true,
+    role: "USER",
+    body: { content: text },
+  });
+  return {
+    id: data.commentId ?? data.id,
+    text: data.content ?? text,
+    time: data.createdAt ?? "방금",
+  };
+}
+
+export async function deleteComment(postId, postType, commentId) {
+  const typePath = getCommunityPostTypePath(postType);
+  return apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "USER",
+  });
+}
+
+export async function fetchReplies(postId, postType, commentId) {
+  const typePath = getCommunityPostTypePath(postType);
+  const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}/replies`, {
+    auth: true,
+    role: "USER",
+  });
+  return getPageContent(data).map(comment => ({
+    id: comment.commentId ?? comment.id,
+    author: comment.writer?.nickname ?? comment.nickname ?? "여행자",
+    text: comment.content ?? comment.text ?? "",
+    time: comment.createdAt ?? comment.time ?? "",
+  }));
+}

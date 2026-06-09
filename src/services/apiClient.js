@@ -19,7 +19,6 @@ export class ApiClientError extends Error {
     this.cause = meta.cause;
   }
 }
-
 export function getAccessToken(role) {
   if (role && TOKEN_KEYS[role]) return sessionStorage.getItem(TOKEN_KEYS[role]);
   return sessionStorage.getItem(TOKEN_KEYS.USER)
@@ -63,10 +62,17 @@ export function shouldUseMockFallback(error, { allowAuthFallback = false } = {})
   return true;
 }
 
-export async function apiRequest(path, { method = "GET", auth = false, role, headers = {}, body } = {}) {
-  const token = auth ? getAccessToken(role) : null;
+function buildApiUrl(path) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = `${API_BASE_URL}/api/v1${normalizedPath}`;
+  const versionedPath = /^\/api\/v\d+\//.test(normalizedPath)
+    ? normalizedPath
+    : `/api/v1${normalizedPath}`;
+  return `${API_BASE_URL}${versionedPath}`;
+}
+
+export async function apiRequest(path, { method = "GET", auth = false, role, headers = {}, body } = {}) {
+  const token = getAccessToken(role);
+  const url = buildApiUrl(path);
 
   if (auth && !token) {
     throw new ApiClientError("로그인이 필요한 기능입니다.", "AUTH_REQUIRED", 401, { method, url });
@@ -113,9 +119,8 @@ export async function apiRequest(path, { method = "GET", auth = false, role, hea
 }
 
 export async function apiFormRequest(path, { method = "POST", auth = false, role, headers = {}, formData } = {}) {
-  const token = auth ? getAccessToken(role) : null;
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = `${API_BASE_URL}/api/v1${normalizedPath}`;
+  const token = getAccessToken(role);
+  const url = buildApiUrl(path);
 
   if (auth && !token) {
     throw new ApiClientError("로그인이 필요한 기능입니다.", "AUTH_REQUIRED", 401, { method, url });

@@ -24,63 +24,6 @@ async function resolveMerchantShopId(shopId) {
   return firstShopId;
 }
 
-export const MOCK_MERCHANT_SHOP = {
-  id: 1,
-  name: "영호네 포장마차",
-  market: "광장시장",
-  address: "광장시장 내 B동 123호",
-  operatingHours: "09:00 ~ 22:00",
-  holiday: "매주 일요일",
-  rating: 4.8,
-  reviewCount: 56,
-  verified: true,
-  status: "ACTIVE",
-};
-
-export const MOCK_MERCHANT_WALLET = {
-  balance: 150000,
-  pendingSettlement: 50000,
-  totalEarned: 1500000,
-};
-
-export const MOCK_MENUS = [
-  { id: 1, name: "빈대떡", nameEn: "Bindaetteok", price: 5000, available: true, desc: "국내산 녹두로 만든 전통 빈대떡" },
-  { id: 2, name: "막걸리", nameEn: "Makgeolli", price: 3000, available: true, desc: "직접 담근 전통 막걸리" },
-  { id: 3, name: "마약김밥", nameEn: "Mayak Gimbap", price: 3000, available: false, desc: "참기름 가득한 한입 김밥" },
-  { id: 4, name: "순대", nameEn: "Sundae", price: 4000, available: true, desc: "당면과 선지로 만든 순대" },
-];
-
-export const MOCK_SETTLEMENTS = [
-  { id: 1, date: "2025.05.15", amount: 45000, status: "정산완료" },
-  { id: 2, date: "2025.05.14", amount: 32000, status: "정산완료" },
-  { id: 3, date: "2025.05.13", amount: 58000, status: "정산완료" },
-];
-
-export const MOCK_PAYMENT_REQUESTS = [
-  {
-    id: "pay_req_001",
-    customerName: "Emma",
-    amount: 1200,
-    menuName: "녹두 빈대떡",
-    memo: "녹두 빈대떡",
-    status: "PENDING_CONFIRM",
-    requestedAt: "방금",
-  },
-  {
-    id: "pay_req_002",
-    customerName: "여행자지수",
-    amount: 900,
-    menuName: "떡볶이 세트",
-    memo: "덜 맵게 부탁드려요",
-    status: "PENDING_CONFIRM",
-    requestedAt: "2분 전",
-  },
-];
-
-export const MOCK_SHOP_NOTICES = [
-  { id: 1, title: "오늘 영업 안내", content: "오후 10시까지 정상 영업합니다.", createdAt: "2026.06.01" },
-];
-
 export function normalizeMenu(menu = {}) {
   return {
     id: menu.menuId ?? menu.id,
@@ -132,21 +75,20 @@ export function normalizePaymentRequest(item = {}) {
 
 export function normalizeShop(data = {}) {
   return {
-    ...MOCK_MERCHANT_SHOP,
     ...data,
-    id: data.shopId ?? data.id ?? MOCK_MERCHANT_SHOP.id,
-    name: data.name ?? data.shopName ?? MOCK_MERCHANT_SHOP.name,
-    category: data.category ?? MOCK_MERCHANT_SHOP.category,
-    market: data.marketName ?? data.market ?? MOCK_MERCHANT_SHOP.market,
-    address: data.address ?? MOCK_MERCHANT_SHOP.address,
-    phone: data.phone ?? MOCK_MERCHANT_SHOP.phone,
-    description: data.description ?? MOCK_MERCHANT_SHOP.description,
-    operatingHours: data.operatingHours ?? MOCK_MERCHANT_SHOP.operatingHours,
-    holiday: data.closedDays ?? data.holiday ?? MOCK_MERCHANT_SHOP.holiday,
-    rating: Number(data.rating ?? MOCK_MERCHANT_SHOP.rating),
-    reviewCount: Number(data.reviewCount ?? MOCK_MERCHANT_SHOP.reviewCount),
-    verified: data.verified ?? data.isVerified ?? MOCK_MERCHANT_SHOP.verified,
-    status: data.status ?? MOCK_MERCHANT_SHOP.status,
+    id: data.shopId ?? data.id,
+    name: data.name ?? data.shopName ?? "",
+    category: data.category ?? "",
+    market: data.marketName ?? data.market ?? "",
+    address: data.address ?? "",
+    phone: data.phone ?? "",
+    description: data.description ?? "",
+    operatingHours: data.operatingHours ?? "",
+    holiday: data.closedDays ?? data.holiday ?? "",
+    rating: Number(data.rating ?? 0),
+    reviewCount: Number(data.reviewCount ?? 0),
+    verified: data.verified ?? data.isVerified ?? data.isCertified ?? false,
+    status: data.status ?? "",
     imageUrls: data.imageUrls ?? data.images ?? [],
     thumbnailUrl: data.thumbnailUrl ?? data.imageUrl,
     notices: Array.isArray(data.notices) ? data.notices.map(normalizeShopNotice) : undefined,
@@ -330,5 +272,62 @@ export async function rejectMerchantPaymentRequest(requestId, rejectReason = "�
     auth: true,
     role: "MERCHANT",
     body: { action: "REJECT", rejectReason },
+  });
+}
+
+export async function applyMerchant(payload) {
+  return apiRequest("/merchants/apply", {
+    method: "POST",
+    auth: true,
+    role: "USER",
+    body: payload,
+  });
+}
+
+export async function fetchMerchantHome() {
+  const data = await apiRequest("/merchants/me/home", { auth: true, role: "MERCHANT" });
+  return {
+    todaySalesAmount: Number(data.todaySalesAmount ?? 0),
+    todaySalesDate: data.todaySalesDate ?? "",
+    recentPayments: data.recentPayments ?? [],
+  };
+}
+
+export async function updateShopAccount(shopId, payload) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  return apiRequest(`/merchants/me/shops/${resolvedShopId}/account`, {
+    method: "PUT",
+    auth: true,
+    role: "MERCHANT",
+    body: payload,
+  });
+}
+
+export async function fetchShopQrCode(shopId) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/qr`, { auth: true, role: "MERCHANT" });
+  return {
+    shopId: data.shopId ?? resolvedShopId,
+    shopName: data.shopName ?? "",
+    qrPayload: data.qrPayload ?? "",
+  };
+}
+
+export async function requestMerchantAd({ shopId, adType = "BANNER", startDate, endDate }) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  return apiRequest("/merchants/me/ads", {
+    method: "POST",
+    auth: true,
+    role: "MERCHANT",
+    body: { shopId: resolvedShopId, adType, startDate, endDate },
+  });
+}
+
+export async function extendMerchantAd(adId, extensionDays) {
+  return apiRequest(`/merchants/me/ads/${adId}/extend`, {
+    method: "POST",
+    auth: true,
+    role: "MERCHANT",
+    body: { extensionDays: Number(extensionDays) },
   });
 }

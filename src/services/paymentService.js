@@ -251,6 +251,35 @@ export async function fetchChargeRefundHistory() {
   return getPageContent(data).map(normalizeChargeRefundHistoryItem);
 }
 
+export async function requestRefund(orderId, reason = "사용자 환불 요청") {
+  return apiRequest(`/payments/${orderId}/refund`, {
+    method: "POST",
+    auth: true,
+    role: "USER",
+    body: { reason },
+  });
+}
+
+export async function cancelRefund(refundId) {
+  await apiRequest(`/payments/refund/${refundId}/cancel`, {
+    method: "PATCH",
+    auth: true,
+    role: "USER",
+  });
+  return true;
+}
+
+export async function fetchRefundHistory({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/payments/refunds?${params.toString()}`, { auth: true, role: "USER" });
+  return getPageContent(data);
+}
+
+export async function fetchQrPaymentStatus(payRequestId) {
+  return apiRequest(`/payments/qr/${payRequestId}/status`, { auth: true, role: "USER" });
+}
+
 export async function fetchQrMerchant(shopId = 201) {
   const data = await apiRequest(`/shops/${shopId}`, { auth: true, role: "USER" });
   return {

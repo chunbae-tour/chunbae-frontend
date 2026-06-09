@@ -249,3 +249,23 @@ export async function signupAndLogin({ email, password, nickname }) {
     return authData;
   }
 }
+
+export async function reissueToken() {
+  const data = await apiRequest("/auth/reissue", { method: "POST" });
+  const authData = normalizeAuthData(data, data.role);
+  saveSession(authData);
+  return authData;
+}
+
+export async function logout() {
+  await apiRequest("/auth/logout", { method: "POST" });
+  clearAuthSession();
+}
+
+export async function deleteUser() {
+  return apiRequest("/users/me", {
+    method: "DELETE",
+    auth: true,
+    role: "USER",
+  });
+}

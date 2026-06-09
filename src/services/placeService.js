@@ -1,5 +1,5 @@
 import { MOCK_PLACES } from "../constants/mockData.js";
-import { apiRequest, getPageContent } from "./apiClient.js";
+import { ApiClientError, apiRequest, getPageContent } from "./apiClient.js";
 
 const DEFAULT_LOCATION = { lat: 37.5796, lng: 126.977 };
 
@@ -95,6 +95,15 @@ export async function fetchNearbyPlaces({ lat, lng, radius = 3000, page = 0, siz
   return normalizePlaceList(data);
 }
 
+export async function fetchPlaces({ keyword = "", category = "", cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (keyword) params.set("keyword", keyword);
+  if (category) params.set("category", category);
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/places?${params.toString()}`);
+  return normalizePlaceList(data);
+}
+
 export async function fetchNearbyTraditionalMarkets({ lat, lng, radius = 3000, page = 0, size = 20 }) {
   const params = new URLSearchParams({
     lat: String(lat),
@@ -136,6 +145,29 @@ export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, page = 0
     .slice(0, size);
 }
 
+export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+  // 장소 목록과 찜 목록을 병렬로 가져오기
+  const [spotsResult, likesResult] = await Promise.allSettled([
+    fetchNearbyTravelSpots({ lat, lng, radius, page, size }),
+    apiRequest("/users/me/likes?size=100", { auth: true }).catch(() => ({ content: [] })),
+  ]);
+
+  const spots = spotsResult.status === "fulfilled" ? spotsResult.value : [];
+
+  if (likesResult.status === "fulfilled") {
+    const likedPlaceIds = new Set(
+      getPageContent(likesResult.value).map(item => item.placeId ?? item.id)
+    );
+
+    return spots.map(spot => ({
+      ...spot,
+      isLiked: likedPlaceIds.has(spot.placeId ?? spot.id),
+    }));
+  }
+
+  return spots;
+}
+
 export async function fetchPlaceDetail(placeId) {
   if (!placeId) {
     throw new PlaceApiError("장소 식별자가 없습니다.", "PLACE_ID_MISSING");
@@ -173,6 +205,39 @@ export async function fetchNearbyStores(placeId) {
     acceptsYeopjeon: Boolean(shop.acceptsYeopjeon ?? shop.qrPayEnabled),
     verified: Boolean(shop.isCertified ?? shop.verified),
   }));
+}
+
+export async function fetchNearbyPlacesByPlace(placeId, { radius = 1000, size = 10 } = {}) {
+  if (!placeId) return [];
+
+  const params = new URLSearchParams({ radius: String(radius), size: String(size) });
+  const data = await apiRequest(`/places/${placeId}/nearby-places?${params.toString()}`);
+  return normalizePlaceList(data);
+}
+
+export async function fetchPlaceRecommendations(placeId, { size = 10 } = {}) {
+  if (!placeId) return [];
+
+  const data = await apiRequest(`/places/${placeId}/recommend?size=${size}`);
+  return normalizePlaceList(data);
+}
+
+export async function addPlaceLike(placeId) {
+  await apiRequest(`/places/${placeId}/like`, { method: "POST", auth: true });
+}
+
+export async function removePlaceLike(placeId) {
+  await apiRequest(`/places/${placeId}/like`, { method: "DELETE", auth: true });
+}
+
+export async function addMarketLike(marketId) {
+  void marketId;
+  throw new ApiClientError("전통시장 찜 API는 현재 OpenAPI 명세에 없습니다.", "MARKET_LIKE_API_MISSING", 501);
+}
+
+export async function removeMarketLike(marketId) {
+  void marketId;
+  throw new ApiClientError("전통시장 찜 API는 현재 OpenAPI 명세에 없습니다.", "MARKET_LIKE_API_MISSING", 501);
 }
 
 export async function fetchDirectionLink({ originLat, originLng, destLat, destLng }) {

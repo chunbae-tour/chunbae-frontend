@@ -13,6 +13,38 @@ const MOCK_OWNED_ITEMS = [
   { id: 3, name: "엽전 도시락 할인권", shop: "도시락 카페", market: "통인시장", expires: "2026.05.31", status: "곧 만료" },
 ];
 
+export async function fetchUserHomeStats() {
+  // 찜 목록, 리뷰 등을 병렬로 조회하여 카운트 계산
+  const [likesData, reviewsData] = await Promise.allSettled([
+    apiRequest("/users/me/likes?size=1", { auth: true }),
+    apiRequest("/users/me/reviews?size=1", { auth: true }),
+  ]);
+
+  // Page 응답에서 totalElements 추출 또는 배열 길이 사용
+  const likedPlacesCount = likesData.status === "fulfilled"
+    ? (likesData.value?.totalElements ?? likesData.value?.total ?? (Array.isArray(likesData.value) ? likesData.value.length : 0))
+    : 0;
+
+  const reviewCount = reviewsData.status === "fulfilled"
+    ? (reviewsData.value?.totalElements ?? reviewsData.value?.total ?? (Array.isArray(reviewsData.value) ? reviewsData.value.length : 0))
+    : 0;
+
+  return {
+    likedPlacesCount,
+    companionWaitingCount: 0, // TODO: 동행 대기 API 추가 필요
+    reviewCount,
+  };
+}
+
+export async function fetchUserHome() {
+  const data = await apiRequest("/users/me/home", { auth: true, role: "USER" });
+  return {
+    profile: data.profile ?? null,
+    wallet: data.wallet ?? null,
+    balance: Number(data.wallet?.balance ?? 0),
+  };
+}
+
 export async function fetchWishlist() {
   const data = await apiRequest("/users/me/likes?size=20", { auth: true });
   return getPageContent(data).map(item => ({
@@ -24,6 +56,7 @@ export async function fetchWishlist() {
     rating: item.rating ?? 0,
     emoji: item.emoji ?? "📍",
     addr: item.address ?? item.addr ?? "",
+    isLiked: true, // 찜 목록이므로 항상 true
   }));
 }
 
