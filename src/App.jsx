@@ -21,6 +21,7 @@ import { WishlistPage, MyReviewPage, OwnedItemsPage } from "./pages/my/MySubPage
 import FestivalCalendarPage from "./pages/festival/FestivalCalendarPage";
 import FestivalDetailPage from "./pages/festival/FestivalDetailPage";
 import { MerchantShopPage, MerchantMenuPage, MerchantSettlementPage } from "./pages/merchant/MerchantPages";
+import { MerchantApplyPage } from "./pages/merchant/MerchantApplyPage";
 import { AdminDashboardPage, AdminUsersPage, AdminReportsPage, AdminMerchantPage, AdminContentPage } from "./pages/admin/AdminPages";
 import { MyPage, FestivalPage, ARPage, NotificationPage, NotificationSettingsPage, FAQPage, SearchPage } from "./pages/misc/MiscPages";
 import { clearAuthSession, fetchCurrentUser, getStoredAuthSession, isMockAuthSession, shouldClearSessionForError } from "./services/authService";
@@ -76,6 +77,7 @@ export default function App() {
   const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(null);
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [lang, setLang] = useState("ko");
+  const [likeChangeCounter, setLikeChangeCounter] = useState(0);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
   const go = (scr) => setScreen(scr);
@@ -103,6 +105,10 @@ export default function App() {
   const handlePlaceClick = (place) => { setSelectedPlace(place); go("place"); };
   const handleProductClick = (product) => { setSelectedProduct(product); go("storeProduct"); };
   const handleShopClick = (shop) => { setSelectedShop(shop); go("storeShop"); };
+  const handleLikeChange = (placeId, isLiked) => {
+    // 찜 상태가 변경되면 마이페이지를 갱신하도록 카운터 증가
+    setLikeChangeCounter(prev => prev + 1);
+  };
 
   useEffect(() => {
     document.documentElement.classList.toggle("comfortable-view", comfortableView);
@@ -144,7 +150,7 @@ export default function App() {
     "pay", "payHistory", "qrpay", "storeProduct", "storeShop",
     "community", "communityPost", "communityWrite",
     "wishlist", "myReview", "ownedItems", "notificationSettings", "faq",
-    "merchant", "merchantMenu", "merchantSettlement",
+    "merchant", "merchantMenu", "merchantSettlement", "merchantApply",
     "adminDashboard", "adminUsers", "adminReports", "adminMerchant", "adminContent",
   ];
   const showTab = !noTabScreens.includes(screen);
@@ -172,9 +178,9 @@ export default function App() {
   return (
     <div style={S.app}>
       <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} lang={lang} onLangChange={setLang}>
-        {screen === "home"             && <HomePage onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={() => go("fest")} onTab={handleTab} showToast={showToast} user={user} />}
-        {screen === "map"              && <MapPage onPlaceClick={handlePlaceClick} />}
-        {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} />}
+        {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={() => go("fest")} onTab={handleTab} showToast={showToast} user={user} />}
+        {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
+        {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} />}
         {screen === "direction"        && <DirectionPage place={selectedPlace} onBack={() => go("place")} />}
         {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} />}
         {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
@@ -192,7 +198,7 @@ export default function App() {
         {screen === "store"            && <StorePage onProduct={handleProductClick} />}
         {screen === "storeProduct"     && <StoreProductPage product={selectedProduct} onBack={() => go("store")} showToast={showToast} />}
         {screen === "storeShop"        && <StoreShopDetailPage shop={selectedShop} onBack={() => go(tab)} showToast={showToast} onQrPay={() => go("qrpay")} />}
-        {screen === "my"               && <MyPage onTab={handleTab} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} onProfileUpdate={setUser} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
+        {screen === "my"               && <MyPage key={likeChangeCounter} onTab={handleTab} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} onProfileUpdate={setUser} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
         {screen === "wishlist"         && <WishlistPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} />}
         {screen === "myReview"         && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "ownedItems"       && <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />}
@@ -203,6 +209,7 @@ export default function App() {
         {screen === "merchant"         && <MerchantShopPage onBack={() => go("my")} showToast={showToast} onMenuManage={() => go("merchantMenu")} onSettlement={() => go("merchantSettlement")} selectedShopId={selectedMerchantShopId} onShopChange={setSelectedMerchantShopId} />}
         {screen === "merchantMenu"     && <MerchantMenuPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}
         {screen === "merchantSettlement" && <MerchantSettlementPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}
+        {screen === "merchantApply"   && <MerchantApplyPage onBack={() => go("my")} showToast={showToast} onLogin={() => setAppState("login")} />}
         {screen === "adminDashboard"   && <AdminDashboardPage onBack={() => go("my")} onNav={go} />}
         {screen === "adminUsers"       && <AdminUsersPage onBack={() => go("adminDashboard")} showToast={showToast} />}
         {screen === "adminReports"     && <AdminReportsPage onBack={() => go("adminDashboard")} showToast={showToast} />}

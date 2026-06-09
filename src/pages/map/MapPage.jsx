@@ -4,7 +4,7 @@ import { S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
-import { fetchNearbyTravelSpots, getDefaultLocation, getMockPlaces } from "../../services/placeService.js";
+import { fetchNearbyTravelSpots, fetchNearbyTravelSpotsWithLikes, getDefaultLocation, getMockPlaces } from "../../services/placeService.js";
 import {
   getGeolocationErrorMessage,
   getGeolocationSupport,
@@ -61,7 +61,7 @@ export default function MapPage({ onPlaceClick }) {
     setError("");
 
     try {
-      const result = await fetchNearbyTravelSpots({ ...location, size: 20 });
+      const result = await fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 });
       setPlaces(result);
       setStatus(result.length > 0 ? "success" : "empty");
     } catch (err) {

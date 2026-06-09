@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors";
 import { EmptyState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { fetchNearbyStores, fetchPlaceDetail, fetchPlaceReviews, getMockNearbyStores, getMockPlaceReviews, normalizePlace } from "../../services/placeService.js";
+import { addMarketLike, addPlaceLike, fetchNearbyStores, fetchPlaceDetail, fetchPlaceReviews, getMockNearbyStores, getMockPlaceReviews, normalizePlace, removeMarketLike, removePlaceLike } from "../../services/placeService.js";
 
 const FOOD_POINTS = ["빈대떡", "떡볶이", "순대", "호떡"];
 const ROUTE_STEPS = ["정문 입구", "먹자골목", "포차거리", "간식 스탬프"];
@@ -12,9 +12,10 @@ const COMPANION_PREVIEWS = [
 ];
 const STORE_MENU_PREVIEWS = ["빈대떡 세트", "떡볶이·순대", "호떡", "전통차"];
 
-export default function PlaceDetailPage({ place, onBack, showToast, onDirection, onQrPay, onShopClick }) {
+export default function PlaceDetailPage({ place, onBack, showToast, onDirection, onQrPay, onShopClick, onLikeChange }) {
   const [detail, setDetail] = useState(place ? normalizePlace(place) : null);
   const [liked, setLiked] = useState(Boolean(place?.isLiked));
+  const [likeLoading, setLikeLoading] = useState(false);
   const [tab, setTab] = useState(place?.reviewIntent ? "리뷰" : "소개");
   const [status, setStatus] = useState(place ? "success" : "loading");
   const [error, setError] = useState("");
@@ -83,6 +84,38 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
   const currentPlace = detail;
   const heroImage = getPlaceImageUrl(currentPlace) || getPlaceImageUrl(place);
   const isMarket = currentPlace?.type === "전통시장";
+
+  const handleToggleLike = async () => {
+    if (likeLoading) return;
+    const placeId = currentPlace?.placeId ?? currentPlace?.id;
+    const isMarketType = currentPlace?.targetType === "TRADITIONAL_MARKET" || isMarket;
+    const next = !liked;
+    setLiked(next); // 낙관적 업데이트
+    setLikeLoading(true);
+    try {
+      if (isMarketType) {
+        if (next) {
+          await addMarketLike(placeId);
+        } else {
+          await removeMarketLike(placeId);
+        }
+      } else {
+        if (next) {
+          await addPlaceLike(placeId);
+        } else {
+          await removePlaceLike(placeId);
+        }
+      }
+      // 찜 상태 변경을 부모에 알림
+      onLikeChange?.(placeId, next);
+      showToast?.(next ? "찜 목록에 추가되었습니다." : "찜 목록에서 제거되었습니다.");
+    } catch (err) {
+      setLiked(!next); // 실패 시 롤백
+      showToast?.(err.message || "찜 처리에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setLikeLoading(false);
+    }
+  };
   const submitReview = () => {
     if (!reviewText.trim()) {
       showToast("후기 내용을 입력해주세요.");
@@ -118,7 +151,8 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
       desc: liked ? "저장됨" : "다시 보기",
       icon: liked ? "❤️" : "🤍",
       tone: "light",
-      onClick: () => setLiked(!liked),
+      onClick: handleToggleLike,
+      disabled: likeLoading,
     },
     {
       label: "리뷰 작성",
@@ -151,8 +185,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
     <div style={S.screen} className="web-place-detail">
       <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div onClick={onBack} style={{ color: "#fff", fontSize: 14, cursor: "pointer" }}>← 뒤로</div>
-        {/* TODO: 찜 등록/취소 API 확정 시 로컬 상태 대신 실제 요청으로 교체합니다. */}
-        <div onClick={() => setLiked(!liked)} style={{ fontSize: 22, cursor: "pointer" }}>{liked ? "❤️" : "🤍"}</div>
+        <div onClick={handleToggleLike} style={{ fontSize: 22, cursor: likeLoading ? "wait" : "pointer", opacity: likeLoading ? 0.6 : 1 }}>{liked ? "❤️" : "🤍"}</div>
       </div>
       {status === "loading" && (
         <div style={{ padding: 24 }}>

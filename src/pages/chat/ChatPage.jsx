@@ -6,6 +6,7 @@ import { uploadChatAttachments } from "../../services/attachmentService.js";
 import {
   fetchChatMessages,
   fetchChatParticipants,
+  fetchChatRoomDetail,
   fetchMyChatRooms,
   kickChatParticipant,
   leaveChatRoom,
@@ -240,6 +241,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
   const [pendingAttachments, setPendingAttachments] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [participantStatus, setParticipantStatus] = useState("idle");
+  const [roomDetail, setRoomDetail] = useState(null);
   const [participantPanelOpen, setParticipantPanelOpen] = useState(false);
   const [roomMenuOpen, setRoomMenuOpen] = useState(false);
   const [profileTarget, setProfileTarget] = useState(null);
@@ -254,11 +256,12 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
   const currentUserId = getStoredAuthSession("USER")?.userId;
 
   const roomId = room?.chatRoomId ?? room?.id;
+  const activeRoom = roomDetail ?? room;
   const currentRoom = {
-    title: room?.title ?? "동행 채팅",
-    members: room?.members ?? room?.currentMembers ?? 0,
-    maxMembers: room?.maxMembers ?? 0,
-    hostId: room?.hostId,
+    title: activeRoom?.title ?? "동행 채팅",
+    members: activeRoom?.membersCount ?? activeRoom?.members ?? activeRoom?.currentMembers ?? 0,
+    maxMembers: activeRoom?.maxMembers ?? 0,
+    hostId: activeRoom?.hostId ?? activeRoom?.ownerId,
   };
   const displayedMessages = sortMessages(messages);
 
@@ -286,6 +289,23 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest, lang = "ko" }
 
   useEffect(() => {
     let ignore = false;
+    setRoomDetail(null);
+
+    fetchChatRoomDetail(roomId)
+      .then((detail) => {
+        if (ignore) return;
+        setRoomDetail(detail);
+        if (Array.isArray(detail.members) && detail.members.length > 0) {
+          setParticipants(detail.members);
+          setParticipantStatus("success");
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setRoomDetail(null);
+        }
+      });
+
     fetchChatMessages(roomId).then((data) => {
       if (!ignore) {
         const sortedMessages = sortMessages(data);

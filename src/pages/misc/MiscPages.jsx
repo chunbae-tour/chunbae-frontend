@@ -3,12 +3,14 @@ import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog, EmptyState, ErrorState, SkeletonBlock, SkeletonList } from "../../components/common";
 import { getApiErrorHint, shouldUseMockFallback } from "../../services/apiClient.js";
 import { fetchFestivals, getMockFestivals } from "../../services/festivalService.js";
+import { fetchFaqs } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, getMockNotificationSettings, getMockNotifications, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
 import { updateCurrentUserProfile } from "../../services/authService.js";
 import YeopjeonImg from "../../assets/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, getMockSearchResults, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
+import { fetchUserHomeStats } from "../../services/myService.js";
 
 // ─── 마이페이지 ───────────────────────────────────────────────────────
 const NICKNAME_PATTERN = /^[\p{L}\p{N}_-]{2,20}$/u;
@@ -24,10 +26,13 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
   const [profileForm, setProfileForm] = useState({ nickname: "", language: "ko", profileImageUrl: "" });
   const [profileError, setProfileError] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [homeStats, setHomeStats] = useState({ likedPlacesCount: 0, companionWaitingCount: 0, reviewCount: 0 });
+  const [homeStatsStatus, setHomeStatsStatus] = useState("loading");
+
   const tripSummary = [
-    { label: "찜한 골목", value: "4", action: "wishlist" },
-    { label: "동행 대기", value: "1", action: "community" },
-    { label: "작성 후기", value: "2", action: "myReview" },
+    { label: "찜한 골목", value: homeStatsStatus === "loading" ? "-" : homeStats.likedPlacesCount, action: "wishlist" },
+    { label: "동행 대기", value: homeStatsStatus === "loading" ? "-" : homeStats.companionWaitingCount, action: "community" },
+    { label: "작성 후기", value: homeStatsStatus === "loading" ? "-" : homeStats.reviewCount, action: "myReview" },
   ];
 
   useEffect(() => {
@@ -35,11 +40,14 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
       setBalanceStatus("idle");
       setBalance(0);
       setBalanceError("");
+      setHomeStatsStatus("idle");
+      setHomeStats({ likedPlacesCount: 0, companionWaitingCount: 0, reviewCount: 0 });
       return undefined;
     }
 
     let ignore = false;
 
+    // 엽전 잔액 조회
     fetchYeopjeonBalance()
       .then((value) => {
         if (ignore) return;
@@ -50,6 +58,20 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
         if (ignore) return;
         setBalanceStatus("error");
         setBalanceError(getApiErrorHint(error));
+      });
+
+    // 홈 통계 조회
+    setHomeStatsStatus("loading");
+    fetchUserHomeStats()
+      .then((stats) => {
+        if (ignore) return;
+        setHomeStats(stats);
+        setHomeStatsStatus("success");
+      })
+      .catch((error) => {
+        if (ignore) return;
+        console.error("홈 통계 조회 실패:", error);
+        setHomeStatsStatus("error");
       });
 
     return () => { ignore = true; };
@@ -154,7 +176,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
               {role === "MERCHANT" && <span style={{ background: COLORS.accent, color: COLORS.primary, fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>🏪 상인</span>}
               {role === "ADMIN" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>👑 관리자</span>}
             </div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted }}>★ 동행 점수 4.7</div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted }}>동행 점수 {user?.companionScore ? `★ ${user.companionScore}` : "아직 없음"}</div>
             <button type="button" onClick={openProfileEditor} style={{ marginTop: 6, display: "inline-block", fontSize: 14, color: COLORS.primary, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>프로필 수정</button>
           </div>
         </div>
@@ -198,7 +220,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
           </div>
           <div className="my-next-card">
             <b>다음 추천 행동</b>
-            <span>광장시장 동행 신청 결과를 확인하고, 출발 전 엽전 잔액을 충전해두세요.</span>
+            <span>찜한 장소를 방문하거나 동행 게시판에서 여행 친구를 찾아보세요.</span>
           </div>
         </div>
         <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
@@ -215,6 +237,16 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
             </div>
           ))}
         </div>
+        {/* 상인 신청 버튼 (일반 유저만) */}
+        {role === "USER" && (
+          <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>상인 서비스</div>
+            <div onClick={() => onTab("merchantApply")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+              <span style={{ fontSize: 14 }}>🏪 상인 신청</span>
+              <span style={{ color: COLORS.textMuted }}>›</span>
+            </div>
+          </div>
+        )}
         {/* 상인 전용 메뉴 */}
         {role === "MERCHANT" && (
           <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
@@ -411,12 +443,62 @@ export function NotificationSettingsPage({ onBack, showToast }) {
 
 export function FAQPage({ onBack }) {
   const [openId, setOpenId] = useState(1);
-  const faqs = [
+  const [faqs, setFaqs] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+  const fallbackFaqs = [
     { id: 1, q: "엽전 QR 결제는 어떻게 하나요?", a: "현장에서 가게 QR을 스캔하고 금액을 입력하면 상인 확인 후 결제가 완료됩니다." },
     { id: 2, q: "리뷰는 어디서 남길 수 있나요?", a: "결제내역에서 거래한 상점 상세로 이동하거나, 장소/상점 상세 페이지에서 리뷰를 남기는 흐름으로 연결됩니다." },
     { id: 3, q: "동행 채팅방은 누가 만들 수 있나요?", a: "동행 게시글 작성자가 게시글 상세에서 채팅방 생성 버튼을 눌러 만들 수 있습니다." },
     { id: 4, q: "춘배인증 광고는 누가 신청하나요?", a: "춘배인증 상점만 광고 요청이 가능하도록 운영하는 방향입니다. 실제 신청/심사 API는 추후 연결됩니다." },
   ];
+
+  const loadFaqs = () => {
+    setStatus("loading");
+    setErrorMessage("");
+    fetchFaqs()
+      .then((items) => {
+        setFaqs(items);
+        setOpenId(items[0]?.id ?? null);
+        setStatus(items.length > 0 ? "success" : "empty");
+      })
+      .catch((error) => {
+        if (!shouldUseMockFallback(error)) {
+          setFaqs([]);
+          setErrorMessage(getApiErrorHint(error));
+          setStatus("error");
+          return;
+        }
+        setFaqs(fallbackFaqs);
+        setOpenId(fallbackFaqs[0]?.id ?? null);
+        setStatus("mock");
+      });
+  };
+
+  useEffect(() => {
+    let ignore = false;
+    fetchFaqs()
+      .then((items) => {
+        if (ignore) return;
+        setFaqs(items);
+        setOpenId(items[0]?.id ?? null);
+        setStatus(items.length > 0 ? "success" : "empty");
+      })
+      .catch((error) => {
+        if (ignore) return;
+        if (!shouldUseMockFallback(error)) {
+          setFaqs([]);
+          setErrorMessage(getApiErrorHint(error));
+          setStatus("error");
+          return;
+        }
+        setFaqs(fallbackFaqs);
+        setOpenId(fallbackFaqs[0]?.id ?? null);
+        setStatus("mock");
+      });
+
+    return () => { ignore = true; };
+  }, []);
 
   return (
     <div style={S.screen} className="faq-page">
@@ -429,6 +511,22 @@ export function FAQPage({ onBack }) {
           <strong>춘배투어 도움말</strong>
           <span>자주 묻는 질문을 빠르게 확인하세요.</span>
         </div>
+        {status === "loading" && <SkeletonList count={4} />}
+        {status === "mock" && (
+          <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 12 }}>
+            FAQ API 연결 전 기본 도움말입니다.
+          </div>
+        )}
+        {status === "empty" && (
+          <EmptyState icon="FAQ" title="등록된 FAQ가 없습니다." description="관리자가 FAQ를 등록하면 이곳에 표시됩니다." />
+        )}
+        {status === "error" && (
+          <ErrorState
+            title="FAQ를 불러오지 못했습니다."
+            description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
+            onRetry={loadFaqs}
+          />
+        )}
         <div className="faq-list">
           {faqs.map(item => (
             <button key={item.id} type="button" className={openId === item.id ? "open" : ""} onClick={() => setOpenId(openId === item.id ? null : item.id)}>
@@ -478,6 +576,14 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
   const filteredFestivals = filter === "전체"
     ? festivals
     : festivals.filter(festival => `${festival.monthNumber}월` === filter);
+  const monthFilters = [
+    "전체",
+    ...Array.from(new Set(festivals
+      .map(festival => festival.monthNumber)
+      .filter(Boolean)
+      .sort((a, b) => a - b)
+      .map(month => `${month}월`))),
+  ];
 
   return (
     <div style={S.screen}>
@@ -492,15 +598,19 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
       </div>
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.primary }}>올해 남은 축제 일정</div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>오늘부터 12월 31일까지 열리는 축제를 월별로 확인해보세요.</div>
+          </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {["전체", "6월", "7월"].map(f => (
+            {monthFilters.map(f => (
               <div key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: filter === f ? COLORS.primary : COLORS.bg, color: filter === f ? "#fff" : COLORS.textMuted }}>{f}</div>
             ))}
           </div>
           {status === "loading" && <SkeletonList count={3} />}
           {status === "mock" && (
             <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 12 }}>
-              축제 API 미확정으로 현재는 목업 데이터를 보여줍니다.
+              축제 검색 API 연결 실패로 개발용 목업 데이터를 보여줍니다.
             </div>
           )}
           {status === "error" && (
@@ -514,7 +624,7 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
             <EmptyState
               icon="🎉"
               title="표시할 축제가 없습니다."
-              description="다른 월을 선택하거나 캘린더에서 일정을 확인해보세요."
+              description="올해 남은 축제 일정이 없거나 선택한 월에 표시할 축제가 없습니다."
               actionLabel="캘린더 보기"
               onAction={onCalendar}
             />
@@ -609,7 +719,7 @@ export function NotificationPage({ onBack }) {
   const clearAll = async () => {
     setDeleteConfirmOpen(false);
     try {
-      await deleteAllNotifications();
+      await deleteAllNotifications(notifications.map(item => item.id));
     } catch (error) {
       if (!shouldUseMockFallback(error)) return;
     }
