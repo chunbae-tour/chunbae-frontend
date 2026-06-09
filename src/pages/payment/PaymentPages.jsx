@@ -184,6 +184,9 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
   const [activeHistoryTab, setActiveHistoryTab] = useState("yeopjeon");
   const [history, setHistory] = useState([]);
   const [chargeRefundHistory, setChargeRefundHistory] = useState([]);
+  const [balance, setBalance] = useState(0);
+  const [balanceStatus, setBalanceStatus] = useState("loading");
+  const [balanceError, setBalanceError] = useState("");
   const [status, setStatus] = useState("loading");
   const [chargeRefundStatus, setChargeRefundStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -219,9 +222,27 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
       });
   };
 
+  const loadBalance = () => {
+    setBalanceStatus("loading");
+    setBalanceError("");
+    fetchYeopjeonBalance()
+      .then((value) => {
+        setBalance(value);
+        setBalanceStatus("success");
+      })
+      .catch((error) => {
+        setBalance(0);
+        setBalanceError(getApiErrorHint(error));
+        setBalanceStatus("error");
+      });
+  };
+
   useEffect(() => {
     let ignore = false;
-    if (!ignore) loadHistory();
+    if (!ignore) {
+      loadHistory();
+      loadBalance();
+    }
     return () => { ignore = true; };
   }, []);
 
@@ -243,10 +264,22 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
       </div>
       <div style={{ background: COLORS.primary, padding: "0 16px 20px", textAlign: "center" }}>
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>현재 잔액</div>
-        <div style={{ color: COLORS.accent, fontSize: 28, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <img src={YeopjeonImg} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
-          5,000 엽전
-        </div>
+        {balanceStatus === "loading" ? (
+          <div className="payment-history-balance-skeleton" aria-label="현재 잔액을 불러오는 중입니다.">
+            <SkeletonBlock className="coin" />
+            <SkeletonBlock className="amount" />
+          </div>
+        ) : (
+          <div style={{ color: COLORS.accent, fontSize: 28, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <img src={YeopjeonImg} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
+            {balance.toLocaleString()} 엽전
+          </div>
+        )}
+        {balanceStatus === "error" && (
+          <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 13, marginTop: 6 }}>
+            {balanceError || "현재 잔액을 불러오지 못했습니다."}
+          </div>
+        )}
       </div>
       <div style={S.scrollArea} className="web-detail-scroll">
         <div style={{ display: "flex", gap: 8, padding: "16px 16px 0" }}>

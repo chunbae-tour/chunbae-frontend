@@ -18,6 +18,7 @@ import {
   updateMerchantMenu,
   updateMerchantShop,
   updateMerchantShopStatus,
+  useCustomerItemByToken,
   uploadMerchantShopImage,
 } from "../../services/merchantService.js";
 
@@ -74,6 +75,9 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "" });
   const [isSavingNotice, setIsSavingNotice] = useState(false);
+  const [itemUseToken, setItemUseToken] = useState("");
+  const [itemUseStatus, setItemUseStatus] = useState("idle");
+  const [itemUseResult, setItemUseResult] = useState(null);
 
   useEffect(() => {
     let ignore = false;
@@ -256,6 +260,27 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       showToast("가게 공지를 삭제했습니다.");
     } catch {
       showToast("가게 공지 삭제에 실패했습니다.");
+    }
+  };
+
+  const handleUseCustomerItem = async () => {
+    const token = itemUseToken.trim();
+    if (!token) {
+      showToast("사용자 아이템 코드를 입력해주세요.");
+      return;
+    }
+
+    setItemUseStatus("loading");
+    setItemUseResult(null);
+    try {
+      const result = await useCustomerItemByToken({ shopId: currentShopId, token });
+      setItemUseResult(result);
+      setItemUseStatus("success");
+      setItemUseToken("");
+      showToast("사용자 아이템을 사용 처리했습니다.");
+    } catch {
+      setItemUseStatus("error");
+      showToast("아이템 사용 처리에 실패했습니다. 코드와 가게 정보를 확인해주세요.");
     }
   };
 
@@ -516,6 +541,38 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               )}
             </div>
           ))}
+        </div>
+
+        <div className="merchant-payment-panel merchant-item-use-panel">
+          <div className="merchant-section-head">
+            <div>
+              <span>아이템 사용 처리</span>
+              <small>사용자가 보유 아이템 화면에서 발급한 코드를 입력합니다.</small>
+            </div>
+          </div>
+          <div className="merchant-item-use-form">
+            <input
+              value={itemUseToken}
+              onChange={(event) => {
+                setItemUseToken(event.target.value);
+                setItemUseStatus("idle");
+              }}
+              onKeyDown={(event) => event.key === "Enter" && handleUseCustomerItem()}
+              placeholder="사용자 아이템 코드"
+            />
+            <button type="button" onClick={handleUseCustomerItem} disabled={itemUseStatus === "loading"}>
+              {itemUseStatus === "loading" ? "처리 중" : "사용 처리"}
+            </button>
+          </div>
+          {itemUseStatus === "error" && (
+            <div className="merchant-api-note">아이템 사용 처리에 실패했습니다. 만료되었거나 이미 사용한 코드일 수 있습니다.</div>
+          )}
+          {itemUseResult && (
+            <div className="merchant-item-use-result">
+              <strong>{itemUseResult.productName || "아이템"}</strong>
+              <span>{itemUseResult.status} · {itemUseResult.usedAt || "방금 처리됨"}</span>
+            </div>
+          )}
         </div>
 
       </div>

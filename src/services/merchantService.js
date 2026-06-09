@@ -313,6 +313,28 @@ export async function fetchShopQrCode(shopId) {
   };
 }
 
+export async function useCustomerItemByToken({ shopId, token }) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest("/merchants/me/shop/items/use", {
+    method: "POST",
+    auth: true,
+    role: "MERCHANT",
+    body: {
+      shopId: Number(resolvedShopId),
+      token,
+    },
+  });
+
+  return {
+    itemId: data.itemId,
+    productId: data.productId,
+    productName: data.productName ?? "",
+    status: data.status ?? "",
+    usedAt: data.usedAt ?? "",
+    usedShopId: data.usedShopId ?? resolvedShopId,
+  };
+}
+
 export async function requestMerchantAd({ shopId, adType = "BANNER", startDate, endDate }) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
   return apiRequest("/merchants/me/ads", {

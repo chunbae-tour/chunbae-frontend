@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchMyReviews, fetchOwnedItems, fetchWishlist, removeWishlistItem } from "../../services/myService.js";
+import { fetchMyReviews, fetchOwnedItemQr, fetchOwnedItems, fetchWishlist, removeWishlistItem } from "../../services/myService.js";
 
 function isRoleDeniedError(error) {
   return error?.status === 403;
@@ -177,6 +177,12 @@ export function OwnedItemsPage({ onBack, showToast }) {
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [qrState, setQrState] = useState({
+    status: "idle",
+    item: null,
+    qr: null,
+    errorMessage: "",
+  });
 
   const loadOwnedItems = () => {
     setStatus("loading");
@@ -203,6 +209,27 @@ export function OwnedItemsPage({ onBack, showToast }) {
     return () => { ignore = true; };
   }, []);
 
+  const handleIssueQr = async (item) => {
+    const itemId = item.itemId ?? item.id;
+    setQrState({ status: "loading", item, qr: null, errorMessage: "" });
+
+    try {
+      const qr = await fetchOwnedItemQr(itemId);
+      setQrState({ status: "success", item, qr, errorMessage: "" });
+    } catch (error) {
+      setQrState({
+        status: "error",
+        item,
+        qr: null,
+        errorMessage: getApiErrorHint(error) || error.message || "아이템 QR을 발급하지 못했습니다.",
+      });
+    }
+  };
+
+  const closeQrDialog = () => {
+    setQrState({ status: "idle", item: null, qr: null, errorMessage: "" });
+  };
+
   return (
     <div style={S.screen} className="owned-items-page">
       <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -212,7 +239,7 @@ export function OwnedItemsPage({ onBack, showToast }) {
       <div style={S.scrollArea}>
         <div className="owned-items-summary">
           <strong>내가 가진 상점 아이템</strong>
-          <span>쿠폰과 교환권은 현장 방문 후 상인 확인 플로우로 사용할 예정입니다.</span>
+          <span>사용하기를 누른 뒤 발급된 코드를 상인에게 보여주세요.</span>
         </div>
         {status === "loading" && <div style={{ padding: "0 16px 16px" }}><SkeletonList count={3} /></div>}
         {status === "empty" && (
@@ -242,13 +269,42 @@ export function OwnedItemsPage({ onBack, showToast }) {
                 <p>{item.market} · {item.shop}</p>
                 <small>만료일 {item.expires}</small>
               </div>
-              <button type="button" onClick={() => showToast("아이템 사용 API가 아직 연결되지 않았습니다.")}>
-                사용하기
+              <button
+                type="button"
+                onClick={() => handleIssueQr(item)}
+                disabled={qrState.status === "loading" && (qrState.item?.id === item.id)}
+              >
+                {qrState.status === "loading" && qrState.item?.id === item.id ? "발급 중" : "사용하기"}
               </button>
             </article>
           ))}
         </div>
-        <div className="owned-items-todo">TODO: 보유 아이템 사용 처리 API가 확정되면 실제 응답으로 연결합니다.</div>
+        {qrState.item && (
+          <div className="confirm-dialog-backdrop" role="presentation" onMouseDown={closeQrDialog}>
+            <div className="confirm-dialog owned-item-qr-dialog" role="dialog" aria-modal="true" aria-labelledby="owned-item-qr-title" onMouseDown={(event) => event.stopPropagation()}>
+              <strong id="owned-item-qr-title">아이템 사용 코드</strong>
+              <p>{qrState.item.name} 사용을 위해 상인에게 아래 코드를 보여주세요.</p>
+              {qrState.status === "loading" && <div className="owned-item-qr-token">QR 코드 발급 중...</div>}
+              {qrState.status === "error" && (
+                <div className="owned-item-qr-error">
+                  {qrState.errorMessage || "아이템 QR을 발급하지 못했습니다."}
+                </div>
+              )}
+              {qrState.status === "success" && (
+                <>
+                  <div className="owned-item-qr-token">{qrState.qr?.token || "토큰 없음"}</div>
+                  {qrState.qr?.expiresAt && <small>만료 시각 {qrState.qr.expiresAt}</small>}
+                </>
+              )}
+              <div className="confirm-dialog-actions">
+                <button type="button" className="secondary" onClick={closeQrDialog}>닫기</button>
+                {qrState.status === "error" && (
+                  <button type="button" className="primary" onClick={() => handleIssueQr(qrState.item)}>다시 발급</button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
