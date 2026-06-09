@@ -11,10 +11,6 @@ import {
   fetchAdminUsers,
   fetchFestivalsNow,
   fetchMerchantApplications,
-  MOCK_ADMIN_DASHBOARD,
-  MOCK_ADMIN_REPORTS,
-  MOCK_ADMIN_USERS,
-  MOCK_MERCHANT_APPLICATIONS,
   rejectMerchantApplication,
   resolveAdminReport,
   suspendAdminUser,
@@ -24,34 +20,53 @@ import {
   updateAdminPlace,
 } from "../../services/adminService.js";
 
+function getApiErrorHint(error) {
+  return error?.message || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요.";
+}
+
 // ─── 관리자 대시보드 ──────────────────────────────────────────────────
 export function AdminDashboardPage({ onBack, onNav }) {
-  const [dashboard, setDashboard] = useState(MOCK_ADMIN_DASHBOARD);
+  const [dashboard, setDashboard] = useState(null);
   const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => {
+  const loadDashboard = () => {
     let ignore = false;
+    setStatus("loading");
+    setErrorMessage("");
 
     fetchAdminDashboard()
       .then((data) => {
         if (ignore) return;
-        setDashboard(data);
+        setDashboard(data ?? {});
         setStatus("success");
       })
-      .catch(() => {
+      .catch((error) => {
         if (ignore) return;
-        setDashboard(MOCK_ADMIN_DASHBOARD);
-        setStatus("mock");
+        setDashboard(null);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
       });
 
     return () => { ignore = true; };
+  };
+
+  useEffect(() => {
+    return loadDashboard();
   }, []);
 
+  const dashboardData = dashboard ?? {};
   const stats = [
-    { label: "전체 회원", value: Number(dashboard.totalUsers || 0).toLocaleString(), icon: "👥" },
-    { label: "전체 상인", value: Number(dashboard.totalMerchants || 0).toLocaleString(), icon: "🏪" },
-    { label: "미처리 신고", value: Number(dashboard.pendingReports || 0).toLocaleString(), icon: "🚨", alert: true },
-    { label: "상인 신청 대기", value: Number(dashboard.pendingMerchantApplications || 0).toLocaleString(), icon: "📋", alert: true },
+    { label: "전체 회원", value: Number(dashboardData.totalUsers || 0).toLocaleString(), icon: "👥" },
+    { label: "전체 가게", value: Number(dashboardData.totalShops || 0).toLocaleString(), icon: "🏪" },
+    { label: "인증 대기", value: Number(dashboardData.pendingCertifications || 0).toLocaleString(), icon: "✅", alert: Number(dashboardData.pendingCertifications || 0) > 0 },
+    { label: "상인 신청 대기", value: Number(dashboardData.pendingMerchantApplications || 0).toLocaleString(), icon: "📋", alert: Number(dashboardData.pendingMerchantApplications || 0) > 0 },
+  ];
+  const summaryRows = [
+    ["👤 오늘 신규 가입", `${Number(dashboardData.newUsersToday || 0).toLocaleString()}명`],
+    ["⛔ 정지 회원", `${Number(dashboardData.suspendedUsers || 0).toLocaleString()}명`],
+    ["📍 등록 관광지", `${Number(dashboardData.totalPlaces || 0).toLocaleString()}개`],
+    ["🖼️ 활성 배너", `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개`],
   ];
 
   return (
@@ -66,13 +81,21 @@ export function AdminDashboardPage({ onBack, onNav }) {
       <div style={S.scrollArea}>
         {/* 통계 카드 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10, padding: 16, paddingBottom: 0 }}>
-          {/* TODO: GET /admin/dashboard API 연동 */}
-          {status === "mock" && (
-            <div style={{ gridColumn: "1 / -1", background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14 }}>
-              관리자 API 연결 전 mock 대시보드입니다.
+          {status === "loading" && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <SkeletonList count={4} />
             </div>
           )}
-          {stats.map(s => (
+          {status === "error" && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <ErrorState
+                title="관리자 대시보드를 불러오지 못했습니다."
+                description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
+                onRetry={loadDashboard}
+              />
+            </div>
+          )}
+          {status === "success" && stats.map(s => (
             <div key={s.label} style={{ background: "#fff", borderRadius: 16, padding: 16, border: s.alert ? `2px solid #E24B4A` : "0.5px solid rgba(0,0,0,0.06)" }}>
               <div style={{ fontSize: 24, marginBottom: 8 }}>{s.icon}</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: s.alert ? "#E24B4A" : COLORS.primary }}>{s.value}</div>
@@ -81,28 +104,25 @@ export function AdminDashboardPage({ onBack, onNav }) {
           ))}
         </div>
 
-        {/* 오늘 현황 */}
-        <div style={{ background: "#fff", margin: 16, borderRadius: 16, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>📊 오늘 현황</div>
-          {[
-            ["💰 오늘 결제", `${Number(dashboard.todayPaymentAmount || 0).toLocaleString()} 엽전`],
-            ["👤 신규 가입", `${Number(dashboard.newUsersToday || 0).toLocaleString()}명`],
-            ["💬 새 채팅방", `${Number(dashboard.newChatRoomsToday || 0).toLocaleString()}개`],
-          ].map(([k, v]) => (
-            <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>
-              <span style={{ fontSize: 14, color: COLORS.textMuted }}>{k}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>{v}</span>
-            </div>
-          ))}
-        </div>
+        {status === "success" && (
+          <div style={{ background: "#fff", margin: 16, borderRadius: 16, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>📊 운영 현황</div>
+            {summaryRows.map(([k, v]) => (
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>
+                <span style={{ fontSize: 14, color: COLORS.textMuted }}>{k}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 빠른 메뉴 */}
         <div style={{ background: "#fff", margin: "0 16px 16px", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>빠른 메뉴</div>
           {[
             { icon: "👥", label: "유저 관리", key: "adminUsers" },
-            { icon: "🏪", label: "상인 신청", key: "adminMerchant", badge: dashboard.pendingMerchantApplications },
-            { icon: "🚨", label: "신고 관리", key: "adminReports", badge: dashboard.pendingReports },
+            { icon: "🏪", label: "상인 신청", key: "adminMerchant", badge: dashboardData.pendingMerchantApplications },
+            { icon: "🚨", label: "신고 관리", key: "adminReports" },
             { icon: "📍", label: "콘텐츠 관리", key: "adminContent" },
           ].map((m, i) => (
             <div key={i} onClick={() => onNav(m.key)} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
@@ -123,22 +143,26 @@ export function AdminDashboardPage({ onBack, onNav }) {
 export function AdminUsersPage({ onBack, showToast }) {
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
-  const [users, setUsers] = useState(MOCK_ADMIN_USERS);
+  const [users, setUsers] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     let ignore = false;
     const timer = setTimeout(() => {
+      setStatus("loading");
+      setErrorMessage("");
       fetchAdminUsers({ keyword: query, status: filter })
         .then((data) => {
           if (ignore) return;
           setUsers(data);
           setStatus(data.length > 0 ? "success" : "empty");
         })
-        .catch(() => {
+        .catch((error) => {
           if (ignore) return;
-          setUsers(MOCK_ADMIN_USERS);
-          setStatus("mock");
+          setUsers([]);
+          setErrorMessage(error?.message || "유저 목록을 불러오지 못했습니다.");
+          setStatus("error");
         });
     }, 250);
 
@@ -178,7 +202,11 @@ export function AdminUsersPage({ onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={4} /></div>}
-        {status === "mock" && <div style={{ background: "#FFF3D0", margin: 16, borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14 }}>유저 관리 API 연결 전 mock 목록입니다.</div>}
+        {status === "error" && (
+          <div style={{ margin: 16 }}>
+            <ErrorState title="유저 목록을 불러오지 못했습니다." description={errorMessage} />
+          </div>
+        )}
         {status === "empty" && (
           <div style={{ margin: 16 }}>
             <EmptyState icon="👤" title="표시할 유저가 없습니다." description="검색어 또는 상태 필터를 바꿔 다시 확인해보세요." />
@@ -207,11 +235,14 @@ export function AdminUsersPage({ onBack, showToast }) {
 // ─── 신고 관리 ────────────────────────────────────────────────────────
 export function AdminReportsPage({ onBack, showToast }) {
   const [tab, setTab] = useState("미처리");
-  const [reports, setReports] = useState(MOCK_ADMIN_REPORTS);
+  const [reports, setReports] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     let ignore = false;
+    setStatus("loading");
+    setErrorMessage("");
 
     fetchAdminReports(tab)
       .then((data) => {
@@ -219,10 +250,11 @@ export function AdminReportsPage({ onBack, showToast }) {
         setReports(data);
         setStatus(data.length > 0 ? "success" : "empty");
       })
-      .catch(() => {
+      .catch((error) => {
         if (ignore) return;
-        setReports(MOCK_ADMIN_REPORTS);
-        setStatus("mock");
+        setReports([]);
+        setErrorMessage(error?.message || "신고 목록을 불러오지 못했습니다.");
+        setStatus("error");
       });
 
     return () => { ignore = true; };
@@ -251,7 +283,11 @@ export function AdminReportsPage({ onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={4} /></div>}
-        {status === "mock" && <div style={{ background: "#FFF3D0", margin: 16, borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14 }}>신고 API 연결 전 mock 목록입니다.</div>}
+        {status === "error" && (
+          <div style={{ margin: 16 }}>
+            <ErrorState title="신고 목록을 불러오지 못했습니다." description={errorMessage} />
+          </div>
+        )}
         {status === "empty" && (
           <div style={{ margin: 16 }}>
             <EmptyState icon="🚨" title="표시할 신고가 없습니다." description="현재 필터에 해당하는 신고가 없습니다." />
@@ -581,11 +617,14 @@ export function AdminContentPage({ onBack, showToast }) {
   );
 }
 export function AdminMerchantPage({ onBack, showToast }) {
-  const [requests, setRequests] = useState(MOCK_MERCHANT_APPLICATIONS);
+  const [requests, setRequests] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     let ignore = false;
+    setStatus("loading");
+    setErrorMessage("");
 
     fetchMerchantApplications()
       .then((data) => {
@@ -593,10 +632,11 @@ export function AdminMerchantPage({ onBack, showToast }) {
         setRequests(data);
         setStatus(data.length > 0 ? "success" : "empty");
       })
-      .catch(() => {
+      .catch((error) => {
         if (ignore) return;
-        setRequests(MOCK_MERCHANT_APPLICATIONS);
-        setStatus("mock");
+        setRequests([]);
+        setErrorMessage(error?.message || "상인 신청 목록을 불러오지 못했습니다.");
+        setStatus("error");
       });
 
     return () => { ignore = true; };
@@ -620,7 +660,11 @@ export function AdminMerchantPage({ onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={4} /></div>}
-        {status === "mock" && <div style={{ background: "#FFF3D0", margin: 16, borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14 }}>상인 신청 API 연결 전 mock 목록입니다.</div>}
+        {status === "error" && (
+          <div style={{ margin: 16 }}>
+            <ErrorState title="상인 신청 목록을 불러오지 못했습니다." description={errorMessage} />
+          </div>
+        )}
         {status === "empty" && (
           <div style={{ margin: 16 }}>
             <EmptyState icon="🏪" title="표시할 상인 신청이 없습니다." description="새 신청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다." />

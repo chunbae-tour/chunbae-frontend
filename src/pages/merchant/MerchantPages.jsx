@@ -13,9 +13,6 @@ import {
   fetchMerchantShopNotices,
   fetchMerchantShops,
   fetchMerchantWallet,
-  MOCK_MENUS as SERVICE_MOCK_MENUS,
-  MOCK_MERCHANT_SHOP,
-  MOCK_MERCHANT_WALLET,
   rejectMerchantPaymentRequest,
   requestMerchantSettlement,
   updateMerchantMenu,
@@ -25,6 +22,27 @@ import {
 } from "../../services/merchantService.js";
 
 const MIN_SETTLEMENT_AMOUNT = 5000;
+const EMPTY_SHOP = {
+  id: "",
+  name: "",
+  category: "",
+  market: "",
+  address: "",
+  phone: "",
+  description: "",
+  operatingHours: "",
+  holiday: "",
+  rating: 0,
+  reviewCount: 0,
+  verified: false,
+  status: "",
+  imageUrls: [],
+};
+const EMPTY_WALLET = {
+  balance: 0,
+  pendingSettlement: 0,
+  totalEarned: 0,
+};
 const SHOP_STATUS_LABELS = {
   ACTIVE: "영업중",
   CLOSED: "영업종료",
@@ -33,9 +51,9 @@ const SHOP_STATUS_LABELS = {
 
 // ─── 상인 가게 관리 ───────────────────────────────────────────────────
 export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement, selectedShopId, onShopChange }) {
-  const [shop, setShop] = useState(MOCK_MERCHANT_SHOP);
+  const [shop, setShop] = useState(EMPTY_SHOP);
   const [shops, setShops] = useState([]);
-  const [wallet, setWallet] = useState(MOCK_MERCHANT_WALLET);
+  const [wallet, setWallet] = useState(EMPTY_WALLET);
   const [paymentRequests, setPaymentRequests] = useState([]);
   const [notices, setNotices] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -65,10 +83,22 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       setRequestStatus("loading");
       setNoticeStatus("loading");
 
-      const shopList = await fetchMerchantShops().catch(() => []);
+      const shopList = await fetchMerchantShops();
       if (ignore) return;
 
-      const nextShops = shopList.length > 0 ? shopList : [MOCK_MERCHANT_SHOP];
+      if (shopList.length === 0) {
+        setShops([]);
+        setShop(EMPTY_SHOP);
+        setWallet(EMPTY_WALLET);
+        setPaymentRequests([]);
+        setNotices([]);
+        setStatus("empty");
+        setRequestStatus("empty");
+        setNoticeStatus("empty");
+        return;
+      }
+
+      const nextShops = shopList;
       const effectiveShopId = selectedShopId ?? nextShops[0]?.id;
       setShops(nextShops);
       if (!selectedShopId && effectiveShopId) {
@@ -85,11 +115,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         .catch(error => ({ status: "rejected", reason: error }));
 
       if (ignore) return;
-      setShop(shopResult.status === "fulfilled" ? shopResult.value : (nextShops.find(item => String(item.id) === String(effectiveShopId)) ?? MOCK_MERCHANT_SHOP));
-      setWallet(walletResult.status === "fulfilled" ? walletResult.value : MOCK_MERCHANT_WALLET);
+      setShop(shopResult.status === "fulfilled" ? shopResult.value : (nextShops.find(item => String(item.id) === String(effectiveShopId)) ?? EMPTY_SHOP));
+      setWallet(walletResult.status === "fulfilled" ? walletResult.value : EMPTY_WALLET);
       setPaymentRequests(requestResult.status === "fulfilled" ? requestResult.value : []);
       setNotices(noticeResult.status === "fulfilled" ? noticeResult.value : []);
-      setStatus(shopResult.status === "fulfilled" || walletResult.status === "fulfilled" ? "success" : "mock");
+      setStatus(shopResult.status === "fulfilled" ? "success" : "error");
       setRequestStatus(requestResult.status === "fulfilled" ? (requestResult.value.length > 0 ? "success" : "empty") : "error");
       setNoticeStatus(noticeResult.status === "fulfilled" ? (noticeResult.value.length > 0 ? "success" : "empty") : "error");
     }
@@ -97,12 +127,12 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     loadMerchantDashboard()
       .catch(() => {
         if (ignore) return;
-        setShops([MOCK_MERCHANT_SHOP]);
-        setShop(MOCK_MERCHANT_SHOP);
-        setWallet(MOCK_MERCHANT_WALLET);
+        setShops([]);
+        setShop(EMPTY_SHOP);
+        setWallet(EMPTY_WALLET);
         setPaymentRequests([]);
         setNotices([]);
-        setStatus("mock");
+        setStatus("error");
         setRequestStatus("error");
         setNoticeStatus("error");
       });
@@ -256,6 +286,23 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
           </select>
           <span>{shops.length.toLocaleString()}개 가게</span>
         </div>
+        {status === "error" && (
+          <div style={{ margin: "0 16px 12px" }}>
+            <ErrorState
+              title="가게 정보를 불러오지 못했습니다."
+              description="상인 계정의 가게 등록 상태와 백엔드 연결 상태를 확인해주세요."
+            />
+          </div>
+        )}
+        {status === "empty" && (
+          <div style={{ margin: "0 16px 12px" }}>
+            <EmptyState
+              icon="가게"
+              title="등록된 가게가 없습니다."
+              description="상인 신청 승인 후 가게가 생성되면 이 화면에서 관리할 수 있습니다."
+            />
+          </div>
+        )}
         <div className="merchant-dashboard-summary">
           <div>
             <span>대기 승인</span>
@@ -283,7 +330,6 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
             <button type="button" onClick={openShopEditor}>수정</button>
           </div>
           <div className="merchant-info-grid">
-            {status === "mock" && <div style={{ color: "#B87800", fontSize: 14, marginBottom: 2 }}>가게 정보를 불러오지 못해 기본 정보를 표시합니다.</div>}
             {[
               ["🏷️ 카테고리", shop.category],
               ["📍 주소", shop.address],
@@ -479,7 +525,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
 
 // ─── 메뉴 관리 (별도 화면) ────────────────────────────────────────────
 export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
-  const [menus, setMenus] = useState(SERVICE_MOCK_MENUS);
+  const [menus, setMenus] = useState([]);
   const [status, setStatus] = useState("loading");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -491,13 +537,14 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
     fetchMerchantShop(selectedShopId)
       .then((shop) => {
         if (ignore) return;
-        setMenus(shop.menus?.length ? shop.menus : SERVICE_MOCK_MENUS);
-        setStatus(shop.menus?.length ? "success" : "mock");
+        const nextMenus = shop.menus ?? [];
+        setMenus(nextMenus);
+        setStatus(nextMenus.length > 0 ? "success" : "empty");
       })
       .catch(() => {
         if (ignore) return;
-        setMenus(SERVICE_MOCK_MENUS);
-        setStatus("mock");
+        setMenus([]);
+        setStatus("error");
       });
 
     return () => { ignore = true; };
@@ -539,13 +586,6 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
     };
 
     if (editingId) {
-      if (status === "mock") {
-        setMenus(prev => prev.map(menu => menu.id === editingId ? { ...menu, ...draft } : menu));
-        resetMenuForm();
-        showToast("예시 메뉴가 수정되었습니다.");
-        return;
-      }
-
       try {
         const updated = await updateMerchantMenu(editingId, draft, selectedShopId);
         setMenus(prev => prev.map(menu => menu.id === editingId ? updated : menu));
@@ -557,11 +597,15 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
       return;
     }
 
-    addMerchantMenu(draft, selectedShopId)
-      .then((created) => setMenus(prev => [...prev, created]))
-      .catch(() => setMenus(prev => [...prev, draft]));
-    resetMenuForm();
-    showToast(status === "success" ? "메뉴가 추가되었습니다!" : "메뉴가 mock으로 추가되었습니다.");
+    try {
+      const created = await addMerchantMenu(draft, selectedShopId);
+      setMenus(prev => [...prev, created]);
+      setStatus("success");
+      resetMenuForm();
+      showToast("메뉴가 추가되었습니다!");
+    } catch {
+      showToast("메뉴 추가에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");
+    }
   };
 
   const handleDelete = async (id) => {
@@ -618,8 +662,13 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
         <div style={{ padding: "8px 16px 16px" }}>
           <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 10 }}>총 {menus.length}개 메뉴</div>
           {status === "loading" && <SkeletonList count={3} />}
-          {status === "mock" && <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "10px 14px", color: "#B87800", fontSize: 14, marginBottom: 10 }}>가게 상세 응답에 메뉴 목록이 없어 예시 메뉴를 표시합니다.</div>}
-          {status !== "loading" && menus.length === 0 && (
+          {status === "error" && (
+            <ErrorState
+              title="메뉴 목록을 불러오지 못했습니다."
+              description="가게 상세 응답 또는 메뉴 API 연결 상태를 확인해주세요."
+            />
+          )}
+          {status !== "loading" && status !== "error" && menus.length === 0 && (
             <EmptyState
               icon="메뉴"
               title="등록된 메뉴가 없습니다."
@@ -661,7 +710,7 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
 // ─── 정산 내역 ────────────────────────────────────────────────────────
 export function MerchantSettlementPage({ onBack, showToast, selectedShopId }) {
   const [settlements, setSettlements] = useState([]);
-  const [wallet, setWallet] = useState(MOCK_MERCHANT_WALLET);
+  const [wallet, setWallet] = useState(EMPTY_WALLET);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
 
