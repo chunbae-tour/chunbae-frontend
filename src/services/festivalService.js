@@ -110,20 +110,34 @@ export async function fetchFestivalDetail(festivalId) {
 
 export async function fetchFestivalCalendar({ year, month }) {
   const params = new URLSearchParams({ year: String(year), month: String(month) });
-  const data = await apiRequest(`/calendar?${params.toString()}`);
-  return {
-    year: data.year,
-    month: data.month,
-    markedDates: Array.isArray(data.markedDates) ? data.markedDates : [],
-    events: data.events ?? {},
-  };
+  try {
+    const data = await apiRequest(`/calendar?${params.toString()}`);
+    return {
+      year: data.year ?? year,
+      month: data.month ?? month,
+      markedDates: Array.isArray(data.markedDates) ? data.markedDates : [],
+      events: data.events ?? {},
+    };
+  } catch (error) {
+    if (error?.status === 404) {
+      return { year, month, markedDates: [], events: {} };
+    }
+    throw error;
+  }
 }
 
 export async function fetchDailyFestivals(date) {
   const params = new URLSearchParams({ date });
-  const data = await apiRequest(`/calendar/daily?${params.toString()}`);
-  return {
-    date: data.date ?? date,
-    events: Array.isArray(data.events) ? data.events.map(normalizeFestival) : [],
-  };
+  try {
+    const data = await apiRequest(`/calendar/daily?${params.toString()}`);
+    return {
+      date: data.date ?? date,
+      events: Array.isArray(data.events) ? data.events.map(normalizeFestival) : [],
+    };
+  } catch (error) {
+    if (error?.status === 404) {
+      return { date, events: [] };
+    }
+    throw error;
+  }
 }

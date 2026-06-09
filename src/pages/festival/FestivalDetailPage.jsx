@@ -13,7 +13,7 @@ const PROGRESS_LABELS = {
 export default function FestivalDetailPage({ festival, onBack }) {
   const festivalId = festival?.festivalId ?? festival?.id;
   const [detail, setDetail] = useState(festival);
-  const [status, setStatus] = useState("loading");
+  const [status, setStatus] = useState(festival ? "success" : "loading");
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadDetail = async () => {
@@ -28,7 +28,14 @@ export default function FestivalDetailPage({ festival, onBack }) {
     try {
       setDetail(await fetchFestivalDetail(festivalId));
       setStatus("success");
+      setErrorMessage("");
     } catch (error) {
+      if (festival) {
+        setDetail(festival);
+        setStatus("success");
+        setErrorMessage(getApiErrorHint(error));
+        return;
+      }
       setStatus("error");
       setErrorMessage(getApiErrorHint(error));
     }
@@ -53,6 +60,11 @@ export default function FestivalDetailPage({ festival, onBack }) {
           </div>
         ) : (
           <article style={{ maxWidth: 960, margin: "0 auto", padding: 20 }}>
+            {errorMessage && (
+              <div style={{ background: "#FFF3D0", color: "#B87800", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 14, fontWeight: 700 }}>
+                최신 상세 정보는 불러오지 못해 목록에서 받은 정보를 표시합니다. {errorMessage}
+              </div>
+            )}
             {detail.imageUrl && (
               <img src={detail.imageUrl} alt={detail.name} style={{ width: "100%", maxHeight: 420, objectFit: "cover", borderRadius: 8, marginBottom: 20 }} />
             )}
