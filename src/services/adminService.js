@@ -178,15 +178,18 @@ async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, maxItems
 
   while (hasNext && markets.length < maxItems) {
     const params = new URLSearchParams({
-      q: keyword || "시장",
-      type: "TRADITIONAL_MARKET",
       size: String(size),
+      category: "TRADITIONAL_MARKET",
     });
+    if (keyword) params.set("keyword", keyword);
     if (cursor) params.set("cursor", cursor);
 
-    const data = await apiRequest(`/search?${params.toString()}`);
+    const data = await apiRequest(`/admin/places?${params.toString()}`, { auth: true, role: "ADMIN" });
     const pageItems = getPageContent(data);
-    markets.push(...pageItems.map(normalizeAdminTraditionalMarket));
+    markets.push(...pageItems.map((item) => normalizeAdminPlace({
+      ...item,
+      category: item.category ?? "TRADITIONAL_MARKET",
+    })));
     cursor = data?.nextCursor ?? data?.cursor ?? null;
     hasNext = Boolean(data?.hasNext && cursor);
   }
@@ -216,6 +219,15 @@ export async function fetchAdminFestivals({ size = 100, maxItems = 1000 } = {}) 
 export async function updateAdminFestival(festivalId, payload) {
   return apiRequest(`/admin/festivals/${festivalId}`, {
     method: "PUT",
+    auth: true,
+    role: "ADMIN",
+    body: payload,
+  });
+}
+
+export async function createAdminFestival(payload) {
+  return apiRequest("/admin/festivals", {
+    method: "POST",
     auth: true,
     role: "ADMIN",
     body: payload,
@@ -412,6 +424,13 @@ export async function deleteAdminProduct(productId) {
   });
 }
 
+export async function fetchAdminProducts({ size = 100 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  // OpenAPI에는 관리자 상품 "목록" 전용 API가 없어서 공개 목록으로 현재 노출 상품만 확인합니다.
+  const data = await apiRequest(`/store/products?${params.toString()}`);
+  return getPageContent(data);
+}
+
 export async function fetchAdminBanners({ size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   const data = await apiRequest(`/admin/banners?${params.toString()}`, {
@@ -583,11 +602,12 @@ export async function sendAdminSupportMessage(supportRoomId, message) {
   throw new ApiClientError("상담 메시지 전송 API는 현재 OpenAPI 명세에 없습니다.", "SUPPORT_MESSAGE_API_MISSING", 501);
 }
 
-export async function closeAdminSupportRoom(supportRoomId) {
+export async function closeAdminSupportRoom(supportRoomId, summary = "") {
   return apiRequest(`/admin/support/rooms/${supportRoomId}/close`, {
     method: "POST",
     auth: true,
     role: "ADMIN",
+    body: { summary },
   });
 }
 

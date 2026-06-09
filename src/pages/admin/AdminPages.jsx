@@ -2,26 +2,204 @@
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
 import {
+  approveAd,
+  approveCertification,
+  approveRefund,
+  approveSettlement,
   approveMerchantApplication,
+  assignAdminSupportRoom,
+  cancelCertification,
+  closeAdminSupportRoom,
+  createAdminBanner,
+  createAdminFaq,
+  createAdminFestival,
   createAdminPlace,
+  createAdminProduct,
+  deleteAdminBanner,
+  deleteAdminFaq,
+  deleteAdminFestival,
   deleteAdminPlace,
+  deleteAdminProduct,
+  fetchAdminAds,
+  fetchAdminBanners,
+  fetchAdminCertifications,
   fetchAdminContents,
   fetchAdminDashboard,
+  fetchAdminFaqs,
+  fetchAdminFestivals,
+  fetchAdminProducts,
   fetchAdminReports,
+  fetchAdminRefunds,
+  fetchAdminSettlements,
+  fetchAdminShopDetail,
+  fetchAdminSupportMessages,
+  fetchAdminSupportRooms,
   fetchAdminUsers,
   fetchFestivalsNow,
   fetchMerchantApplications,
+  rejectAd,
+  rejectCertification,
+  rejectRefund,
+  rejectSettlement,
   rejectMerchantApplication,
   resolveAdminReport,
   suspendAdminUser,
   syncTouristPlaces,
   syncTraditionalMarkets,
   unsuspendAdminUser,
+  updateAdminBanner,
+  updateAdminFaq,
+  updateAdminFestival,
   updateAdminPlace,
+  updateAdminProduct,
+  updateAdminShop,
+  updateAdminShopPlace,
+  updateAdminShopStatus,
 } from "../../services/adminService.js";
 
 function getApiErrorHint(error) {
   return error?.message || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요.";
+}
+
+function AdminHeader({ title, onBack, right }) {
+  return (
+    <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+        <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{title}</span>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function AdminShell({ title, onBack, children }) {
+  return (
+    <div style={S.screen}>
+      <AdminHeader title={title} onBack={onBack} />
+      <div style={S.scrollArea}>{children}</div>
+    </div>
+  );
+}
+
+function AdminButton({ children, onClick, tone = "primary", disabled = false, style }) {
+  const colorMap = {
+    primary: { background: COLORS.primary, color: "#fff", border: "none" },
+    subtle: { background: COLORS.bg, color: COLORS.primary, border: "none" },
+    danger: { background: "#FEE8E8", color: "#A32D2D", border: "none" },
+    ghost: { background: "#fff", color: COLORS.primary, border: "1px solid rgba(47,133,95,0.2)" },
+    accent: { background: COLORS.accent, color: COLORS.primary, border: "none" },
+  };
+  const picked = colorMap[tone] ?? colorMap.primary;
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        ...picked,
+        borderRadius: 10,
+        padding: "8px 12px",
+        fontSize: 14,
+        fontWeight: 700,
+        fontFamily: "inherit",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.55 : 1,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function AdminCard({ children, style }) {
+  return (
+    <div style={{ background: "#fff", margin: "10px 16px 0", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function AdminStatusBadge({ status }) {
+  const normalized = String(status || "대기");
+  const isSuccess = ["APPROVED", "RESOLVED", "COMPLETED", "ACTIVE", "공개", "승인", "처리완료"].includes(normalized);
+  const isDanger = ["REJECTED", "DELETED", "HIDDEN", "SUSPENDED", "CANCELLED", "거절", "비공개", "정지"].includes(normalized);
+  const bg = isSuccess ? COLORS.greenBg : isDanger ? "#FEE8E8" : "#FFF3D0";
+  const color = isSuccess ? COLORS.green : isDanger ? "#A32D2D" : "#B87800";
+  return <span style={{ fontSize: 13, background: bg, color, borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{normalized}</span>;
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  return String(value).replace("T", " ").slice(0, 16);
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString();
+}
+
+function promptReason(message, fallback) {
+  const value = window.prompt(message, fallback);
+  if (value === null) return null;
+  return value.trim() || fallback;
+}
+
+function getItemId(item, keys) {
+  for (const key of keys) {
+    if (item?.[key] != null) return item[key];
+  }
+  return null;
+}
+
+function AdminLoadState({ status, errorMessage, emptyTitle, emptyDescription, onRetry }) {
+  if (status === "loading") return <div style={{ margin: 16 }}><SkeletonList count={4} /></div>;
+  if (status === "error") {
+    return (
+      <div style={{ margin: 16 }}>
+        <ErrorState title="목록을 불러오지 못했습니다." description={errorMessage} onRetry={onRetry} />
+      </div>
+    );
+  }
+  if (status === "empty") {
+    return (
+      <div style={{ margin: 16 }}>
+        <EmptyState icon="📋" title={emptyTitle} description={emptyDescription} />
+      </div>
+    );
+  }
+  return null;
+}
+
+function useAdminList(loader) {
+  const [items, setItems] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const load = () => {
+    let ignore = false;
+    setStatus("loading");
+    setErrorMessage("");
+    loader()
+      .then((data) => {
+        if (ignore) return;
+        const nextItems = Array.isArray(data) ? data : [];
+        setItems(nextItems);
+        setStatus(nextItems.length > 0 ? "success" : "empty");
+      })
+      .catch((error) => {
+        if (ignore) return;
+        setItems([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
+      });
+    return () => { ignore = true; };
+  };
+
+  useEffect(() => load(), []);
+
+  return { items, setItems, status, errorMessage, reload: load };
 }
 
 // ─── 관리자 대시보드 ──────────────────────────────────────────────────
@@ -67,6 +245,22 @@ export function AdminDashboardPage({ onBack, onNav }) {
     ["⛔ 정지 회원", `${Number(dashboardData.suspendedUsers || 0).toLocaleString()}명`],
     ["📍 등록 관광지", `${Number(dashboardData.totalPlaces || 0).toLocaleString()}개`],
     ["🖼️ 활성 배너", `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개`],
+  ];
+  const quickMenus = [
+    { icon: "👥", label: "유저 관리", key: "adminUsers" },
+    { icon: "🏪", label: "상인 신청", key: "adminMerchant", badge: dashboardData.pendingMerchantApplications },
+    { icon: "🚨", label: "신고 관리", key: "adminReports" },
+    { icon: "📍", label: "콘텐츠 관리", key: "adminContent" },
+    { icon: "🎉", label: "축제 관리", key: "adminFestivals" },
+    { icon: "💸", label: "환불 관리", key: "adminRefunds" },
+    { icon: "💰", label: "정산 관리", key: "adminSettlements" },
+    { icon: "📣", label: "광고 신청", key: "adminAds" },
+    { icon: "✅", label: "가게 인증", key: "adminCertifications", badge: dashboardData.pendingCertifications },
+    { icon: "💬", label: "상담 관리", key: "adminSupport" },
+    { icon: "🖼️", label: "배너 관리", key: "adminBanners" },
+    { icon: "❔", label: "FAQ 관리", key: "adminFaqs" },
+    { icon: "🎁", label: "상품 관리", key: "adminProducts" },
+    { icon: "🏬", label: "가게 도구", key: "adminShops" },
   ];
 
   return (
@@ -119,13 +313,8 @@ export function AdminDashboardPage({ onBack, onNav }) {
         {/* 빠른 메뉴 */}
         <div style={{ background: "#fff", margin: "0 16px 16px", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>빠른 메뉴</div>
-          {[
-            { icon: "👥", label: "유저 관리", key: "adminUsers" },
-            { icon: "🏪", label: "상인 신청", key: "adminMerchant", badge: dashboardData.pendingMerchantApplications },
-            { icon: "🚨", label: "신고 관리", key: "adminReports" },
-            { icon: "📍", label: "콘텐츠 관리", key: "adminContent" },
-          ].map((m, i) => (
-            <div key={i} onClick={() => onNav(m.key)} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
+          {quickMenus.map((m, i) => (
+            <div key={m.key} onClick={() => onNav(m.key)} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < quickMenus.length - 1 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
               <span style={{ fontSize: 14 }}>{m.icon} {m.label}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {m.badge && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 20, padding: "2px 8px" }}>🔴{m.badge}</span>}
@@ -175,15 +364,21 @@ export function AdminUsersPage({ onBack, showToast }) {
   const filtered = users.filter(u => (filter === "전체" || u.status === filter) && (u.nickname.includes(query) || u.email.includes(query)));
 
   const toggleSuspension = async (user) => {
-    if (user.status === "정상") {
-      await suspendAdminUser(user.id).catch(() => {});
-      showToast("정지 처리되었습니다.");
-      setUsers(prev => prev.map(item => item.id === user.id ? { ...item, status: "정지" } : item));
-      return;
+    try {
+      if (user.status === "정상") {
+        const reason = promptReason("정지 사유를 입력해주세요.", "관리자 처리");
+        if (reason === null) return;
+        await suspendAdminUser(user.id, reason);
+        showToast("정지 처리되었습니다.");
+        setUsers(prev => prev.map(item => item.id === user.id ? { ...item, status: "정지" } : item));
+        return;
+      }
+      await unsuspendAdminUser(user.id);
+      showToast("정지가 해제되었습니다.");
+      setUsers(prev => prev.map(item => item.id === user.id ? { ...item, status: "정상" } : item));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
     }
-    await unsuspendAdminUser(user.id).catch(() => {});
-    showToast("정지가 해제되었습니다.");
-    setUsers(prev => prev.map(item => item.id === user.id ? { ...item, status: "정상" } : item));
   };
 
   return (
@@ -261,9 +456,13 @@ export function AdminReportsPage({ onBack, showToast }) {
   }, [tab]);
 
   const handle = async (id, action) => {
-    await resolveAdminReport(id, action === "삭제" ? "DELETE" : "DISMISS").catch(() => {});
-    showToast(action === "삭제" ? "콘텐츠가 삭제되었습니다." : "신고가 무시되었습니다.");
-    setReports(prev => prev.map(r => r.id === id ? { ...r, status: "처리완료" } : r));
+    try {
+      await resolveAdminReport(id, action === "삭제" ? "DELETE" : "DISMISS");
+      showToast(action === "삭제" ? "콘텐츠가 삭제되었습니다." : "신고가 무시되었습니다.");
+      setReports(prev => prev.map(r => r.id === id ? { ...r, status: "처리완료" } : r));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
   };
 
   const filtered = reports.filter(r => r.status === tab);
@@ -643,13 +842,19 @@ export function AdminMerchantPage({ onBack, showToast }) {
   }, []);
 
   const handle = async (id, action) => {
-    if (action === "승인") {
-      await approveMerchantApplication(id).catch(() => {});
-    } else {
-      await rejectMerchantApplication(id).catch(() => {});
+    try {
+      if (action === "승인") {
+        await approveMerchantApplication(id);
+      } else {
+        const rejectReason = promptReason("거절 사유를 입력해주세요.", "관리자 거절");
+        if (rejectReason === null) return;
+        await rejectMerchantApplication(id, rejectReason);
+      }
+      showToast(action === "승인" ? "✅ 상인 신청이 승인되었습니다." : "❌ 상인 신청이 거절되었습니다.");
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action === "승인" ? "승인" : "거절" } : r));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
     }
-    showToast(action === "승인" ? "✅ 상인 신청이 승인되었습니다." : "❌ 상인 신청이 거절되었습니다.");
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action === "승인" ? "승인" : "거절" } : r));
   };
 
   return (
@@ -687,5 +892,891 @@ export function AdminMerchantPage({ onBack, showToast }) {
         ))}
       </div>
     </div>
+  );
+}
+
+export function AdminRefundsPage({ onBack, showToast }) {
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminRefunds({ size: 100 }));
+
+  const handleDecision = async (refund, decision) => {
+    const refundId = getItemId(refund, ["refundId", "id"]);
+    if (!refundId) return showToast("환불 ID를 찾을 수 없습니다.");
+
+    try {
+      if (decision === "approve") {
+        await approveRefund(refundId);
+        showToast("환불을 승인했습니다.");
+        setItems(prev => prev.map(item => getItemId(item, ["refundId", "id"]) === refundId ? { ...item, status: "APPROVED" } : item));
+        return;
+      }
+      const reason = promptReason("환불 거절 사유를 입력해주세요.", "환불 조건 미충족");
+      if (reason === null) return;
+      await rejectRefund(refundId, reason);
+      showToast("환불을 거절했습니다.");
+      setItems(prev => prev.map(item => getItemId(item, ["refundId", "id"]) === refundId ? { ...item, status: "REJECTED", rejectReason: reason } : item));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="환불 관리" onBack={onBack}>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="환불 요청이 없습니다." emptyDescription="사용자의 환불 요청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다." onRetry={reload} />
+      {status === "success" && items.map((refund) => {
+        const refundId = getItemId(refund, ["refundId", "id"]);
+        return (
+          <AdminCard key={refundId}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>환불 #{refundId}</strong>
+              <AdminStatusBadge status={refund.status} />
+            </div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+              주문 {refund.paymentOrderId ?? "-"} · 사용자 {refund.userId ?? "-"} · {formatDate(refund.createdAt)}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(refund.amount)} 엽전</div>
+            {(refund.reason || refund.rejectReason) && <div style={{ marginTop: 8, fontSize: 14, color: COLORS.textMuted }}>{refund.reason || refund.rejectReason}</div>}
+            {refund.status === "PENDING" && (
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <AdminButton tone="danger" onClick={() => handleDecision(refund, "reject")} style={{ flex: 1 }}>거절</AdminButton>
+                <AdminButton onClick={() => handleDecision(refund, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+              </div>
+            )}
+          </AdminCard>
+        );
+      })}
+    </AdminShell>
+  );
+}
+
+export function AdminSettlementsPage({ onBack, showToast }) {
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminSettlements({ size: 100 }));
+
+  const handleDecision = async (settlement, decision) => {
+    const settlementId = getItemId(settlement, ["settlementId", "id"]);
+    if (!settlementId) return showToast("정산 ID를 찾을 수 없습니다.");
+
+    try {
+      if (decision === "approve") {
+        await approveSettlement(settlementId);
+        showToast("정산을 승인했습니다.");
+        setItems(prev => prev.map(item => getItemId(item, ["settlementId", "id"]) === settlementId ? { ...item, status: "APPROVED" } : item));
+        return;
+      }
+      const reason = promptReason("정산 거절 사유를 입력해주세요.", "정산 조건 미충족");
+      if (reason === null) return;
+      await rejectSettlement(settlementId, reason);
+      showToast("정산을 거절했습니다.");
+      setItems(prev => prev.map(item => getItemId(item, ["settlementId", "id"]) === settlementId ? { ...item, status: "REJECTED", rejectReason: reason } : item));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="정산 관리" onBack={onBack}>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="정산 요청이 없습니다." emptyDescription="상인 정산 신청이 들어오면 이곳에서 처리할 수 있습니다." onRetry={reload} />
+      {status === "success" && items.map((settlement) => {
+        const settlementId = getItemId(settlement, ["settlementId", "id"]);
+        return (
+          <AdminCard key={settlementId}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>정산 #{settlementId}</strong>
+              <AdminStatusBadge status={settlement.status} />
+            </div>
+            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(settlement.amount)} 엽전</div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+              가게 {settlement.shopId ?? "-"} · {settlement.bankName ?? "-"} {settlement.accountNumber ?? ""} · {settlement.accountHolder ?? "-"}
+            </div>
+            <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 14 }}>{formatDate(settlement.createdAt)}</div>
+            {settlement.rejectReason && <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>{settlement.rejectReason}</div>}
+            {settlement.status === "PENDING" && (
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <AdminButton tone="danger" onClick={() => handleDecision(settlement, "reject")} style={{ flex: 1 }}>거절</AdminButton>
+                <AdminButton onClick={() => handleDecision(settlement, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+              </div>
+            )}
+          </AdminCard>
+        );
+      })}
+    </AdminShell>
+  );
+}
+
+export function AdminAdsPage({ onBack, showToast }) {
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminAds({ size: 100 }));
+
+  const handleDecision = async (ad, decision) => {
+    const adId = getItemId(ad, ["applicationId", "adId", "id"]);
+    if (!adId) return showToast("광고 신청 ID를 찾을 수 없습니다.");
+
+    try {
+      if (decision === "approve") {
+        await approveAd(adId);
+        showToast("광고를 승인했습니다.");
+        setItems(prev => prev.map(item => getItemId(item, ["applicationId", "adId", "id"]) === adId ? { ...item, status: "APPROVED" } : item));
+        return;
+      }
+      const reason = promptReason("광고 거절 사유를 입력해주세요.", "광고 조건 미충족");
+      if (reason === null) return;
+      await rejectAd(adId, reason);
+      showToast("광고를 거절했습니다.");
+      setItems(prev => prev.map(item => getItemId(item, ["applicationId", "adId", "id"]) === adId ? { ...item, status: "REJECTED", rejectReason: reason } : item));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="광고 신청 관리" onBack={onBack}>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="광고 신청이 없습니다." emptyDescription="상인의 광고 신청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다." onRetry={reload} />
+      {status === "success" && items.map((ad) => {
+        const adId = getItemId(ad, ["applicationId", "adId", "id"]);
+        return (
+          <AdminCard key={adId}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>광고 #{adId}</strong>
+              <AdminStatusBadge status={ad.status} />
+            </div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+              가게 {ad.shopId ?? "-"} · {ad.adType ?? "BANNER"} · {ad.startDate ?? "-"} ~ {ad.endDate ?? "-"}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(ad.cost)} 엽전</div>
+            {ad.rejectReason && <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>{ad.rejectReason}</div>}
+            {ad.status === "PENDING" && (
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <AdminButton tone="danger" onClick={() => handleDecision(ad, "reject")} style={{ flex: 1 }}>거절</AdminButton>
+                <AdminButton onClick={() => handleDecision(ad, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+              </div>
+            )}
+          </AdminCard>
+        );
+      })}
+    </AdminShell>
+  );
+}
+
+export function AdminCertificationsPage({ onBack, showToast }) {
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminCertifications({ size: 100 }));
+
+  const handleCertification = async (certification, action) => {
+    const certificationId = getItemId(certification, ["certificationId", "id"]);
+    if (!certificationId) return showToast("인증 신청 ID를 찾을 수 없습니다.");
+
+    try {
+      if (action === "approve") {
+        await approveCertification(certificationId);
+        showToast("인증을 승인했습니다.");
+        setItems(prev => prev.map(item => getItemId(item, ["certificationId", "id"]) === certificationId ? { ...item, status: "APPROVED" } : item));
+        return;
+      }
+      const reason = promptReason(action === "cancel" ? "인증 취소 사유를 입력해주세요." : "인증 거절 사유를 입력해주세요.", action === "cancel" ? "관리자 인증 취소" : "인증 조건 미충족");
+      if (reason === null) return;
+      if (action === "cancel") {
+        await cancelCertification(certificationId, reason);
+        showToast("인증을 취소했습니다.");
+        setItems(prev => prev.map(item => getItemId(item, ["certificationId", "id"]) === certificationId ? { ...item, status: "CANCELLED" } : item));
+        return;
+      }
+      await rejectCertification(certificationId, reason);
+      showToast("인증을 거절했습니다.");
+      setItems(prev => prev.map(item => getItemId(item, ["certificationId", "id"]) === certificationId ? { ...item, status: "REJECTED" } : item));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="가게 인증 관리" onBack={onBack}>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="인증 신청이 없습니다." emptyDescription="가게 인증 신청이 들어오면 이곳에서 처리할 수 있습니다." onRetry={reload} />
+      {status === "success" && items.map((certification) => {
+        const certificationId = getItemId(certification, ["certificationId", "id"]);
+        return (
+          <AdminCard key={certificationId}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>인증 #{certificationId}</strong>
+              <AdminStatusBadge status={certification.status} />
+            </div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+              가게 {certification.shopId ?? "-"} · 신청 {formatDate(certification.submittedAt)} · 처리 {formatDate(certification.processedAt)}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {certification.status === "PENDING" && (
+                <>
+                  <AdminButton tone="danger" onClick={() => handleCertification(certification, "reject")} style={{ flex: 1 }}>거절</AdminButton>
+                  <AdminButton onClick={() => handleCertification(certification, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+                </>
+              )}
+              {certification.status === "APPROVED" && <AdminButton tone="danger" onClick={() => handleCertification(certification, "cancel")} style={{ flex: 1 }}>인증 취소</AdminButton>}
+            </div>
+          </AdminCard>
+        );
+      })}
+    </AdminShell>
+  );
+}
+
+export function AdminSupportPage({ onBack, showToast }) {
+  const { items: rooms, status, errorMessage, reload } = useAdminList(() => fetchAdminSupportRooms({ size: 100 }));
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messagesStatus, setMessagesStatus] = useState("idle");
+
+  const loadMessages = async (room) => {
+    setSelectedRoom(room);
+    setMessagesStatus("loading");
+    try {
+      const data = await fetchAdminSupportMessages(room.supportRoomId, { size: 100 });
+      setMessages(data);
+      setMessagesStatus(data.length > 0 ? "success" : "empty");
+    } catch (error) {
+      setMessages([]);
+      setMessagesStatus("error");
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const handleAssign = async (room) => {
+    try {
+      await assignAdminSupportRoom(room.supportRoomId);
+      showToast("상담방을 배정했습니다.");
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const handleClose = async (room) => {
+    const summary = promptReason("상담 종료 요약을 입력해주세요.", "관리자 상담 종료");
+    if (summary === null) return;
+    try {
+      await closeAdminSupportRoom(room.supportRoomId, summary);
+      showToast("상담을 종료했습니다.");
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="상담 관리" onBack={onBack}>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="상담방이 없습니다." emptyDescription="고객센터 상담방이 생성되면 이곳에서 확인할 수 있습니다." onRetry={reload} />
+      {status === "success" && (
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: 12, padding: "0 16px 16px" }}>
+          <div>
+            {rooms.map((room) => (
+              <div key={room.supportRoomId} onClick={() => loadMessages(room)} style={{ background: selectedRoom?.supportRoomId === room.supportRoomId ? COLORS.greenBg : "#fff", borderRadius: 14, padding: 14, marginTop: 10, border: "0.5px solid rgba(0,0,0,0.06)", cursor: "pointer" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <strong style={{ color: COLORS.primary }}>상담 #{room.supportRoomId}</strong>
+                  <AdminStatusBadge status={room.status} />
+                </div>
+                <div style={{ marginTop: 6, fontSize: 14, color: COLORS.textMuted }}>{room.userNickname ?? `사용자 ${room.userId ?? "-"}`}</div>
+                <div style={{ marginTop: 6, fontSize: 14, color: COLORS.textMuted }}>{room.lastMessage?.content ?? "아직 메시지가 없습니다."}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginTop: 10, border: "0.5px solid rgba(0,0,0,0.06)", minHeight: 320 }}>
+            {!selectedRoom && <EmptyState icon="💬" title="상담방을 선택해주세요." description="왼쪽 목록에서 상담방을 누르면 메시지를 확인할 수 있습니다." />}
+            {selectedRoom && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <strong style={{ color: COLORS.primary }}>상담 #{selectedRoom.supportRoomId}</strong>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <AdminButton tone="ghost" onClick={() => handleAssign(selectedRoom)}>배정</AdminButton>
+                    <AdminButton tone="danger" onClick={() => handleClose(selectedRoom)}>종료</AdminButton>
+                  </div>
+                </div>
+                {messagesStatus === "loading" && <SkeletonList count={3} />}
+                {messagesStatus === "empty" && <EmptyState icon="💬" title="상담 메시지가 없습니다." description="상담 메시지가 생기면 이곳에 표시됩니다." />}
+                {messagesStatus === "error" && <ErrorState title="메시지를 불러오지 못했습니다." description="상담 메시지 조회 API 상태를 확인해주세요." />}
+                {messagesStatus === "success" && messages.map((message) => (
+                  <div key={message.messageId} style={{ padding: "10px 0", borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>
+                    <div style={{ fontSize: 13, color: COLORS.textMuted }}>{message.senderRole ?? "UNKNOWN"} · {formatDate(message.sentAt)}</div>
+                    <div style={{ marginTop: 4, color: COLORS.text }}>{message.content || message.fileUrl || "-"}</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </AdminShell>
+  );
+}
+
+const EMPTY_BANNER_FORM = {
+  title: "",
+  imageUrl: "",
+  linkUrl: "",
+  priority: "0",
+  startDate: "",
+  endDate: "",
+};
+
+export function AdminBannersPage({ onBack, showToast }) {
+  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminBanners({ size: 100 }));
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_BANNER_FORM);
+  const isEditing = editingId != null;
+
+  const startCreate = () => {
+    setEditingId(null);
+    setForm(EMPTY_BANNER_FORM);
+  };
+
+  const startEdit = (banner) => {
+    setEditingId(banner.id);
+    setForm({
+      title: banner.title ?? "",
+      imageUrl: banner.imageUrl ?? "",
+      linkUrl: banner.linkUrl ?? "",
+      priority: String(banner.priority ?? 0),
+      startDate: banner.startDate ?? "",
+      endDate: banner.endDate ?? "",
+    });
+  };
+
+  const save = async () => {
+    if (!form.title.trim() || !form.imageUrl.trim()) {
+      showToast("배너 제목과 이미지 URL은 필수입니다.");
+      return;
+    }
+    const payload = {
+      title: form.title.trim(),
+      imageUrl: form.imageUrl.trim(),
+      priority: Number(form.priority || 0),
+      ...(form.linkUrl.trim() ? { linkUrl: form.linkUrl.trim() } : {}),
+      ...(form.startDate ? { startDate: form.startDate } : {}),
+      ...(form.endDate ? { endDate: form.endDate } : {}),
+    };
+    try {
+      if (isEditing) await updateAdminBanner(editingId, payload);
+      else await createAdminBanner(payload);
+      showToast(isEditing ? "배너를 수정했습니다." : "배너를 등록했습니다.");
+      startCreate();
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const remove = async (bannerId) => {
+    try {
+      await deleteAdminBanner(bannerId);
+      showToast("배너를 삭제했습니다.");
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="배너 관리" onBack={onBack}>
+      <AdminCard>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <input placeholder="제목" value={form.title} onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="우선순위" type="number" value={form.priority} onChange={(e) => setForm(prev => ({ ...prev, priority: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="이미지 URL" value={form.imageUrl} onChange={(e) => setForm(prev => ({ ...prev, imageUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
+          <input placeholder="링크 URL" value={form.linkUrl} onChange={(e) => setForm(prev => ({ ...prev, linkUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
+          <input type="date" value={form.startDate} onChange={(e) => setForm(prev => ({ ...prev, startDate: e.target.value }))} style={adminInputStyle} />
+          <input type="date" value={form.endDate} onChange={(e) => setForm(prev => ({ ...prev, endDate: e.target.value }))} style={adminInputStyle} />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          {isEditing && <AdminButton tone="subtle" onClick={startCreate} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
+          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "배너 등록"}</AdminButton>
+        </div>
+      </AdminCard>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="등록된 배너가 없습니다." emptyDescription="운영 배너를 등록하면 이곳에 표시됩니다." onRetry={reload} />
+      {status === "success" && items.map((banner) => (
+        <AdminCard key={banner.id}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <strong style={{ color: COLORS.primary }}>{banner.title}</strong>
+            <AdminStatusBadge status={banner.status} />
+          </div>
+          <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>우선순위 {banner.priority ?? 0} · {banner.startDate ?? "-"} ~ {banner.endDate ?? "-"}</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <AdminButton tone="subtle" onClick={() => startEdit(banner)} style={{ flex: 1 }}>수정</AdminButton>
+            <AdminButton tone="danger" onClick={() => remove(banner.id)} style={{ flex: 1 }}>삭제</AdminButton>
+          </div>
+        </AdminCard>
+      ))}
+    </AdminShell>
+  );
+}
+
+const adminInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "1px solid rgba(0,0,0,0.1)",
+  borderRadius: 10,
+  padding: "10px 12px",
+  fontSize: 14,
+  fontFamily: "inherit",
+  outline: "none",
+};
+
+const EMPTY_FAQ_FORM = { question: "", answer: "", category: "GENERAL" };
+
+export function AdminFaqsPage({ onBack, showToast }) {
+  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminFaqs({ size: 100 }));
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FAQ_FORM);
+  const isEditing = editingId != null;
+
+  const reset = () => {
+    setEditingId(null);
+    setForm(EMPTY_FAQ_FORM);
+  };
+
+  const edit = (faq) => {
+    setEditingId(faq.faqId ?? faq.id);
+    setForm({ question: faq.question ?? "", answer: faq.answer ?? "", category: faq.category ?? "GENERAL" });
+  };
+
+  const save = async () => {
+    if (!form.question.trim() || !form.answer.trim() || !form.category.trim()) {
+      showToast("질문, 답변, 카테고리는 필수입니다.");
+      return;
+    }
+    try {
+      if (isEditing) await updateAdminFaq(editingId, form);
+      else await createAdminFaq(form);
+      showToast(isEditing ? "FAQ를 수정했습니다." : "FAQ를 등록했습니다.");
+      reset();
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const remove = async (faqId) => {
+    try {
+      await deleteAdminFaq(faqId);
+      showToast("FAQ를 삭제했습니다.");
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="FAQ 관리" onBack={onBack}>
+      <AdminCard>
+        <input placeholder="카테고리" value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} style={adminInputStyle} />
+        <input placeholder="질문" value={form.question} onChange={(e) => setForm(prev => ({ ...prev, question: e.target.value }))} style={{ ...adminInputStyle, marginTop: 8 }} />
+        <textarea placeholder="답변" value={form.answer} onChange={(e) => setForm(prev => ({ ...prev, answer: e.target.value }))} style={{ ...adminInputStyle, marginTop: 8, minHeight: 90, resize: "vertical" }} />
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          {isEditing && <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
+          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "FAQ 등록"}</AdminButton>
+        </div>
+      </AdminCard>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="등록된 FAQ가 없습니다." emptyDescription="FAQ를 등록하면 이곳에 표시됩니다." onRetry={reload} />
+      {status === "success" && items.map((faq) => {
+        const faqId = faq.faqId ?? faq.id;
+        return (
+          <AdminCard key={faqId}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>{faq.question}</strong>
+              <AdminStatusBadge status={faq.isActive === false ? "HIDDEN" : "ACTIVE"} />
+            </div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{faq.category} · {formatDate(faq.updatedAt ?? faq.createdAt)}</div>
+            <div style={{ marginTop: 8, color: COLORS.text }}>{faq.answer}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <AdminButton tone="subtle" onClick={() => edit(faq)} style={{ flex: 1 }}>수정</AdminButton>
+              <AdminButton tone="danger" onClick={() => remove(faqId)} style={{ flex: 1 }}>삭제</AdminButton>
+            </div>
+          </AdminCard>
+        );
+      })}
+    </AdminShell>
+  );
+}
+
+const EMPTY_PRODUCT_FORM = {
+  name: "",
+  description: "",
+  category: "COUPON",
+  price: "",
+  originalPrice: "",
+  stock: "",
+  imageUrls: "",
+  merchantName: "",
+  validityDays: "",
+  maxPerPerson: "1",
+  status: "ON_SALE",
+};
+
+function parseImageUrlsInput(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith("[")) {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : undefined;
+  }
+  return trimmed.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+}
+
+export function AdminProductsPage({ onBack, showToast }) {
+  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminProducts({ size: 100 }));
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_PRODUCT_FORM);
+  const isEditing = editingId != null;
+
+  const reset = () => {
+    setEditingId(null);
+    setForm(EMPTY_PRODUCT_FORM);
+  };
+
+  const edit = (product) => {
+    const productId = product.productId ?? product.id;
+    setEditingId(productId);
+    setForm({
+      name: product.name ?? "",
+      description: product.description ?? "",
+      category: product.category ?? "COUPON",
+      price: String(product.price ?? ""),
+      originalPrice: String(product.originalPrice ?? ""),
+      stock: String(product.stock ?? ""),
+      imageUrls: Array.isArray(product.imageUrls) ? JSON.stringify(product.imageUrls) : product.imageUrls ?? "",
+      merchantName: product.merchantName ?? "",
+      validityDays: String(product.validityDays ?? ""),
+      maxPerPerson: String(product.maxPerPerson ?? "1"),
+      status: product.status ?? "ON_SALE",
+    });
+  };
+
+  const save = async () => {
+    if (!form.name.trim() || !form.category.trim() || !form.price || !form.stock || !form.maxPerPerson) {
+      showToast("상품명, 카테고리, 가격, 재고, 1인 제한 수량은 필수입니다.");
+      return;
+    }
+    let imageUrls;
+    try {
+      imageUrls = parseImageUrlsInput(form.imageUrls);
+    } catch {
+      showToast("이미지 URL은 JSON 배열 또는 쉼표/줄바꿈 목록으로 입력해주세요.");
+      return;
+    }
+    const payload = {
+      name: form.name.trim(),
+      category: form.category.trim(),
+      price: Number(form.price),
+      stock: Number(form.stock),
+      maxPerPerson: Number(form.maxPerPerson),
+      ...(form.description.trim() ? { description: form.description.trim() } : {}),
+      ...(form.originalPrice ? { originalPrice: Number(form.originalPrice) } : {}),
+      ...(imageUrls ? { imageUrls } : {}),
+      ...(form.merchantName.trim() ? { merchantName: form.merchantName.trim() } : {}),
+      ...(form.validityDays ? { validityDays: Number(form.validityDays) } : {}),
+      ...(isEditing ? { status: form.status } : {}),
+    };
+    try {
+      if (isEditing) await updateAdminProduct(editingId, payload);
+      else await createAdminProduct(payload);
+      showToast(isEditing ? "상품을 수정했습니다." : "상품을 등록했습니다.");
+      reset();
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const remove = async (productId) => {
+    try {
+      await deleteAdminProduct(productId);
+      showToast("상품을 숨김 처리했습니다.");
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="상품 관리" onBack={onBack}>
+      <AdminCard style={{ background: "#FFF7D7" }}>
+        <div style={{ fontSize: 14, color: "#8A4B00", fontWeight: 700 }}>
+          관리자 상품 목록 전용 API가 없어 현재 공개 상품 목록 기준으로 표시합니다. 숨김 처리된 상품까지 보려면 백엔드 관리자 목록 API가 필요합니다.
+        </div>
+      </AdminCard>
+      <AdminCard>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <input placeholder="상품명" value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="카테고리" value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="가격" type="number" value={form.price} onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="원가" type="number" value={form.originalPrice} onChange={(e) => setForm(prev => ({ ...prev, originalPrice: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="재고" type="number" value={form.stock} onChange={(e) => setForm(prev => ({ ...prev, stock: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="1인 제한 수량" type="number" value={form.maxPerPerson} onChange={(e) => setForm(prev => ({ ...prev, maxPerPerson: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="유효일수" type="number" value={form.validityDays} onChange={(e) => setForm(prev => ({ ...prev, validityDays: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="상인명" value={form.merchantName} onChange={(e) => setForm(prev => ({ ...prev, merchantName: e.target.value }))} style={adminInputStyle} />
+          {isEditing && (
+            <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
+              <option value="ON_SALE">ON_SALE</option>
+              <option value="HIDDEN">HIDDEN</option>
+              <option value="SOLD_OUT">SOLD_OUT</option>
+            </select>
+          )}
+          <input placeholder="이미지 URL JSON 또는 문자열" value={form.imageUrls} onChange={(e) => setForm(prev => ({ ...prev, imageUrls: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
+          <textarea placeholder="상품 설명" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 80, resize: "vertical" }} />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          {isEditing && <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
+          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "상품 등록"}</AdminButton>
+        </div>
+      </AdminCard>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="표시할 상품이 없습니다." emptyDescription="상품을 등록하면 이곳에 표시됩니다." onRetry={reload} />
+      {status === "success" && items.map((product) => {
+        const productId = product.productId ?? product.id;
+        return (
+          <AdminCard key={productId}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>{product.name}</strong>
+              <AdminStatusBadge status={product.status ?? "ACTIVE"} />
+            </div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{product.category} · 재고 {formatNumber(product.stock)} · 판매 {formatNumber(product.soldCount)}</div>
+            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(product.price)} 엽전</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <AdminButton tone="subtle" onClick={() => edit(product)} style={{ flex: 1 }}>수정</AdminButton>
+              <AdminButton tone="danger" onClick={() => remove(productId)} style={{ flex: 1 }}>숨김</AdminButton>
+            </div>
+          </AdminCard>
+        );
+      })}
+    </AdminShell>
+  );
+}
+
+const EMPTY_FESTIVAL_FORM = {
+  name: "",
+  description: "",
+  region: "",
+  address: "",
+  startDate: "",
+  endDate: "",
+  imageUrl: "",
+  relatedUrl: "",
+  status: "ACTIVE",
+};
+
+export function AdminFestivalsPage({ onBack, showToast }) {
+  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminFestivals({ size: 100 }));
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FESTIVAL_FORM);
+  const isEditing = editingId != null;
+
+  const reset = () => {
+    setEditingId(null);
+    setForm(EMPTY_FESTIVAL_FORM);
+  };
+
+  const edit = (festival) => {
+    const festivalId = festival.festivalId ?? festival.id;
+    setEditingId(festivalId);
+    setForm({
+      name: festival.name ?? "",
+      description: festival.description ?? "",
+      region: festival.region ?? "",
+      address: festival.address ?? "",
+      startDate: festival.startDate ?? "",
+      endDate: festival.endDate ?? "",
+      imageUrl: festival.imageUrl ?? "",
+      relatedUrl: festival.relatedUrl ?? "",
+      status: festival.status ?? "ACTIVE",
+    });
+  };
+
+  const save = async () => {
+    if (!form.name.trim() || !form.region.trim() || !form.address.trim() || !form.startDate || !form.endDate) {
+      showToast("축제명, 지역, 주소, 시작일, 종료일은 필수입니다.");
+      return;
+    }
+    const payload = {
+      name: form.name.trim(),
+      region: form.region.trim(),
+      address: form.address.trim(),
+      startDate: form.startDate,
+      endDate: form.endDate,
+      ...(form.description.trim() ? { description: form.description.trim() } : {}),
+      ...(form.imageUrl.trim() ? { imageUrl: form.imageUrl.trim() } : {}),
+      ...(form.relatedUrl.trim() ? { relatedUrl: form.relatedUrl.trim() } : {}),
+      ...(isEditing ? { status: form.status } : {}),
+    };
+    try {
+      if (isEditing) await updateAdminFestival(editingId, payload);
+      else await createAdminFestival(payload);
+      showToast(isEditing ? "축제를 수정했습니다." : "축제를 등록했습니다.");
+      reset();
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const remove = async (festivalId) => {
+    try {
+      await deleteAdminFestival(festivalId);
+      showToast("축제를 삭제했습니다.");
+      reload();
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="축제 관리" onBack={onBack}>
+      <AdminCard>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <input placeholder="축제명" value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="지역" value={form.region} onChange={(e) => setForm(prev => ({ ...prev, region: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="주소" value={form.address} onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
+          <input type="date" value={form.startDate} onChange={(e) => setForm(prev => ({ ...prev, startDate: e.target.value }))} style={adminInputStyle} />
+          <input type="date" value={form.endDate} onChange={(e) => setForm(prev => ({ ...prev, endDate: e.target.value }))} style={adminInputStyle} />
+          <input placeholder="이미지 URL" value={form.imageUrl} onChange={(e) => setForm(prev => ({ ...prev, imageUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
+          <input placeholder="관련 URL" value={form.relatedUrl} onChange={(e) => setForm(prev => ({ ...prev, relatedUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
+          {isEditing && (
+            <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="HIDDEN">HIDDEN</option>
+              <option value="DELETED">DELETED</option>
+            </select>
+          )}
+          <textarea placeholder="축제 설명" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 80, resize: "vertical" }} />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          {isEditing && <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
+          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "축제 등록"}</AdminButton>
+        </div>
+      </AdminCard>
+      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="등록된 축제가 없습니다." emptyDescription="축제를 등록하거나 데이터를 수집하면 이곳에 표시됩니다." onRetry={reload} />
+      {status === "success" && items.map((festival) => {
+        const festivalId = festival.festivalId ?? festival.id;
+        return (
+          <AdminCard key={festivalId}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>{festival.name}</strong>
+              <AdminStatusBadge status={festival.status} />
+            </div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{festival.region ?? "-"} · {festival.startDate ?? "-"} ~ {festival.endDate ?? "-"}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <AdminButton tone="subtle" onClick={() => edit(festival)} style={{ flex: 1 }}>수정</AdminButton>
+              <AdminButton tone="danger" onClick={() => remove(festivalId)} style={{ flex: 1 }}>삭제</AdminButton>
+            </div>
+          </AdminCard>
+        );
+      })}
+    </AdminShell>
+  );
+}
+
+export function AdminShopsPage({ onBack, showToast }) {
+  const [shopId, setShopId] = useState("");
+  const [shop, setShop] = useState(null);
+  const [status, setStatus] = useState("idle");
+  const [form, setForm] = useState({ status: "ACTIVE", description: "", phone: "", operatingHours: "", placeId: "" });
+
+  const loadShop = async () => {
+    if (!shopId) {
+      showToast("조회할 가게 ID를 입력해주세요.");
+      return;
+    }
+    setStatus("loading");
+    try {
+      const data = await fetchAdminShopDetail(shopId);
+      setShop(data);
+      setForm({
+        status: data.status ?? "ACTIVE",
+        description: data.description ?? "",
+        phone: data.phone ?? "",
+        operatingHours: data.operatingHours ?? "",
+        placeId: data.placeId != null ? String(data.placeId) : "",
+      });
+      setStatus("success");
+    } catch (error) {
+      setShop(null);
+      setStatus("error");
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const saveBasic = async () => {
+    if (!shop?.id && !shopId) return showToast("가게를 먼저 조회해주세요.");
+    const targetId = shop?.id ?? shopId;
+    const body = {
+      ...(form.description.trim() ? { description: form.description.trim() } : {}),
+      ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+      ...(form.operatingHours.trim() ? { operatingHours: form.operatingHours.trim() } : {}),
+    };
+    if (Object.keys(body).length === 0) {
+      showToast("수정할 값을 입력해주세요.");
+      return;
+    }
+    try {
+      const updated = await updateAdminShop(targetId, body);
+      setShop(updated);
+      showToast("가게 정보를 수정했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const saveStatus = async () => {
+    if (!shop?.id && !shopId) return showToast("가게를 먼저 조회해주세요.");
+    try {
+      await updateAdminShopStatus(shop?.id ?? shopId, form.status);
+      setShop(prev => prev ? { ...prev, status: form.status } : prev);
+      showToast("가게 상태를 변경했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  const savePlace = async () => {
+    if (!shop?.id && !shopId) return showToast("가게를 먼저 조회해주세요.");
+    try {
+      await updateAdminShopPlace(shop?.id ?? shopId, form.placeId ? Number(form.placeId) : null);
+      setShop(prev => prev ? { ...prev, placeId: form.placeId ? Number(form.placeId) : null } : prev);
+      showToast(form.placeId ? "가게와 장소를 연결했습니다." : "가게 장소 연결을 해제했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <AdminShell title="가게 도구" onBack={onBack}>
+      <AdminCard style={{ background: "#FFF7D7" }}>
+        <div style={{ fontSize: 14, color: "#8A4B00", fontWeight: 700 }}>
+          관리자 가게 목록 API는 OpenAPI 명세에 없습니다. 현재는 shopId를 입력해 단건 조회/수정/상태 변경/장소 연결만 할 수 있습니다.
+        </div>
+      </AdminCard>
+      <AdminCard>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input placeholder="가게 ID" type="number" value={shopId} onChange={(e) => setShopId(e.target.value)} style={{ ...adminInputStyle, flex: 1 }} />
+          <AdminButton onClick={loadShop}>조회</AdminButton>
+        </div>
+      </AdminCard>
+      {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={2} /></div>}
+      {status === "error" && <div style={{ margin: 16 }}><ErrorState title="가게를 불러오지 못했습니다." description="shopId와 관리자 권한을 확인해주세요." onRetry={loadShop} /></div>}
+      {shop && (
+        <AdminCard>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <strong style={{ color: COLORS.primary }}>{shop.shopName ?? shop.name ?? `가게 ${shop.id}`}</strong>
+            <AdminStatusBadge status={shop.status} />
+          </div>
+          <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{shop.category ?? "-"} · {shop.address ?? "-"}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+            <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="SUSPENDED">SUSPENDED</option>
+              <option value="CLOSED">CLOSED</option>
+            </select>
+            <AdminButton onClick={saveStatus}>상태 저장</AdminButton>
+            <input placeholder="연결할 placeId, 비우면 해제" value={form.placeId} onChange={(e) => setForm(prev => ({ ...prev, placeId: e.target.value }))} style={adminInputStyle} />
+            <AdminButton onClick={savePlace}>장소 연결 저장</AdminButton>
+            <input placeholder="전화번호" value={form.phone} onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))} style={adminInputStyle} />
+            <input placeholder="운영시간" value={form.operatingHours} onChange={(e) => setForm(prev => ({ ...prev, operatingHours: e.target.value }))} style={adminInputStyle} />
+            <textarea placeholder="가게 소개" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 90, resize: "vertical" }} />
+          </div>
+          <AdminButton onClick={saveBasic} style={{ width: "100%", marginTop: 10 }}>기본 정보 저장</AdminButton>
+        </AdminCard>
+      )}
+    </AdminShell>
   );
 }
