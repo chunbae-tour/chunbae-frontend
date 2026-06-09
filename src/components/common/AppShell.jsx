@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { key: "my", label: "마이", icon: "👤" },
 ];
 
-export default function AppShell({ active, screen, onTab, onAR, user, onLogin, showMobileTab, children, lang, onLangChange }) {
+export default function AppShell({ active, screen, onTab, onAR, onHome, user, onLogin, showMobileTab, children, lang, onLangChange }) {
   const selectedKey = screen === "place" || screen === "direction" ? "map" : screen;
   const hideFaqFloating = [
     "chatroom",
@@ -52,7 +52,7 @@ export default function AppShell({ active, screen, onTab, onAR, user, onLogin, s
   return (
     <div className="app-shell">
       <aside className="desktop-sidebar">
-        <div className="sidebar-brand">
+        <button type="button" className="sidebar-brand" onClick={onHome || (() => onTab("home"))} aria-label="춘배투어 홈으로 이동">
           <div className="brand-mark">
             <img src={MascotDefault} alt="" />
           </div>
@@ -60,7 +60,7 @@ export default function AppShell({ active, screen, onTab, onAR, user, onLogin, s
             <strong>춘배투어</strong>
             <span>ChunBae Tour</span>
           </div>
-        </div>
+        </button>
 
         <nav className="sidebar-nav" aria-label="주요 화면">
           {NAV_ITEMS.map((item) => {
@@ -115,10 +115,12 @@ export default function AppShell({ active, screen, onTab, onAR, user, onLogin, s
                 </div>
               )}
             </div>
-            <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
-              <span>{isLoggedIn ? "내 엽전 잔액" : "엽전 이용"}</span>
-              <strong><img src={YeopjeonImg} alt="" /> {isLoggedIn ? "잔액 확인" : "로그인"}</strong>
-            </button>
+            {isLoggedIn && (
+              <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
+                <span>내 엽전 잔액</span>
+                <strong><img src={YeopjeonImg} alt="" /> 잔액 확인</strong>
+              </button>
+            )}
             <button type="button" className="topbar-notification" onClick={() => openAuthOrTab("notif")} aria-label="알림">
               🔔
               {isLoggedIn && <span />}

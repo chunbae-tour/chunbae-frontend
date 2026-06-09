@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { S } from "./constants/colors";
 import ChunbaeImg from "./assets/hwangchunbae.png";
 
@@ -24,7 +24,7 @@ import { MerchantShopPage, MerchantMenuPage, MerchantSettlementPage } from "./pa
 import { MerchantApplyPage } from "./pages/merchant/MerchantApplyPage";
 import { AdminDashboardPage, AdminUsersPage, AdminReportsPage, AdminMerchantPage, AdminContentPage } from "./pages/admin/AdminPages";
 import { MyPage, FestivalPage, ARPage, NotificationPage, NotificationSettingsPage, FAQPage, SearchPage } from "./pages/misc/MiscPages";
-import { clearAuthSession, fetchCurrentUser, getStoredAuthSession, isMockAuthSession, shouldClearSessionForError } from "./services/authService";
+import { clearAuthSession, completeSocialLoginFromCallback, fetchCurrentUser, getStoredAuthSession, shouldClearSessionForError } from "./services/authService";
 
 function getInitialScreenForRole(role) {
   const normalizedRole = String(role || "USER").toUpperCase();
@@ -61,9 +61,21 @@ function SplashScreen({ onDone }) {
   );
 }
 
+function SocialCallbackScreen() {
+  return (
+    <div style={{ ...S.screen, background: "#1A1A2E", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: "#FFB41E", fontSize: 22, fontWeight: 700, marginBottom: 8 }}>로그인 처리 중...</div>
+      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>소셜 로그인 정보를 확인하고 있습니다.</div>
+    </div>
+  );
+}
+
 export default function App() {
+  const socialCallbackMatch = window.location.pathname.match(/^\/oauth\/(naver|kakao)\/callback$/i);
+  const socialCallbackProvider = socialCallbackMatch?.[1];
+  const isSocialCallbackPath = Boolean(socialCallbackProvider);
   const [storedSession] = useState(() => getStoredAuthSession());
-  const [appState, setAppState] = useState("splash");
+  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : "splash");
   const [user, setUser] = useState(storedSession);
   const [tab, setTab] = useState("home");
   const [screen, setScreen] = useState(() => getInitialScreenForRole(storedSession?.role));
@@ -78,9 +90,16 @@ export default function App() {
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [lang, setLang] = useState("ko");
   const [likeChangeCounter, setLikeChangeCounter] = useState(0);
+  const historyInitializedRef = useRef(false);
+  const restoringHistoryRef = useRef(false);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
   const go = (scr) => setScreen(scr);
+  const goHome = () => {
+    setAppState("main");
+    setTab("home");
+    setScreen("home");
+  };
   const handleTab = (key) => {
     const mainTabs = ["home", "map", "chat", "my"];
     if (mainTabs.includes(key)) setTab(key);
@@ -111,6 +130,61 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!isSocialCallbackPath) return;
+
+    let ignore = false;
+    setAppState("socialCallback");
+    completeSocialLoginFromCallback(socialCallbackProvider)
+      .then((profile) => {
+        if (ignore) return;
+        handleLogin(profile);
+        window.history.replaceState({ chunbaeTour: true, appState: "main", screen: "home", tab: "home" }, "", "/");
+      })
+      .catch((error) => {
+        if (ignore) return;
+        clearAuthSession();
+        setUser(null);
+        setAppState("login");
+        setToast(error.message || "소셜 로그인 처리 중 문제가 발생했습니다.");
+        window.history.replaceState({ chunbaeTour: true, appState: "login", screen: "home", tab: "home" }, "", "/");
+      });
+
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const state = event.state;
+      if (!state?.chunbaeTour) return;
+      restoringHistoryRef.current = true;
+      setAppState(state.appState || "landing");
+      setScreen(state.screen || "home");
+      setTab(state.tab || "home");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (appState === "splash") return;
+
+    const state = { chunbaeTour: true, appState, screen, tab };
+    if (!historyInitializedRef.current) {
+      window.history.replaceState(state, "", window.location.href);
+      historyInitializedRef.current = true;
+      return;
+    }
+
+    if (restoringHistoryRef.current) {
+      restoringHistoryRef.current = false;
+      return;
+    }
+
+    window.history.pushState(state, "", window.location.href);
+  }, [appState, screen, tab]);
+
+  useEffect(() => {
     document.documentElement.classList.toggle("comfortable-view", comfortableView);
     try {
       localStorage.setItem(COMFORTABLE_VIEW_STORAGE_KEY, comfortableView ? "true" : "false");
@@ -120,7 +194,7 @@ export default function App() {
   }, [comfortableView]);
 
   useEffect(() => {
-    if (!storedSession || isMockAuthSession(storedSession)) return;
+    if (!storedSession) return;
     if (String(storedSession.role || "USER").toUpperCase() !== "USER") {
       // TODO: MERCHANT/ADMIN 내 정보 API가 확정되면 권한별 세션 검증을 추가합니다.
       return;
@@ -156,6 +230,7 @@ export default function App() {
   const showTab = !noTabScreens.includes(screen);
 
   if (appState === "splash") return <div style={S.app}><SplashScreen onDone={() => setAppState(storedSession ? "main" : "landing")} /></div>;
+  if (appState === "socialCallback") return <div style={S.app}><SocialCallbackScreen /></div>;
   if (appState === "landing") {
     const handlePublicExplore = (target = "home") => {
       setAppState("main");
@@ -177,7 +252,7 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} lang={lang} onLangChange={setLang}>
+      <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} lang={lang} onLangChange={setLang}>
         {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={() => go("fest")} onTab={handleTab} showToast={showToast} user={user} />}
         {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
         {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} />}

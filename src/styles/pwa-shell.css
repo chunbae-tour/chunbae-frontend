@@ -854,7 +854,15 @@ button:disabled,
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   margin-bottom: 28px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .brand-mark {
@@ -2493,6 +2501,17 @@ button:disabled,
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+
+.public-empty-panel {
+  width: 100%;
+  min-height: 88px;
+  border: 1px solid rgba(26, 26, 46, 0.07);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #1b5d43;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .public-festival-card {

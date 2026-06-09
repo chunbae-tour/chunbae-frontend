@@ -15,13 +15,6 @@ const ROLE_CONFIG = {
   },
 };
 
-const DUMMY_ACCOUNTS = [
-  { email: "user@test.com",     password: "Pa$$w0rd1!", nickname: "여행자지수",   role: "USER",     roleLabel: "일반회원" },
-  { email: "friend@test.com",   password: "Pa$$w0rd1!", nickname: "친구여행자",   role: "USER",     roleLabel: "일반회원" },
-  { email: "merchant@test.com", password: "Pa$$w0rd1!", nickname: "영호네포장마차", role: "MERCHANT", roleLabel: "상인" },
-  { email: "admin@test.com",    password: "Pa$$w0rd1!", nickname: "관리자",       role: "ADMIN",    roleLabel: "관리자" },
-];
-
 const ROLE_ENDPOINTS = {
   USER: {
     login: "/users/auth/login",
@@ -32,6 +25,21 @@ const ROLE_ENDPOINTS = {
   },
   ADMIN: {
     login: "/admin/auth/login",
+  },
+};
+
+const SOCIAL_CONFIG = {
+  KAKAO: {
+    loginUrl: import.meta.env.VITE_KAKAO_LOGIN_URL || "",
+    clientId: import.meta.env.VITE_KAKAO_REST_API_KEY || "",
+    authorizeUrl: "https://kauth.kakao.com/oauth/authorize",
+    callbackPath: "/oauth/kakao/callback",
+  },
+  NAVER: {
+    loginUrl: import.meta.env.VITE_NAVER_LOGIN_URL || "",
+    clientId: import.meta.env.VITE_NAVER_CLIENT_ID || "",
+    authorizeUrl: "https://nid.naver.com/oauth2.0/authorize",
+    callbackPath: "/oauth/naver/callback",
   },
 };
 
@@ -68,6 +76,21 @@ function saveSession(authData) {
   sessionStorage.setItem(config.userKey, JSON.stringify(authData));
 }
 
+function getSocialCallbackUrl(provider) {
+  const normalizedProvider = String(provider || "").toUpperCase();
+  const config = SOCIAL_CONFIG[normalizedProvider];
+  if (!config) {
+    throw new ApiClientError("지원하지 않는 소셜 로그인 제공자입니다.", "SOCIAL_PROVIDER_INVALID");
+  }
+  return `${window.location.origin}${config.callbackPath}`;
+}
+
+function getCallbackParams() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return new URLSearchParams([...searchParams.entries(), ...hashParams.entries()]);
+}
+
 function readSession(role) {
   const normalizedRole = String(role || "").toUpperCase();
   const config = ROLE_CONFIG[normalizedRole];
@@ -99,8 +122,97 @@ export function getStoredAuthSession(role) {
   return readSession("USER") || readSession("MERCHANT") || readSession("ADMIN");
 }
 
-export function isMockAuthSession(session) {
-  return String(session?.accessToken || "").startsWith("mock-");
+export function getSocialLoginUrl(provider) {
+  const normalizedProvider = String(provider || "").toUpperCase();
+  const config = SOCIAL_CONFIG[normalizedProvider];
+
+  if (!config) {
+    throw new ApiClientError("지원하지 않는 소셜 로그인 제공자입니다.", "SOCIAL_PROVIDER_INVALID");
+  }
+
+  const redirectUri = getSocialCallbackUrl(normalizedProvider);
+
+  if (config.loginUrl) {
+    return config.loginUrl
+      .replace("{redirectUri}", encodeURIComponent(redirectUri))
+      .replace("{callbackUrl}", encodeURIComponent(redirectUri));
+  }
+
+  if (!config.clientId) {
+    throw new ApiClientError(`${normalizedProvider} 로그인 URL이 설정되지 않았습니다.`, "SOCIAL_LOGIN_URL_MISSING");
+  }
+
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: config.clientId,
+    redirect_uri: redirectUri,
+  });
+
+  if (normalizedProvider === "NAVER") {
+    const state = crypto.randomUUID?.() || String(Date.now());
+    sessionStorage.setItem("naverOauthState", state);
+    params.set("state", state);
+  }
+
+  return `${config.authorizeUrl}?${params.toString()}`;
+}
+
+export async function completeSocialLoginFromCallback(provider) {
+  const normalizedProvider = String(provider || "").toUpperCase();
+  if (!SOCIAL_CONFIG[normalizedProvider]) {
+    throw new ApiClientError("지원하지 않는 소셜 로그인 제공자입니다.", "SOCIAL_PROVIDER_INVALID");
+  }
+
+  const params = getCallbackParams();
+  const error = params.get("error");
+  const message = params.get("message") || params.get("error_description");
+
+  if (error) {
+    throw new ApiClientError(message || "소셜 로그인이 취소되었거나 실패했습니다.", error);
+  }
+
+  const code = params.get("code");
+  if (!code) {
+    throw new ApiClientError("소셜 로그인 콜백에 인가 코드가 없습니다.", "SOCIAL_CODE_MISSING");
+  }
+
+  if (normalizedProvider === "NAVER") {
+    const state = params.get("state");
+    const savedState = sessionStorage.getItem("naverOauthState");
+    sessionStorage.removeItem("naverOauthState");
+    if (savedState && state !== savedState) {
+      throw new ApiClientError("네이버 로그인 state 값이 일치하지 않습니다.", "SOCIAL_STATE_MISMATCH");
+    }
+  }
+
+  const data = await apiRequest(`/users/auth/oauth/${normalizedProvider.toLowerCase()}`, {
+    method: "POST",
+    body: {
+      code,
+      redirectUri: getSocialCallbackUrl(normalizedProvider),
+    },
+  });
+
+  if (data.needSignup) {
+    sessionStorage.setItem("oauthSignupPending", JSON.stringify({
+      provider: normalizedProvider,
+      signupTicket: data.signupTicket,
+      email: data.email,
+      nickname: data.nickname,
+    }));
+    throw new ApiClientError("신규 소셜 계정입니다. 추가 가입 화면 연동이 필요합니다.", "SOCIAL_SIGNUP_REQUIRED", 409);
+  }
+
+  const authData = normalizeAuthData(data, "USER");
+  saveSession(authData);
+  if (String(authData.role || "USER").toUpperCase() === "USER") {
+    try {
+      return await fetchCurrentUser();
+    } catch {
+      return authData;
+    }
+  }
+  return authData;
 }
 
 export async function fetchCurrentUser() {
@@ -138,10 +250,6 @@ export function shouldClearSessionForError(error) {
   return isAuthError(error);
 }
 
-export function getDummyAccounts() {
-  return DUMMY_ACCOUNTS;
-}
-
 async function loginWithRole({ role, email, password }) {
   const normalizedRole = String(role).toUpperCase();
   const config = ROLE_CONFIG[normalizedRole];
@@ -150,40 +258,20 @@ async function loginWithRole({ role, email, password }) {
     throw new ApiClientError("지원하지 않는 로그인 유형입니다.", "AUTH_ROLE_INVALID");
   }
 
-  try {
-    const data = await apiRequest(ROLE_ENDPOINTS[normalizedRole].login, {
-      method: "POST",
-      body: { email, password },
-    });
-    const authData = normalizeAuthData(data, normalizedRole);
-    saveSession(authData);
-    if (String(authData.role || normalizedRole).toUpperCase() === "USER") {
-      try {
-        return await fetchCurrentUser();
-      } catch {
-        return authData;
-      }
-    }
-    return authData;
-  } catch (error) {
-    const matched = DUMMY_ACCOUNTS.find(
-      account => account.role === normalizedRole && account.email === email && account.password === password,
-    );
-
-    // TODO: 백엔드 API 연결 전 로컬 시연용 mock fallback입니다. 실제 배포 전 제거합니다.
-    if (matched && (!error.status || error.status === 404 || error.status === 429)) {
-      const authData = normalizeAuthData({
-        accessToken: `mock-${normalizedRole.toLowerCase()}-access-token`,
-        role: normalizedRole,
-        email: matched.email,
-        nickname: matched.nickname,
-      }, normalizedRole);
-      saveSession(authData);
+  const data = await apiRequest(ROLE_ENDPOINTS[normalizedRole].login, {
+    method: "POST",
+    body: { email, password },
+  });
+  const authData = normalizeAuthData(data, normalizedRole);
+  saveSession(authData);
+  if (String(authData.role || normalizedRole).toUpperCase() === "USER") {
+    try {
+      return await fetchCurrentUser();
+    } catch {
       return authData;
     }
-
-    throw error;
   }
+  return authData;
 }
 
 export async function login({ role, email, password }) {
@@ -211,43 +299,17 @@ export async function login({ role, email, password }) {
 }
 
 export async function signupAndLogin({ email, password, nickname }) {
-  let usedMockSignup = false;
+  await apiRequest(ROLE_ENDPOINTS.USER.signup, {
+    method: "POST",
+    body: { email, password, nickname },
+  });
 
-  try {
-    await apiRequest(ROLE_ENDPOINTS.USER.signup, {
-      method: "POST",
-      body: { email, password, nickname },
-    });
-  } catch (error) {
-    // TODO: 회원가입 API 연결 전 로컬 시연용 mock fallback입니다. 실제 배포 전 제거합니다.
-    if (error.status && error.status !== 404) {
-      throw error;
-    }
-    usedMockSignup = true;
-  }
+  const authData = await login({ role: "USER", email, password });
+  if (authData.nickname) return authData;
 
-  try {
-    const authData = await login({ role: "USER", email, password });
-    if (authData.nickname) return authData;
-
-    const fallbackAuthData = normalizeAuthData({ ...authData, nickname }, "USER");
-    saveSession(fallbackAuthData);
-    return fallbackAuthData;
-  } catch (error) {
-    if (!usedMockSignup || (error.status && error.status !== 404)) {
-      throw error;
-    }
-
-    // TODO: 회원가입/로그인 API 연결 전 로컬 시연용 mock fallback입니다. 실제 배포 전 제거합니다.
-    const authData = normalizeAuthData({
-      accessToken: "mock-user-access-token",
-      role: "USER",
-      email,
-      nickname,
-    }, "USER");
-    saveSession(authData);
-    return authData;
-  }
+  const fallbackAuthData = normalizeAuthData({ ...authData, nickname }, "USER");
+  saveSession(fallbackAuthData);
+  return fallbackAuthData;
 }
 
 export async function reissueToken() {
