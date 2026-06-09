@@ -4,7 +4,7 @@ import { S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchNearbyTravelSpotsWithLikes, getDefaultLocation } from "../../services/placeService.js";
+import { fetchNearbyTravelSpotsWithLikes, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
 import {
   getGeolocationErrorMessage,
   getGeolocationSupport,
@@ -38,6 +38,7 @@ export default function MapPage({ onPlaceClick }) {
   const [mapCenter, setMapCenter] = useState(getDefaultLocation);
   const [userLocation, setUserLocation] = useState(null);
   const [locationHint, setLocationHint] = useState("");
+  const [regionInfo, setRegionInfo] = useState(null);
   const [requestingLocation, setRequestingLocation] = useState(false);
   const [pickLocationMode, setPickLocationMode] = useState(false);
   const filtered = filter === "전체" ? places : places.filter(p => p.type === filter);
@@ -55,7 +56,20 @@ export default function MapPage({ onPlaceClick }) {
     setError("");
 
     try {
-      const result = await fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 });
+      const [spotsResult, regionResult] = await Promise.allSettled([
+        fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 }),
+        fetchRegionByCoordinate(location),
+      ]);
+      if (regionResult.status === "fulfilled") {
+        setRegionInfo(regionResult.value);
+      } else {
+        setRegionInfo(null);
+      }
+      if (spotsResult.status === "rejected") {
+        throw spotsResult.reason;
+      }
+
+      const result = spotsResult.value;
       setPlaces(result);
       setStatus(result.length > 0 ? "success" : "empty");
     } catch (err) {
@@ -97,35 +111,6 @@ export default function MapPage({ onPlaceClick }) {
 
   return (
     <div style={S.screen} className="map-explorer-page">
-      <div className="map-explorer-hero">
-        <div className="map-hero-copy">
-          <span className="map-hero-kicker">LOCAL ALLEY MAP</span>
-          <h1>오늘은 어느 시장 골목으로 들어갈까요?</h1>
-          <p>전통시장 골목부터 산책길까지, 지금 걷기 좋은 로컬 포인트를 모았습니다.</p>
-          <div className="map-hero-actions">
-            <button type="button">지금 열린 골목 보기</button>
-            <button type="button" className="secondary">근처 시장 보기</button>
-          </div>
-        </div>
-        <div className="map-hero-panel">
-          <div className="map-search-chip">🔍 시장, 먹자골목, 야시장 검색...</div>
-          <div className="map-highlight-grid">
-            <div>
-              <span>위치 기반</span>
-              <strong>{places.length > 0 ? `${places.length}곳` : "조회 전"}</strong>
-            </div>
-            <div>
-              <span>현재 필터</span>
-              <strong>{filter}</strong>
-            </div>
-            <div>
-              <span>조회 상태</span>
-              <strong>{status === "success" ? "연결됨" : "확인 필요"}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {!userLocation && (
         <div className="map-location-banner" role="status">
           <p>{locationHint || "내 위치를 사용하려면 위치 권한이 필요합니다."}</p>
@@ -208,7 +193,7 @@ export default function MapPage({ onPlaceClick }) {
       <div style={S.scrollArea}>
         <div className="map-list-head">
           <span>주변 골목 포인트 ({filtered.length}개)</span>
-          <small>거리 · 운영시간 · 리뷰를 보고 바로 들어가세요.</small>
+          <small>{regionInfo?.fullAddress ? `${regionInfo.fullAddress} 기준` : "거리 · 운영시간 · 리뷰를 보고 바로 들어가세요."}</small>
         </div>
         {status === "loading" && <div className="map-result-grid"><SkeletonList count={4} /></div>}
         {status === "error" && (

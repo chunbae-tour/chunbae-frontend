@@ -21,15 +21,18 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
   useEffect(() => {
     let ignore = false;
     const placeId = place?.placeId ?? place?.id;
+    const incomingDetail = place ? normalizePlace(place) : null;
     setTab(place?.reviewIntent ? "리뷰" : "소개");
     setReviewFormOpen(Boolean(place?.reviewIntent));
+    setDetail(incomingDetail);
+    setLiked(Boolean(incomingDetail?.isLiked));
 
     if (!placeId) {
       setStatus("empty");
       return undefined;
     }
 
-    setStatus(detail ? "success" : "loading");
+    setStatus(incomingDetail ? "success" : "loading");
     setError("");
 
     fetchPlaceDetail(placeId)
@@ -42,7 +45,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
       .catch((err) => {
         if (ignore) return;
         setError(err.message || "장소 상세 정보를 불러오지 못했습니다.");
-        setStatus(detail ? "error" : "empty");
+        setStatus(incomingDetail ? "error" : "empty");
       });
 
     return () => { ignore = true; };

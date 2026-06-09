@@ -18,12 +18,38 @@ function formatDistance(distanceMeters) {
   return `${(meters / 1000).toFixed(1)}km`;
 }
 
+function normalizeImageUrls(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value !== "string" || !value.trim()) return [];
+
+  const trimmed = value.trim();
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) return parsed.filter(Boolean);
+  } catch {
+    // 백엔드가 JSON 문자열이 아닌 단일 URL/콤마 문자열로 내려주는 경우도 방어합니다.
+  }
+
+  return trimmed
+    .split(",")
+    .map((url) => url.trim())
+    .filter(Boolean);
+}
+
+function normalizeCoordinate(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 export function normalizePlace(place = {}) {
   const id = place.placeId ?? place.id;
-  const latitude = place.latitude ?? place.lat ?? null;
-  const longitude = place.longitude ?? place.lng ?? null;
+  const latitude = normalizeCoordinate(place.latitude ?? place.lat);
+  const longitude = normalizeCoordinate(place.longitude ?? place.lng);
   const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
   const targetType = place.targetType ?? "PLACE";
+  const imageUrls = normalizeImageUrls(place.imageUrls);
+  const imageUrl = place.imageUrl ?? place.thumbnailUrl ?? imageUrls[0] ?? "";
 
   return {
     ...place,
@@ -44,8 +70,9 @@ export function normalizePlace(place = {}) {
     hours: place.operatingHours ?? place.hours ?? "",
     desc: place.description ?? place.desc ?? "",
     isLiked: Boolean(place.isLiked),
-    imageUrl: place.imageUrl ?? place.thumbnailUrl ?? "",
-    imageUrls: place.imageUrls ?? [],
+    imageUrl,
+    thumbnailUrl: place.thumbnailUrl ?? imageUrl,
+    imageUrls,
   };
 }
 
@@ -79,6 +106,41 @@ export async function fetchPlaces({ keyword = "", category = "", cursor, size = 
   if (cursor) params.set("cursor", cursor);
   const data = await apiRequest(`/places?${params.toString()}`);
   return normalizePlaceList(data);
+}
+
+export async function geocodeAddress(query) {
+  const normalizedQuery = String(query || "").trim();
+  if (normalizedQuery.length < 2) {
+    throw new ApiClientError("주소는 2자 이상 입력해주세요.", "GEOCODING_QUERY_TOO_SHORT", 400);
+  }
+
+  const params = new URLSearchParams({ query: normalizedQuery });
+  const data = await apiRequest(`/places/geocoding?${params.toString()}`);
+  return {
+    addressName: data.addressName ?? normalizedQuery,
+    lat: normalizeCoordinate(data.lat),
+    lng: normalizeCoordinate(data.lng),
+  };
+}
+
+export async function fetchRegionByCoordinate({ lat, lng }) {
+  const latitude = normalizeCoordinate(lat);
+  const longitude = normalizeCoordinate(lng);
+  if (latitude == null || longitude == null) {
+    throw new ApiClientError("지역 조회에 필요한 좌표가 부족합니다.", "REGION_COORDS_MISSING", 400);
+  }
+
+  const params = new URLSearchParams({
+    lat: String(latitude),
+    lng: String(longitude),
+  });
+  const data = await apiRequest(`/places/region?${params.toString()}`);
+  return {
+    depth1: data.depth1 ?? "",
+    depth2: data.depth2 ?? "",
+    depth3: data.depth3 ?? "",
+    fullAddress: data.fullAddress ?? [data.depth1, data.depth2, data.depth3].filter(Boolean).join(" "),
+  };
 }
 
 export async function fetchNearbyTraditionalMarkets({ lat, lng, radius = 3000, page = 0, size = 20 }) {

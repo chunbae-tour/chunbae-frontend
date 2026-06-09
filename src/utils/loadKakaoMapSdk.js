@@ -4,6 +4,7 @@ export function getKakaoMapAppKey() {
   return (
     import.meta.env.VITE_KAKAO_MAP_APP_KEY
     || import.meta.env.VITE_KAKAO_MAP_JS_KEY
+    || import.meta.env.VITE_KAKAO_MAP_API_KEY
     || ""
   ).trim();
 }
