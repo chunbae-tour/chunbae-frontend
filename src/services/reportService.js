@@ -13,11 +13,48 @@ export function getReportReasonLabel(reason) {
   return REPORT_REASONS.find(item => item.value === reason)?.label ?? "기타";
 }
 
+export function getReportTargetLabel(targetType) {
+  return {
+    POST_COMPANION: "동행 게시글",
+    POST_FREE: "자유 게시글",
+    COMMENT: "댓글",
+    USER: "사용자",
+    MERCHANT: "상인",
+  }[targetType] ?? "신고 대상";
+}
+
+export function getReportStatusLabel(status) {
+  return {
+    PENDING: "접수됨",
+    RESOLVED: "처리 완료",
+    DISMISSED: "기각",
+  }[status] ?? "상태 확인 중";
+}
+
+export function normalizeMyReport(report = {}) {
+  const reason = report.reason ?? "OTHER";
+  const targetType = report.targetType ?? "";
+  const status = report.status ?? "";
+
+  return {
+    id: report.reportId ?? report.id,
+    reportId: report.reportId ?? report.id,
+    targetType,
+    targetId: report.targetId,
+    targetLabel: getReportTargetLabel(targetType),
+    reason,
+    reasonLabel: getReportReasonLabel(reason),
+    description: report.description ?? "",
+    status,
+    statusLabel: getReportStatusLabel(status),
+    createdAt: report.createdAt ?? "",
+  };
+}
+
 export async function createReport({ targetType, targetId, reason = "OTHER", description = "" }) {
   return apiRequest("/reports", {
     method: "POST",
     auth: true,
-    role: "USER",
     body: {
       targetType,
       targetId,
@@ -28,12 +65,23 @@ export async function createReport({ targetType, targetId, reason = "OTHER", des
 }
 
 export async function fetchMyReports({ cursor, size = 20 } = {}) {
+  const page = await fetchMyReportsPage({ cursor, size });
+  return page.content;
+}
+
+export async function fetchMyReportsPage({ cursor, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/reports/me?${params.toString()}`, { auth: true, role: "USER" });
-  return getPageContent(data);
+  const data = await apiRequest(`/reports/me?${params.toString()}`, { auth: true });
+  return {
+    content: getPageContent(data).map(normalizeMyReport),
+    nextCursor: data?.nextCursor ?? null,
+    hasNext: Boolean(data?.hasNext),
+    size: data?.size ?? getPageContent(data).length,
+  };
 }
 
 export async function fetchMyReport(reportId) {
-  return apiRequest(`/reports/${reportId}`, { auth: true, role: "USER" });
+  const data = await apiRequest(`/reports/${reportId}`, { auth: true });
+  return normalizeMyReport(data);
 }

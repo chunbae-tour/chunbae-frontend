@@ -3,9 +3,29 @@ import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchMyReviews, fetchOwnedItemQr, fetchOwnedItems, fetchWishlist, removeWishlistItem } from "../../services/myService.js";
+import { fetchMyReport, fetchMyReportsPage } from "../../services/reportService.js";
 
 function isRoleDeniedError(error) {
   return error?.status === 403;
+}
+
+function formatReportDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getReportStatusStyle(status) {
+  if (status === "RESOLVED") return { background: "#E6F6EE", color: COLORS.primary };
+  if (status === "DISMISSED") return { background: "#F1F2F4", color: COLORS.textMuted };
+  return { background: "#FFF3CF", color: "#A36300" };
 }
 
 // ─── 찜 목록 ─────────────────────────────────────────────────────────
@@ -167,6 +187,193 @@ export function MyReviewPage({ onBack, showToast }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 내 신고 내역 ───────────────────────────────────────────────────
+export function MyReportsPage({ onBack }) {
+  const [reports, setReports] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasNext, setHasNext] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailStatus, setDetailStatus] = useState("idle");
+  const [detailError, setDetailError] = useState("");
+
+  const loadReports = ({ cursor = null, append = false } = {}) => {
+    if (append) setLoadingMore(true);
+    else {
+      setStatus("loading");
+      setErrorMessage("");
+      setSelectedReportId(null);
+      setDetail(null);
+      setDetailStatus("idle");
+    }
+
+    fetchMyReportsPage({ cursor, size: 20 })
+      .then((page) => {
+        const nextReports = append ? [...reports, ...page.content] : page.content;
+        setReports(nextReports);
+        setNextCursor(page.nextCursor);
+        setHasNext(page.hasNext);
+        setStatus(nextReports.length > 0 ? "success" : "empty");
+      })
+      .catch((error) => {
+        if (!append) setReports([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
+      })
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  };
+
+  useEffect(() => {
+    let ignore = false;
+    if (!ignore) loadReports();
+    return () => { ignore = true; };
+  }, []);
+
+  const openDetail = async (report) => {
+    const reportId = report.reportId ?? report.id;
+    if (!reportId) return;
+    if (selectedReportId === reportId) {
+      setSelectedReportId(null);
+      setDetail(null);
+      setDetailStatus("idle");
+      return;
+    }
+
+    setSelectedReportId(reportId);
+    setDetail(report);
+    setDetailStatus("loading");
+    setDetailError("");
+
+    try {
+      const data = await fetchMyReport(reportId);
+      setDetail(data);
+      setDetailStatus("success");
+    } catch (error) {
+      setDetailStatus("error");
+      setDetailError(getApiErrorHint(error));
+    }
+  };
+
+  return (
+    <div style={S.screen}>
+      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+        <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>🚩 내 신고 내역</span>
+      </div>
+      <div style={S.scrollArea}>
+        {status === "loading" ? (
+          <div style={{ padding: 16 }}><SkeletonList count={4} /></div>
+        ) : status === "error" ? (
+          <div style={{ padding: 16 }}>
+            <ErrorState
+              title="신고 내역을 불러오지 못했습니다."
+              description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
+              onRetry={() => loadReports()}
+            />
+          </div>
+        ) : reports.length === 0 ? (
+          <div style={{ padding: 16 }}>
+            <EmptyState
+              icon="🚩"
+              title="접수한 신고가 없습니다."
+              description="게시글, 댓글, 사용자 신고를 접수하면 이곳에서 처리 상태를 확인할 수 있습니다."
+            />
+          </div>
+        ) : (
+          <div style={{ padding: 16 }}>
+            <div style={{ background: "#FFF7DC", border: "1px solid rgba(255,180,30,0.35)", borderRadius: 14, padding: 14, marginBottom: 12, color: "#8A4B00", fontSize: 14, lineHeight: 1.5 }}>
+              내가 접수한 신고와 처리 상태를 확인할 수 있습니다. 항목을 누르면 접수 내용을 펼쳐볼 수 있어요.
+            </div>
+            {reports.map((report) => {
+              const statusStyle = getReportStatusStyle(report.status);
+              const isOpen = selectedReportId === (report.reportId ?? report.id);
+              return (
+                <article
+                  key={report.reportId ?? report.id}
+                  onClick={() => openDetail(report)}
+                  style={{
+                    background: "#fff",
+                    border: "0.5px solid rgba(0,0,0,0.06)",
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 10,
+                    cursor: "pointer",
+                    boxShadow: isOpen ? "0 10px 28px rgba(0,0,0,0.07)" : "none",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ width: 46, height: 46, borderRadius: 14, background: "#FFF0F0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🚩</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 6 }}>
+                        <strong style={{ fontSize: 15, color: COLORS.primary }}>{report.targetLabel}</strong>
+                        <span style={{ ...statusStyle, borderRadius: 999, padding: "4px 9px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+                          {report.statusLabel}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, color: COLORS.textSub, marginBottom: 5 }}>
+                        사유: {report.reasonLabel}
+                      </div>
+                      <div style={{ fontSize: 13, color: COLORS.textMuted }}>
+                        신고번호 {report.reportId} · 접수일 {formatReportDate(report.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isOpen && (
+                    <div style={{ marginTop: 14, borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 14 }}>
+                      {detailStatus === "loading" && <div style={{ fontSize: 14, color: COLORS.textMuted }}>상세 내역을 확인하는 중입니다...</div>}
+                      {detailStatus === "error" && (
+                        <div style={{ fontSize: 14, color: "#E24B4A" }}>{detailError || "상세 내역을 불러오지 못했습니다."}</div>
+                      )}
+                      {detail && detailStatus !== "loading" && (
+                        <div style={{ display: "grid", gap: 8, fontSize: 14, color: COLORS.textSub, lineHeight: 1.5 }}>
+                          <div><b style={{ color: COLORS.textMain }}>대상 ID</b> {detail.targetId ?? "-"}</div>
+                          <div><b style={{ color: COLORS.textMain }}>처리 상태</b> {detail.statusLabel}</div>
+                          <div>
+                            <b style={{ color: COLORS.textMain }}>신고 내용</b>
+                            <p style={{ margin: "6px 0 0", color: COLORS.textSub }}>
+                              {detail.description || "추가로 입력한 내용이 없습니다."}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+            {hasNext && (
+              <button
+                type="button"
+                onClick={() => loadReports({ cursor: nextCursor, append: true })}
+                disabled={loadingMore}
+                style={{
+                  width: "100%",
+                  border: 0,
+                  borderRadius: 14,
+                  background: COLORS.primary,
+                  color: "#fff",
+                  padding: "13px 0",
+                  fontWeight: 800,
+                  cursor: loadingMore ? "default" : "pointer",
+                  opacity: loadingMore ? 0.65 : 1,
+                }}
+              >
+                {loadingMore ? "불러오는 중..." : "더 보기"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

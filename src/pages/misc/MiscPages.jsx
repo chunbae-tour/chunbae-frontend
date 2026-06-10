@@ -234,10 +234,11 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
           {[
             { icon: "❤️", label: "찜 목록", tab: "wishlist" },
             { icon: "✍️", label: "내 리뷰", tab: "myReview" },
+            { icon: "🚩", label: "내 신고 내역", tab: "myReports" },
             { icon: "🧾", label: "이용 내역", tab: "payHistory" },
             { icon: "🎁", label: "보유 아이템", tab: "ownedItems" },
           ].map((m, i) => (
-            <div key={i} onClick={() => m.tab ? onTab(m.tab) : showToast("준비 중입니다")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
+            <div key={i} onClick={() => m.tab ? onTab(m.tab) : showToast("준비 중입니다")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 4 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
               <span style={{ fontSize: 14 }}>{m.icon} {m.label}</span>
               <span style={{ color: COLORS.textMuted }}>›</span>
             </div>
@@ -397,7 +398,6 @@ export function NotificationSettingsPage({ onBack, showToast }) {
   const toggle = async (key) => {
     const next = { ...settings, [key]: !settings[key] };
     setSettings(next);
-    localStorage.setItem("chunbae_notification_settings", JSON.stringify(next));
 
     try {
       const saved = await updateNotificationSettings(next);
@@ -416,7 +416,7 @@ export function NotificationSettingsPage({ onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         <div className="settings-note">
-          프론트에서는 카테고리별 토글 UI를 만들 수 있고, 실제 수신 여부 저장과 푸시 발송 제어는 백엔드 사용자 알림 설정 API가 필요합니다.
+          알림 목록은 서버와 연결되어 있고, 카테고리별 수신 설정은 백엔드 API가 준비될 때까지 이 기기에 저장됩니다.
         </div>
         {status === "loading" && <div style={{ margin: "0 16px 12px" }}><SkeletonList count={2} /></div>}
         {status === "error" && (
@@ -669,23 +669,28 @@ export function ARPage({ onBack }) {
 }
 
 // ─── 알림 페이지 ──────────────────────────────────────────────────────
-export function NotificationPage({ onBack }) {
+export function NotificationPage({ onBack, onNotificationClick, onUnreadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [status, setStatus] = useState("loading");
   const [markingAll, setMarkingAll] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  const syncNotifications = (items) => {
+    setNotifications(items);
+    onUnreadCountChange?.(items.filter(item => !item.read).length);
+  };
+
   const loadNotifications = () => {
     setStatus("loading");
     setErrorMessage("");
-    fetchNotifications()
+    fetchNotifications({ size: 20 })
       .then((data) => {
-        setNotifications(data);
+        syncNotifications(data);
         setStatus(data.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
-        setNotifications([]);
+        syncNotifications([]);
         setErrorMessage(getApiErrorHint(error));
         setStatus("error");
       });
@@ -697,16 +702,19 @@ export function NotificationPage({ onBack }) {
     return () => { ignore = true; };
   }, []);
 
-  const markOne = async (id) => {
-    await markNotificationRead(id).catch(() => {});
-    setNotifications(notifications.map(x => x.id === id ? { ...x, read: true } : x));
+  const markOne = async (notification) => {
+    if (!notification?.id) return;
+    await markNotificationRead(notification.id).catch(() => {});
+    const nextNotification = { ...notification, read: true };
+    syncNotifications(notifications.map(x => x.id === notification.id ? nextNotification : x));
+    onNotificationClick?.(nextNotification);
   };
 
   const markAll = async () => {
     if (markingAll) return;
     setMarkingAll(true);
     await markAllNotificationsRead().catch(() => {});
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    syncNotifications(notifications.map(n => ({ ...n, read: true })));
     setMarkingAll(false);
   };
 
@@ -717,7 +725,7 @@ export function NotificationPage({ onBack }) {
     } catch (error) {
       return;
     }
-    setNotifications([]);
+    syncNotifications([]);
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -768,16 +776,17 @@ export function NotificationPage({ onBack }) {
           </div>
         )}
         {notifications.map(n => {
-          const type = getNotificationType(n.text);
+          const type = getNotificationType(`${n.title || ""} ${n.text || ""}`);
           return (
-          <div key={n.id} onClick={() => markOne(n.id)} className={`notification-row ${type} ${n.read ? "read" : ""}`}>
+          <button key={n.id} type="button" onClick={() => markOne(n)} className={`notification-row ${type} ${n.read ? "read" : ""}`}>
             <span style={{ fontSize: 22 }}>{n.icon}</span>
             <div style={{ flex: 1 }}>
+              {n.title && <div className="notification-title">{n.title}</div>}
               <div style={{ fontSize: 14, color: COLORS.primary, lineHeight: 1.5, marginBottom: 4 }}>{n.text}</div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted }}>{n.time}</div>
+              <div style={{ fontSize: 14, color: COLORS.textMuted }}>{n.timeText || n.time}</div>
             </div>
-            {!n.read && <span style={{ width: 8, height: 8, background: COLORS.accent, borderRadius: "50%", marginTop: 6, flexShrink: 0 }} />}
-          </div>
+            {!n.read && <span className="notification-unread-dot" />}
+          </button>
         );})}
       </div>
       <ConfirmDialog
@@ -846,6 +855,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
   const [popularSearches, setPopularSearches] = useState([]);
   const [recentSearches, setRecentSearches] = useState(readRecentSearches);
   const [suggestions, setSuggestions] = useState([]);
+  const [isSuggestOpen, setIsSuggestOpen] = useState(false);
   const draftQuery = query.trim();
   const normalizedQuery = submittedQuery.trim();
   const resultCounts = SEARCH_RESULT_TABS.reduce((acc, tab) => {
@@ -897,6 +907,8 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       setQuery("");
       setSubmittedQuery("");
       setResults([]);
+      setSuggestions([]);
+      setIsSuggestOpen(false);
       setStatus("idle");
       setErrorMessage("");
       setNextCursor(null);
@@ -906,6 +918,8 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
     }
     setQuery(nextQuery);
     setSubmittedQuery(nextQuery);
+    setSuggestions([]);
+    setIsSuggestOpen(false);
     setActiveResultType("ALL");
   };
 
@@ -917,8 +931,9 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
   useEffect(() => {
     let ignore = false;
 
-    if (!draftQuery) {
+    if (!draftQuery || draftQuery === normalizedQuery) {
       setSuggestions([]);
+      setIsSuggestOpen(false);
       return () => { ignore = true; };
     }
 
@@ -931,10 +946,12 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
             .filter(Boolean)
             .slice(0, 5);
           setSuggestions(values);
+          setIsSuggestOpen(values.length > 0);
         })
         .catch(() => {
           if (ignore) return;
           setSuggestions([]);
+          setIsSuggestOpen(false);
         });
     }, 250);
 
@@ -942,7 +959,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       ignore = true;
       clearTimeout(timer);
     };
-  }, [draftQuery]);
+  }, [draftQuery, normalizedQuery]);
 
   useEffect(() => {
     let ignore = false;
@@ -1060,8 +1077,21 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
         <form className="search-local-top" onSubmit={handleSearchSubmit}>
           <span onClick={onBack}>←</span>
           <div className="search-input-panel">
-            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="장소, 가게, 메뉴를 검색해보세요" />
-            {draftQuery && suggestions.length > 0 && (
+            <input
+              autoFocus
+              value={query}
+              onChange={e => {
+                setQuery(e.target.value);
+                setIsSuggestOpen(true);
+              }}
+              onFocus={() => {
+                if (draftQuery && draftQuery !== normalizedQuery && suggestions.length > 0) {
+                  setIsSuggestOpen(true);
+                }
+              }}
+              placeholder="장소, 가게, 메뉴를 검색해보세요"
+            />
+            {isSuggestOpen && draftQuery && draftQuery !== normalizedQuery && suggestions.length > 0 && (
               <div className="search-hero-suggest-row">
                 {suggestions.map(item => (
                   <button key={item} type="button" onClick={() => submitSearch(item)}>
