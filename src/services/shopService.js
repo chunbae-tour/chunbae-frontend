@@ -1,4 +1,4 @@
-import { apiRequest } from "./apiClient.js";
+import { ApiClientError, apiRequest } from "./apiClient.js";
 
 function getShopId(shop) {
   return shop?.shopId ?? shop?.id;
@@ -51,17 +51,17 @@ export async function fetchShopDetail(shopId) {
 }
 
 export async function fetchShopReviews(shopId) {
-  // TODO: 상점 리뷰 조회 API 확정 필요. 결제한 사용자 리뷰 작성 가능 여부는 백엔드 응답에 포함되어야 합니다.
-  const data = await apiRequest(`/shops/${shopId}/reviews?size=10`);
-  return Array.isArray(data) ? data : data?.content || [];
+  // TODO: 백엔드 상점 리뷰 조회 API가 생기면 실제 호출로 교체합니다.
+  void shopId;
+  return [];
 }
 
 export async function createShopReview({ shopId, paymentHistoryId, rating, content }) {
-  // TODO: 리뷰 작성 API 확정 필요. paymentHistoryId로 실제 결제 기반 작성 권한을 검증해야 합니다.
-  return apiRequest(`/shops/${shopId}/reviews`, {
-    method: "POST",
-    auth: true,
-    role: "USER",
-    body: { paymentHistoryId, rating, content },
-  });
+  // TODO: 백엔드 상점 리뷰 작성 API가 생기면 실제 호출로 교체합니다.
+  throw new ApiClientError(
+    "상점 리뷰 API가 아직 백엔드에 없습니다. 결제 기반 상점 리뷰 작성은 백엔드 협의가 필요합니다.",
+    "SHOP_REVIEW_API_MISSING",
+    501,
+    { shopId, paymentHistoryId, rating, content }
+  );
 }

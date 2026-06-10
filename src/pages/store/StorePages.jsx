@@ -412,13 +412,13 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
           <section className="shop-review-list">
             <div className="place-action-head">
               <span>상점 리뷰</span>
-              <small>결제한 사용자 중심의 후기입니다.</small>
+              <small>상점 리뷰 API가 준비되면 표시됩니다.</small>
             </div>
             {reviews.length === 0 && (
               <EmptyState
                 icon="리뷰"
-                title="아직 등록된 상점 리뷰가 없습니다."
-                description="결제한 사용자의 후기가 등록되면 이곳에 표시됩니다."
+                title="상점 리뷰 API 준비 중"
+                description="백엔드 상점 리뷰 조회/작성 API가 연결되면 결제한 사용자의 후기가 표시됩니다."
               />
             )}
             {reviews.map(review => (

@@ -11,10 +11,11 @@ import {
   requestCurrentPosition,
 } from "../../utils/geolocation.js";
 
-const MAP_FILTERS = ["전체", "관광지", "전통시장"];
+const MAP_FILTERS = ["전체", "관광지", "전통시장", "찜한 장소"];
 const MAX_MAP_SPAN_DEGREES = 2;
 
 function filterPlacesByType(items, filter) {
+  if (filter === "찜한 장소") return items.filter((place) => place.isLiked);
   return filter === "전체" ? items : items.filter((place) => place.type === filter);
 }
 
@@ -51,7 +52,10 @@ export default function MapPage({ onPlaceClick }) {
   const [markerNotice, setMarkerNotice] = useState("");
   const markerRequestSeq = useRef(0);
   const filtered = filterPlacesByType(places, filter);
-  const filteredMarkers = filterPlacesByType(mapMarkers, filter);
+  const markerSource = filter === "찜한 장소"
+    ? places
+    : (mapMarkers.length > 0 || markerStatus === "wide" ? mapMarkers : places);
+  const filteredMarkers = filterPlacesByType(markerSource, filter);
   const accessOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const isSecureAccess = typeof window !== "undefined" ? window.isSecureContext : true;
 
@@ -268,6 +272,13 @@ export default function MapPage({ onPlaceClick }) {
             description="위치나 검색 반경을 조정하면 더 많은 장소를 찾을 수 있습니다."
             actionLabel="기본 위치로 다시 조회"
             onAction={() => loadPlaces(getDefaultLocation())}
+          />
+        )}
+        {status === "success" && filtered.length === 0 && (
+          <EmptyState
+            icon={filter === "찜한 장소" ? "♥" : "지도"}
+            title={filter === "찜한 장소" ? "찜한 장소가 없습니다." : "이 필터에 표시할 장소가 없습니다."}
+            description={filter === "찜한 장소" ? "관광지 상세에서 마음에 드는 장소를 찜하면 여기에서 모아볼 수 있어요." : "다른 필터를 선택하거나 위치를 다시 확인해보세요."}
           />
         )}
         <div className="map-result-grid">

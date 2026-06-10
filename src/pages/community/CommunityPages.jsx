@@ -7,6 +7,59 @@ import { createCommunityComment, createCommunityPost, fetchCommunityComments, fe
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { searchPlaces } from "../../services/searchService.js";
 
+function parseDateValue(value) {
+  if (!value) return null;
+  const raw = String(value);
+  const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00` : raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatCompactDate(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) return "";
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
+function formatKoreanDate(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) return "";
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(parsed);
+}
+
+function formatKoreanDateTime(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) return "";
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function formatRelativeTime(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) return "";
+  const diffMs = Date.now() - parsed.getTime();
+  if (diffMs < 0) return formatCompactDate(value);
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return "방금";
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}시간 전`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}일 전`;
+  return formatCompactDate(value);
+}
+
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
 export function CommunityListPage({ onPost, onWrite, onBack }) {
   const [tab, setTab] = useState("동행");
@@ -92,7 +145,15 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
             />
           )}
           <div className="community-card-grid">
-          {filtered.map(p => (
+          {filtered.map(p => {
+            const isCompanionPost = p.type === "동행";
+            const meetingDateText = formatCompactDate(p.meetingDate ?? p.date) || "일정 미정";
+            const createdRelative = formatRelativeTime(p.createdAt ?? p.date);
+            const primaryMeta = isCompanionPost
+              ? `모임일 ${meetingDateText} · ${p.place || "장소 미정"} · ${p.current}/${p.max}명`
+              : `작성 ${createdRelative || "작성일 미정"} · ${p.place || "자유게시판"}`;
+
+            return (
             <article key={p.id} onClick={() => onPost(p)} className="community-list-card">
               <div className="community-list-card-head">
                 <div>
@@ -104,11 +165,15 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
               <h2>{p.title}</h2>
               <p>{p.content}</p>
               <div className="community-list-card-foot">
-                <span>{p.author} · {p.date}</span>
+                <span className="community-list-meta-stack">
+                  <b>{primaryMeta}</b>
+                  {isCompanionPost && createdRelative && <small>작성 {createdRelative}</small>}
+                </span>
                 <span>💬 {p.comments} · 👁 {p.views}</span>
               </div>
             </article>
-          ))}
+            );
+          })}
           </div>
         </div>
       </div>
@@ -279,6 +344,10 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
   })();
   const routeItems = post.route ?? [post.place, "주변 명소 둘러보기", "시장 먹거리 탐방"];
   const goodPoints = post.goodPoints ?? ["동선을 공유했어요", "여행 팁을 남겼어요", "주변 상권과 함께 보기 좋아요"];
+  const meetingDateText = formatKoreanDate(post.meetingDate ?? post.date) || "일정 미정";
+  const compactMeetingDateText = formatCompactDate(post.meetingDate ?? post.date) || "일정 미정";
+  const createdDateTimeText = formatKoreanDateTime(post.createdAt ?? post.date) || "작성일 미정";
+  const createdRelativeText = formatRelativeTime(post.createdAt ?? post.date);
   const companionAction = {
     idle: { label: "채팅방 참여 신청", helper: "방장이 수락하면 채팅방에 입장할 수 있어요." },
     pending: { label: "승인 대기 중", helper: "참여 신청을 보냈습니다. 수락 알림을 기다려주세요." },
@@ -373,7 +442,8 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
               <div className="community-detail-author">
                 <div>👤</div>
                 <span>{post.author}</span>
-                <span>{post.date}</span>
+                {isCompanion && <span>모임일 {compactMeetingDateText}</span>}
+                <span>작성 {createdRelativeText || createdDateTimeText}</span>
                 <span>조회 {post.views}</span>
               </div>
               <p className="community-detail-content">{post.content}</p>
@@ -442,7 +512,8 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
               <div className="community-section-title">{isCompanion ? "모집 정보" : "게시글 요약"}</div>
               {isCompanion ? (
                 <div className="community-info-grid">
-                  <div><span>일정</span><strong>{post.date}</strong></div>
+                  <div><span>모임일</span><strong>{meetingDateText}</strong></div>
+                  <div><span>작성일</span><strong>{createdDateTimeText}</strong></div>
                   <div><span>시간</span><strong>{post.meetingTime ?? "시간 협의"}</strong></div>
                   <div><span>인원</span><strong>{post.current}/{post.max}명</strong></div>
                   <div><span>언어</span><strong>{post.language ?? "한국어"}</strong></div>
@@ -450,7 +521,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
               ) : (
                 <div className="community-info-grid">
                   <div><span>댓글</span><strong>{comments.length}</strong></div>
-                  <div><span>작성일</span><strong>{post.date}</strong></div>
+                  <div><span>작성일</span><strong>{createdDateTimeText}</strong></div>
                   <div><span>분류</span><strong>자유 게시판</strong></div>
                   <div><span>장소</span><strong>{post.place}</strong></div>
                 </div>
@@ -540,7 +611,7 @@ export function CommunityWritePage({ onBack, showToast }) {
     let ignore = false;
     setPlaceSearchStatus("loading");
     const timer = setTimeout(() => {
-      searchPlaces({ query, size: 8 })
+      searchPlaces({ query, size: 8, track: false, source: "community-place-selector" })
         .then((places) => {
           if (ignore) return;
           setPlaceResults(places);

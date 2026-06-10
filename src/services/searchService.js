@@ -89,11 +89,13 @@ function getUnifiedSearchPage(data) {
   };
 }
 
-export async function searchPlaces({ query, size = 20 }) {
+export async function searchPlaces({ query, size = 20, track = true, source } = {}) {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) return [];
 
   const params = new URLSearchParams({ q: normalizedQuery, size: String(size) });
+  if (track === false) params.set("track", "false");
+  if (source) params.set("source", source);
   const data = await apiRequest(`/search/places?${params.toString()}`);
   return getPageContent(data).map(normalizePlace);
 }

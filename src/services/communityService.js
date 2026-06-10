@@ -86,6 +86,8 @@ export async function createCommunityComment({ postId, postType = "free", text }
 }
 
 function normalizeCompanionPost(post = {}) {
+  const meetingDate = post.meetingDate ?? post.date ?? "";
+  const createdAt = post.createdAt ?? post.createdDate ?? "";
   return {
     ...post,
     id: post.postId ?? post.companionPostId ?? post.id,
@@ -94,7 +96,9 @@ function normalizeCompanionPost(post = {}) {
     title: post.title ?? "",
     author: post.writerNickname ?? post.writer?.nickname ?? post.author ?? "여행자",
     writerId: post.writerId ?? post.writer?.userId ?? post.userId ?? post.authorId ?? null,
-    date: post.meetingDate ?? post.createdAt ?? post.date ?? "",
+    date: meetingDate || createdAt,
+    meetingDate,
+    createdAt,
     current: post.currentMembers ?? post.current ?? 1,
     max: post.maxMembers ?? post.max ?? 4,
     comments: post.commentCount ?? post.comments ?? 0,
@@ -105,13 +109,15 @@ function normalizeCompanionPost(post = {}) {
 }
 
 function normalizeFreePost(post = {}) {
+  const createdAt = post.createdAt ?? post.createdDate ?? post.date ?? "";
   return {
     ...post,
     id: post.postId ?? post.freePostId ?? post.id,
     type: "자유",
     title: post.title ?? "",
     author: post.writerNickname ?? post.author ?? "여행자",
-    date: post.createdAt ?? post.date ?? "",
+    date: createdAt,
+    createdAt,
     current: null,
     max: null,
     comments: post.commentCount ?? post.comments ?? 0,

@@ -118,8 +118,8 @@ export function PwaInstallPrompt() {
 
   const handleInstall = async () => {
     if (!canInstall) return;
-    await promptInstall();
     setIsVisible(false);
+    await promptInstall();
   };
 
   const handleDismiss = () => {

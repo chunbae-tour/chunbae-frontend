@@ -47,11 +47,14 @@ export function normalizePlace(place = {}) {
   const latitude = normalizeCoordinate(place.latitude ?? place.lat);
   const longitude = normalizeCoordinate(place.longitude ?? place.lng);
   const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
-  const category = place.category;
+  const category = place.category ?? place.categoryName;
   const targetType = place.targetType ?? (category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
   const isMarket = targetType === "TRADITIONAL_MARKET" || category === "TRADITIONAL_MARKET";
   const imageUrls = normalizeImageUrls(place.imageUrls);
   const imageUrl = place.imageUrl ?? place.thumbnailUrl ?? imageUrls[0] ?? "";
+  const name = place.name ?? place.placeName ?? "";
+  const address = place.address ?? place.addr ?? place.roadAddressName ?? place.addressName ?? "";
+  const description = place.description ?? place.desc ?? place.categoryName ?? "";
   const rawType = place.type;
   const displayType = rawType && !["TOURIST_SPOT", "TRADITIONAL_MARKET"].includes(rawType)
     ? rawType
@@ -68,28 +71,38 @@ export function normalizePlace(place = {}) {
     longitude,
     lat: latitude,
     lng: longitude,
-    name: place.name ?? "",
+    name,
     type: displayType,
     dist: distanceText ?? "주변",
     rating: place.rating ?? 0,
     reviews: place.reviewCount ?? place.reviews ?? 0,
     emoji: place.emoji ?? (isMarket ? "🛍️" : "📍"),
-    addr: place.address ?? place.addr ?? "",
+    addr: address,
     hours: place.operatingHours ?? place.hours ?? "",
-    desc: place.description ?? place.desc ?? "",
+    desc: description,
     isLiked: Boolean(place.isLiked),
+    placeUrl: place.placeUrl,
+    externalUrl: place.externalUrl ?? place.placeUrl,
     imageUrl,
     thumbnailUrl: place.thumbnailUrl ?? imageUrl,
     imageUrls,
   };
 }
 
-function normalizePlaceList(data) {
-  if (Array.isArray(data)) return data.map(normalizePlace);
+function getPlaceItems(data) {
+  if (Array.isArray(data)) return data;
 
-  const list = getPageContent(data?.places || data?.markets || data?.markers
-    ? { content: data.places ?? data.markets ?? data.markers }
-    : data);
+  return data?.markers
+    ?? data?.places
+    ?? data?.markets
+    ?? data?.content
+    ?? data?.items
+    ?? data?.list
+    ?? [];
+}
+
+function normalizePlaceList(data) {
+  const list = getPlaceItems(data);
   return Array.isArray(list) ? list.map(normalizePlace) : [];
 }
 
@@ -107,7 +120,7 @@ export async function fetchMapMarkers({ swLat, swLng, neLat, neLng }) {
   const data = await apiRequest(`/places/map-markers?${params.toString()}`);
 
   return {
-    markers: normalizePlaceList(data?.markers ? { markers: data.markers } : data),
+    markers: normalizePlaceList(data),
     truncated: Boolean(data?.truncated),
     limit: data?.limit ?? 500,
   };
@@ -266,7 +279,7 @@ export async function fetchPlaceReviews(placeId) {
 export async function fetchNearbyStores(placeId) {
   if (!placeId) return [];
 
-  const data = await apiRequest(`/places/${placeId}/nearby-shops?radius=1000`);
+  const data = await apiRequest(`/places/${placeId}/nearby-shops?limit=5`);
   return (Array.isArray(data) ? data : getPageContent(data)).map(shop => ({
     ...shop,
     id: shop.shopId ?? shop.id,
@@ -282,8 +295,9 @@ export async function fetchNearbyStores(placeId) {
 
 export async function fetchNearbyPlacesByPlace(placeId, { category = "RESTAURANT", radius = 1000, size = 10 } = {}) {
   if (!placeId) return [];
+  void size;
 
-  const params = new URLSearchParams({ category, radius: String(radius), size: String(size) });
+  const params = new URLSearchParams({ category, radius: String(radius) });
   const data = await apiRequest(`/places/${placeId}/nearby-places?${params.toString()}`);
   return normalizePlaceList(Array.isArray(data?.items) ? data.items : getPageContent(data));
 }

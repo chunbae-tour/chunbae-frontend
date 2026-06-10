@@ -1,5 +1,3 @@
-import { apiRequest, getPageContent } from "./apiClient.js";
-
 export function normalizeCertifiedStorePromotion(item = {}) {
   const id = item.promotionId ?? item.adId ?? item.id;
   const shopId = item.shopId ?? item.storeId;
@@ -26,11 +24,7 @@ export function normalizeCertifiedStorePromotion(item = {}) {
 }
 
 export async function fetchCertifiedStorePromotions() {
-  // TODO: 춘배인증 상점 홍보/추천 API 최종 경로 확정 필요.
+  // TODO: 백엔드에 인증 상점 프로모션 조회 API가 생기면 실제 호출로 교체합니다.
   // 후보 필드: promotionId, shopId, shopName, marketName, headline, description, benefit, imageUrl, displayOrder, startAt, endAt, status.
-  const data = await apiRequest("/promotions/certified-stores?status=ACTIVE&size=5");
-  return getPageContent(data)
-    .map(normalizeCertifiedStorePromotion)
-    .filter((item) => item.status === "ACTIVE")
-    .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+  return [];
 }
