@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { KakaoMap } from "../../components/map";
 import { S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchNearbyTravelSpotsWithLikes, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
+import { fetchMapMarkers, fetchNearbyTravelSpotsWithLikes, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
 import {
   getGeolocationErrorMessage,
   getGeolocationSupport,
@@ -12,6 +12,11 @@ import {
 } from "../../utils/geolocation.js";
 
 const MAP_FILTERS = ["전체", "관광지", "전통시장"];
+const MAX_MAP_SPAN_DEGREES = 2;
+
+function filterPlacesByType(items, filter) {
+  return filter === "전체" ? items : items.filter((place) => place.type === filter);
+}
 
 const getPlaceMeta = (place) => {
   if (place.type === "전통시장") {
@@ -41,7 +46,12 @@ export default function MapPage({ onPlaceClick }) {
   const [regionInfo, setRegionInfo] = useState(null);
   const [requestingLocation, setRequestingLocation] = useState(false);
   const [pickLocationMode, setPickLocationMode] = useState(false);
-  const filtered = filter === "전체" ? places : places.filter(p => p.type === filter);
+  const [mapMarkers, setMapMarkers] = useState([]);
+  const [markerStatus, setMarkerStatus] = useState("idle");
+  const [markerNotice, setMarkerNotice] = useState("");
+  const markerRequestSeq = useRef(0);
+  const filtered = filterPlacesByType(places, filter);
+  const filteredMarkers = filterPlacesByType(mapMarkers, filter);
   const accessOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const isSecureAccess = typeof window !== "undefined" ? window.isSecureContext : true;
 
@@ -79,6 +89,42 @@ export default function MapPage({ onPlaceClick }) {
     }
   };
 
+  const loadMapMarkers = useCallback(async (bounds) => {
+    if (!bounds) return;
+
+    if (bounds.latSpan > MAX_MAP_SPAN_DEGREES || bounds.lngSpan > MAX_MAP_SPAN_DEGREES) {
+      markerRequestSeq.current += 1;
+      setMapMarkers([]);
+      setSelectedPlace(null);
+      setMarkerStatus("wide");
+      setMarkerNotice("지도를 확대해 주세요. 넓은 범위에서는 마커 조회를 잠시 멈춥니다.");
+      return;
+    }
+
+    setMarkerStatus("loading");
+    setMarkerNotice("");
+    const requestSeq = markerRequestSeq.current + 1;
+    markerRequestSeq.current = requestSeq;
+
+    try {
+      const result = await fetchMapMarkers(bounds);
+      if (requestSeq !== markerRequestSeq.current) return;
+      setMapMarkers(result.markers);
+      setMarkerStatus(result.markers.length > 0 ? "success" : "empty");
+      setMarkerNotice(
+        result.truncated
+          ? `관광지가 너무 많아 ${result.limit.toLocaleString()}개만 표시됩니다. 지도를 더 확대해 주세요.`
+          : "",
+      );
+    } catch (err) {
+      if (requestSeq !== markerRequestSeq.current) return;
+      setMapMarkers([]);
+      setSelectedPlace(null);
+      setMarkerStatus("error");
+      setMarkerNotice(getApiErrorHint(err));
+    }
+  }, []);
+
   const requestUserLocation = async () => {
     setRequestingLocation(true);
     setLocationHint("");
@@ -108,6 +154,10 @@ export default function MapPage({ onPlaceClick }) {
     loadPlaces(getDefaultLocation());
     return undefined;
   }, []);
+
+  useEffect(() => {
+    setSelectedPlace(null);
+  }, [filter]);
 
   return (
     <div style={S.screen} className="map-explorer-page">
@@ -143,9 +193,11 @@ export default function MapPage({ onPlaceClick }) {
           className="map-kakao-container"
           center={mapCenter}
           currentPosition={userLocation}
-          markers={filtered}
+          markers={filteredMarkers}
           selectedMarkerId={selectedPlace?.id ?? selectedPlace?.placeId}
           onMarkerClick={setSelectedPlace}
+          onViewportChange={loadMapMarkers}
+          fitMarkers={false}
           pickLocationMode={pickLocationMode}
           onMapClick={
             pickLocationMode
@@ -168,7 +220,7 @@ export default function MapPage({ onPlaceClick }) {
             <strong>{selectedPlace.name}</strong>
             <small>{selectedPlace.addr}</small>
             <div>
-              <em>📍 {selectedPlace.dist}</em>
+              <em>📍 {selectedPlace.dist || "지도 안"}</em>
               <em>★ {selectedPlace.rating}</em>
               <em>리뷰 {selectedPlace.reviews}</em>
             </div>
@@ -179,6 +231,12 @@ export default function MapPage({ onPlaceClick }) {
           </div>
         )}
       </div>
+
+      {markerNotice && (
+        <div className={`map-state-card ${markerStatus === "wide" || markerNotice.includes("많아") ? "warning" : "error"}`}>
+          {markerNotice}
+        </div>
+      )}
 
       {/* 카테고리 필터 */}
       <div className="map-filter-row">

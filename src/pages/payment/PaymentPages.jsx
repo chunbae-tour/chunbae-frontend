@@ -12,6 +12,7 @@ import {
   isPaymentHistoryPayment,
   requestCharge,
   requestPortOnePayment,
+  waitForChargeSettlement,
 } from "../../services/paymentService.js";
 
 const WON_TO_YEOPJEON_RATE = 10;
@@ -28,6 +29,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
   const [charging, setCharging] = useState(false);
   const [error, setError] = useState("");
   const [lastRequestKey, setLastRequestKey] = useState("");
+  const [settlementMessage, setSettlementMessage] = useState("");
 
   const amounts = [
     { won: 5000, best: true },
@@ -72,6 +74,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
     if (!selected) { showToast("충전할 엽전을 선택해주세요!"); return; }
     setCharging(true);
     setError("");
+    setSettlementMessage("");
     const requestKey = createPaymentRequestKey();
     setLastRequestKey(requestKey);
 
@@ -79,12 +82,29 @@ export function PayChargePage({ onBack, onDone, showToast }) {
       const result = await requestCharge({ amount: selected.value, paymentMethod: method, idempotencyKey: requestKey });
       const paymentResult = await requestPortOnePayment(result);
       console.info("PortOne payment result", paymentResult);
-      showToast(`결제 요청이 완료되었습니다. 주문번호: ${result.orderUid || "확인 필요"}`);
-      setTimeout(onDone, 1500);
+      setSettlementMessage("결제는 승인되었습니다. 백엔드 충전 반영을 확인하는 중입니다.");
+      const settlement = await waitForChargeSettlement({
+        orderUid: result.orderUid,
+        previousBalance: balanceStatus === "success" ? balance : null,
+      });
+
+      if (settlement.balance != null) {
+        setBalance(settlement.balance);
+        setBalanceStatus("success");
+      }
+
+      if (settlement.status === "completed" || settlement.status === "balance-updated") {
+        showToast(`엽전 충전이 반영되었습니다. 주문번호: ${result.orderUid || "확인 필요"}`);
+        setTimeout(onDone, 900);
+        return;
+      }
+
+      setError("결제는 승인됐지만 엽전 반영을 아직 확인하지 못했습니다. PortOne 웹훅 수신과 백엔드 결제 상태를 확인해주세요.");
     } catch (err) {
       console.error("Charge payment failed", err);
       setError(err.message || "결제 요청 중 문제가 발생했습니다.");
     } finally {
+      setSettlementMessage("");
       setCharging(false);
     }
   };
@@ -169,8 +189,9 @@ export function PayChargePage({ onBack, onDone, showToast }) {
             </div>
           )}
           {error && <div style={{ color: "#E24B4A", fontSize: 14, marginBottom: 10 }}>{error}</div>}
+          {settlementMessage && <div style={{ color: COLORS.primary, fontSize: 14, marginBottom: 10, fontWeight: 700 }}>{settlementMessage}</div>}
           <button type="button" className="payment-primary-action" disabled={charging} onClick={handleCharge} style={{ width: "100%", border: "none", background: COLORS.accent, color: COLORS.primary, borderRadius: 14, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: charging ? "default" : "pointer", opacity: charging ? 0.7 : 1 }}>
-            {charging ? "결제창 여는 중..." : selected ? `${selected.price} 결제 요청하기` : "충전할 금액을 먼저 선택해주세요"}
+            {charging ? (settlementMessage ? "충전 반영 확인 중..." : "결제창 여는 중...") : selected ? `${selected.price} 결제 요청하기` : "충전할 금액을 먼저 선택해주세요"}
           </button>
           <div style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center", marginTop: 8 }}>결제창에서 결제를 완료하면 웹훅으로 엽전 충전이 반영됩니다.</div>
         </div>
@@ -400,8 +421,9 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>{item.title}</div>
                       <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 2 }}>{item.date}</div>
-                      <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>
-                        {item.paymentMethodLabel} · 주문번호 {String(item.orderUid || "").slice(0, 8)}...
+                      <div className="payment-order-meta">
+                        <span>{item.paymentMethodLabel}</span>
+                        <span>주문번호 {item.orderUid || "확인 필요"}</span>
                       </div>
                     </div>
                   </div>

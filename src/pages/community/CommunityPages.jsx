@@ -4,6 +4,7 @@ import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts } from "../../services/communityService.js";
+import { searchPlaces } from "../../services/searchService.js";
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
 export function CommunityListPage({ onPost, onWrite, onBack }) {
@@ -434,11 +435,73 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
 // ─── 게시글 작성 ──────────────────────────────────────────────────────
 export function CommunityWritePage({ onBack, showToast }) {
   const [type, setType] = useState("동행");
-  const [form, setForm] = useState({ title: "", content: "", place: "", date: "", maxPeople: "4" });
+  const [form, setForm] = useState({ title: "", content: "", place: "", placeId: null, region: "", date: "", maxPeople: "4" });
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState([]);
+  const [placeSearchStatus, setPlaceSearchStatus] = useState("idle");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    if (type !== "동행") {
+      setPlaceResults([]);
+      setPlaceSearchStatus("idle");
+      return;
+    }
+
+    const query = placeQuery.trim();
+    if (query.length < 2) {
+      setPlaceResults([]);
+      setPlaceSearchStatus(query.length > 0 ? "too-short" : "idle");
+      return;
+    }
+
+    let ignore = false;
+    setPlaceSearchStatus("loading");
+    const timer = setTimeout(() => {
+      searchPlaces({ query, size: 8 })
+        .then((places) => {
+          if (ignore) return;
+          setPlaceResults(places);
+          setPlaceSearchStatus(places.length > 0 ? "success" : "empty");
+        })
+        .catch((error) => {
+          if (ignore) return;
+          setPlaceResults([]);
+          setPlaceSearchStatus("error");
+          console.error("Failed to search places for companion post", error);
+        });
+    }, 260);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [placeQuery, type]);
+
+  const getPlaceRegion = (place) => {
+    const rawRegion = place.region ?? place.addr ?? place.address ?? "";
+    return String(rawRegion).trim().split(/\s+/).slice(0, 2).join(" ").slice(0, 50);
+  };
+
+  const handleSelectPlace = (place) => {
+    const placeName = place.name || place.placeName || "";
+    setForm(f => ({
+      ...f,
+      place: placeName,
+      placeId: place.placeId ?? place.id,
+      region: getPlaceRegion(place),
+    }));
+    setPlaceQuery(placeName);
+    setPlaceResults([]);
+    setPlaceSearchStatus("selected");
+  };
 
   const handleSubmit = async () => {
     if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
+    if (type === "동행") {
+      if (!form.placeId || !form.place) { showToast("동행할 관광지를 검색해서 선택해주세요."); return; }
+      if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
+    }
     try {
       await createCommunityPost({ type, ...form });
     } catch (error) {
@@ -483,9 +546,44 @@ export function CommunityWritePage({ onBack, showToast }) {
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>관광지</div>
-            <select value={form.place} onChange={e => set("place", e.target.value)} style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}>
-              <option value="">관광지 선택</option>
-            </select>
+            {type === "동행" ? (
+              <div className="community-place-search">
+                <input
+                  value={placeQuery}
+                  onChange={(e) => {
+                    setPlaceQuery(e.target.value);
+                    setForm(f => ({ ...f, place: "", placeId: null, region: "" }));
+                  }}
+                  placeholder="관광지 이름을 2자 이상 검색하세요"
+                  style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                />
+                {form.placeId && (
+                  <div className="community-selected-place">
+                    <span>선택됨</span>
+                    <strong>{form.place}</strong>
+                    <button type="button" onClick={() => { set("place", ""); set("placeId", null); setPlaceQuery(""); }}>변경</button>
+                  </div>
+                )}
+                {placeSearchStatus === "loading" && <div className="community-place-search-note">관광지를 검색하는 중입니다.</div>}
+                {placeSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
+                {placeSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 이름으로 검색해보세요.</div>}
+                {placeSearchStatus === "error" && <div className="community-place-search-note error">관광지 검색을 불러오지 못했습니다.</div>}
+                {placeResults.length > 0 && (
+                  <div className="community-place-result-list">
+                    {placeResults.map((place) => (
+                      <button key={place.placeId ?? place.id} type="button" onClick={() => handleSelectPlace(place)}>
+                        <strong>{place.name}</strong>
+                        <span>{place.addr || place.address || place.type || "관광지"}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="community-place-disabled">
+                자유 게시판 장소 연결은 백엔드 작성 API에 placeId/placeName 필드가 추가되면 연결할 수 있습니다.
+              </div>
+            )}
           </div>
           {type === "동행" && (
             <>

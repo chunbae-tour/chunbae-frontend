@@ -39,6 +39,21 @@ const PAYMENT_ORDER_STATUS_LABELS = {
   REFUNDED: "환불 완료",
 };
 
+function formatDateTime(value) {
+  if (!value) return "";
+
+  const source = String(value);
+  const match = source.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return source;
+
+  const [, year, month, day, hourText, minute] = match;
+  const hour = Number(hourText);
+  const period = hour < 12 ? "오전" : "오후";
+  const hour12 = hour % 12 || 12;
+
+  return `${year}.${month}.${day} ${period} ${hour12}:${minute}`;
+}
+
 function formatYeopjeonHistoryAmount(value) {
   const amount = Number(value) || 0;
   const sign = amount > 0 ? "+" : "";
@@ -137,11 +152,12 @@ export function normalizePaymentHistoryItem(item = {}) {
     desc: item.description ?? item.desc ?? item.reason ?? item.shopName ?? "엽전 내역",
     amount: amountText,
     rawAmount: amountValue,
-    date: item.createdAt ?? item.paidAt ?? item.date ?? "",
     shopId: item.shopId ?? item.storeId ?? item.merchantShopId,
     shopName: item.shopName ?? item.storeName ?? item.merchantName,
     placeId: item.placeId ?? item.marketId,
     placeName: item.placeName ?? item.marketName,
+    rawDate: item.createdAt ?? item.paidAt ?? item.date ?? "",
+    date: formatDateTime(item.createdAt ?? item.paidAt ?? item.date ?? ""),
     paidAmount: typeof paidAmountValue === "number" ? `${paidAmountValue.toLocaleString()}원` : paidAmountValue,
     reviewWritable,
     reviewId: item.reviewId ?? null,
@@ -164,7 +180,8 @@ export function normalizeChargeRefundHistoryItem(item = {}) {
     paymentMethodLabel: PAYMENT_METHOD_LABELS[paymentMethod] ?? paymentMethod ?? "결제수단",
     status,
     statusLabel: PAYMENT_ORDER_STATUS_LABELS[status] ?? status,
-    date: item.createdAt ?? item.paidAt ?? item.updatedAt ?? "",
+    rawDate: item.createdAt ?? item.paidAt ?? item.updatedAt ?? "",
+    date: formatDateTime(item.createdAt ?? item.paidAt ?? item.updatedAt ?? ""),
     updatedAt: item.updatedAt ?? "",
   };
 }
@@ -226,14 +243,55 @@ export async function requestPortOnePayment(payment) {
   return result;
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function fetchPaymentHistory() {
   const data = await apiRequest("/yeopjeon/histories?size=20", { auth: true, role: "USER" });
   return getPageContent(data).map(normalizePaymentHistoryItem);
 }
 
-export async function fetchChargeRefundHistory() {
-  const data = await apiRequest("/payments/history?size=20", { auth: true, role: "USER" });
+export async function fetchChargeRefundHistory({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/payments/history?${params.toString()}`, { auth: true, role: "USER" });
   return getPageContent(data).map(normalizeChargeRefundHistoryItem);
+}
+
+export async function waitForChargeSettlement({ orderUid, previousBalance, attempts = 8, intervalMs = 1500 } = {}) {
+  let latestBalance = null;
+  let matchedOrder = null;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt > 0) await sleep(intervalMs);
+
+    const [historyResult, balanceResult] = await Promise.allSettled([
+      fetchChargeRefundHistory({ size: 20 }),
+      fetchYeopjeonBalance(),
+    ]);
+
+    if (historyResult.status === "fulfilled") {
+      matchedOrder = historyResult.value.find((item) => {
+        const identifiers = [item.orderUid, item.paymentId, item.id].filter(Boolean).map(String);
+        return orderUid ? identifiers.includes(String(orderUid)) : false;
+      }) ?? matchedOrder;
+    }
+
+    if (balanceResult.status === "fulfilled") {
+      latestBalance = balanceResult.value;
+    }
+
+    if (matchedOrder?.status === "COMPLETED") {
+      return { status: "completed", order: matchedOrder, balance: latestBalance };
+    }
+
+    if (latestBalance != null && previousBalance != null && latestBalance > previousBalance) {
+      return { status: "balance-updated", order: matchedOrder, balance: latestBalance };
+    }
+  }
+
+  return { status: "pending", order: matchedOrder, balance: latestBalance };
 }
 
 export async function requestRefund(orderId, reason = "사용자 환불 요청") {

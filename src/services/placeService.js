@@ -47,9 +47,17 @@ export function normalizePlace(place = {}) {
   const latitude = normalizeCoordinate(place.latitude ?? place.lat);
   const longitude = normalizeCoordinate(place.longitude ?? place.lng);
   const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
-  const targetType = place.targetType ?? "PLACE";
+  const category = place.category;
+  const targetType = place.targetType ?? (category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
+  const isMarket = targetType === "TRADITIONAL_MARKET" || category === "TRADITIONAL_MARKET";
   const imageUrls = normalizeImageUrls(place.imageUrls);
   const imageUrl = place.imageUrl ?? place.thumbnailUrl ?? imageUrls[0] ?? "";
+  const rawType = place.type;
+  const displayType = rawType && !["TOURIST_SPOT", "TRADITIONAL_MARKET"].includes(rawType)
+    ? rawType
+    : isMarket
+      ? "전통시장"
+      : "관광지";
 
   return {
     ...place,
@@ -61,11 +69,11 @@ export function normalizePlace(place = {}) {
     lat: latitude,
     lng: longitude,
     name: place.name ?? "",
-    type: place.type ?? (targetType === "TRADITIONAL_MARKET" ? "전통시장" : "관광지"),
+    type: displayType,
     dist: distanceText ?? "주변",
     rating: place.rating ?? 0,
     reviews: place.reviewCount ?? place.reviews ?? 0,
-    emoji: place.emoji ?? (targetType === "TRADITIONAL_MARKET" ? "🛍️" : "📍"),
+    emoji: place.emoji ?? (isMarket ? "🛍️" : "📍"),
     addr: place.address ?? place.addr ?? "",
     hours: place.operatingHours ?? place.hours ?? "",
     desc: place.description ?? place.desc ?? "",
@@ -79,7 +87,9 @@ export function normalizePlace(place = {}) {
 function normalizePlaceList(data) {
   if (Array.isArray(data)) return data.map(normalizePlace);
 
-  const list = getPageContent(data?.places || data?.markets ? { content: data.places ?? data.markets } : data);
+  const list = getPageContent(data?.places || data?.markets || data?.markers
+    ? { content: data.places ?? data.markets ?? data.markers }
+    : data);
   return Array.isArray(list) ? list.map(normalizePlace) : [];
 }
 
@@ -87,23 +97,46 @@ export function getDefaultLocation() {
   return DEFAULT_LOCATION;
 }
 
-export async function fetchNearbyPlaces({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+export async function fetchMapMarkers({ swLat, swLng, neLat, neLng }) {
+  const params = new URLSearchParams({
+    swLat: String(swLat),
+    swLng: String(swLng),
+    neLat: String(neLat),
+    neLng: String(neLng),
+  });
+  const data = await apiRequest(`/places/map-markers?${params.toString()}`);
+
+  return {
+    markers: normalizePlaceList(data?.markers ? { markers: data.markers } : data),
+    truncated: Boolean(data?.truncated),
+    limit: data?.limit ?? 500,
+  };
+}
+
+export async function fetchNearbyPlaces({ lat, lng, radius = 3000, cursor, cursorDistance, size = 20 }) {
   const params = new URLSearchParams({
     lat: String(lat),
     lng: String(lng),
     radius: String(radius),
-    page: String(page),
     size: String(size),
   });
+  if (cursor != null && cursorDistance != null) {
+    params.set("cursor", String(cursor));
+    params.set("cursorDistance", String(cursorDistance));
+  }
   const data = await apiRequest(`/places/nearby?${params.toString()}`);
   return normalizePlaceList(data);
 }
 
-export async function fetchPlaces({ keyword = "", category = "", cursor, size = 20 } = {}) {
+export async function fetchPlaces({ keyword = "", category = "", region = "", cursor, cursorRating, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (keyword) params.set("keyword", keyword);
   if (category) params.set("category", category);
-  if (cursor) params.set("cursor", cursor);
+  if (region) params.set("region", region);
+  if (cursor != null && cursorRating != null) {
+    params.set("cursor", String(cursor));
+    params.set("cursorRating", String(cursorRating));
+  }
   const data = await apiRequest(`/places?${params.toString()}`);
   return normalizePlaceList(data);
 }
@@ -161,10 +194,11 @@ export async function fetchNearbyTraditionalMarkets({ lat, lng, radius = 3000, p
   }));
 }
 
-export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, cursor, cursorDistance, page, size = 20 }) {
+  void page;
   const [placesResult, marketsResult] = await Promise.allSettled([
-    fetchNearbyPlaces({ lat, lng, radius, page, size }),
-    fetchNearbyTraditionalMarkets({ lat, lng, radius, page, size }),
+    fetchNearbyPlaces({ lat, lng, radius, cursor, cursorDistance, size }),
+    fetchNearbyTraditionalMarkets({ lat, lng, radius, page: 0, size }),
   ]);
 
   if (placesResult.status === "rejected" && marketsResult.status === "rejected") {
@@ -184,10 +218,10 @@ export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, page = 0
     .slice(0, size);
 }
 
-export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000, cursor, cursorDistance, page, size = 20 }) {
   // 장소 목록과 찜 목록을 병렬로 가져오기
   const [spotsResult, likesResult] = await Promise.allSettled([
-    fetchNearbyTravelSpots({ lat, lng, radius, page, size }),
+    fetchNearbyTravelSpots({ lat, lng, radius, cursor, cursorDistance, page, size }),
     apiRequest("/users/me/likes?size=100", { auth: true }).catch(() => ({ content: [] })),
   ]);
 
@@ -246,12 +280,12 @@ export async function fetchNearbyStores(placeId) {
   }));
 }
 
-export async function fetchNearbyPlacesByPlace(placeId, { radius = 1000, size = 10 } = {}) {
+export async function fetchNearbyPlacesByPlace(placeId, { category = "RESTAURANT", radius = 1000, size = 10 } = {}) {
   if (!placeId) return [];
 
-  const params = new URLSearchParams({ radius: String(radius), size: String(size) });
+  const params = new URLSearchParams({ category, radius: String(radius), size: String(size) });
   const data = await apiRequest(`/places/${placeId}/nearby-places?${params.toString()}`);
-  return normalizePlaceList(data);
+  return normalizePlaceList(Array.isArray(data?.items) ? data.items : getPageContent(data));
 }
 
 export async function fetchPlaceRecommendations(placeId, { size = 10 } = {}) {

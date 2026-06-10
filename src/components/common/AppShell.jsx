@@ -14,8 +14,34 @@ const NAV_ITEMS = [
   { key: "my", label: "마이", icon: "👤" },
 ];
 
+const NAV_KEYS = new Set(NAV_ITEMS.map((item) => item.key));
+
+const SCREEN_NAV_KEY = {
+  place: "map",
+  direction: "map",
+  festCalendar: "fest",
+  festDetail: "fest",
+  communityPost: "community",
+  communityWrite: "community",
+  chatroom: "chat",
+  chatRequest: "chat",
+  storeProduct: "store",
+  storeShop: "store",
+  wishlist: "my",
+  myReview: "my",
+  ownedItems: "my",
+  notificationSettings: "my",
+  pay: "my",
+  payHistory: "my",
+  qrpay: "my",
+  merchant: "my",
+  merchantMenu: "my",
+  merchantSettlement: "my",
+  merchantApply: "my",
+};
+
 export default function AppShell({ active, screen, onTab, onAR, onHome, user, onLogin, showMobileTab, children }) {
-  const selectedKey = screen === "place" || screen === "direction" ? "map" : screen;
+  const selectedKey = SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
   const hideFaqFloating = [
     "chatroom",
     "qrpay",
@@ -53,7 +79,7 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
 
         <nav className="sidebar-nav" aria-label="주요 화면">
           {NAV_ITEMS.map((item) => {
-            const isActive = selectedKey === item.key || active === item.key;
+            const isActive = selectedKey === item.key;
 
             return (
               <button

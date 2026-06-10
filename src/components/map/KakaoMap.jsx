@@ -25,6 +25,21 @@ function getRenderableCoordinate(latValue, lngValue) {
   return { lat, lng };
 }
 
+function getMapBoundsPayload(map) {
+  const bounds = map.getBounds();
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+
+  return {
+    swLat: sw.getLat(),
+    swLng: sw.getLng(),
+    neLat: ne.getLat(),
+    neLng: ne.getLng(),
+    latSpan: Math.abs(ne.getLat() - sw.getLat()),
+    lngSpan: Math.abs(ne.getLng() - sw.getLng()),
+  };
+}
+
 export default function KakaoMap({
   center,
   currentPosition,
@@ -33,8 +48,10 @@ export default function KakaoMap({
   onMarkerClick,
   onCurrentPositionChange,
   onMapClick,
+  onViewportChange,
   pickLocationMode = false,
   showLocateButton = false,
+  fitMarkers = true,
   level = 5,
   className = "",
   style,
@@ -43,6 +60,7 @@ export default function KakaoMap({
   const mapRef = useRef(null);
   const markerInstancesRef = useRef([]);
   const currentPositionOverlayRef = useRef(null);
+  const viewportTimerRef = useRef(null);
   const [status, setStatus] = useState(() => (getKakaoMapAppKey() ? "loading" : "no-key"));
   const [errorMessage, setErrorMessage] = useState("");
   const [locating, setLocating] = useState(false);
@@ -141,13 +159,13 @@ export default function KakaoMap({
       hasBounds = true;
     });
 
-    if (hasBounds && validMarkers.length > 0) {
+    if (fitMarkers && hasBounds && validMarkers.length > 0) {
       mapRef.current.setBounds(bounds);
       if (mapRef.current.getLevel() > 8) {
         mapRef.current.setLevel(8);
       }
     }
-  }, [markers, currentPosition?.lat, currentPosition?.lng, status, onMarkerClick]);
+  }, [markers, currentPosition?.lat, currentPosition?.lng, status, onMarkerClick, fitMarkers]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return undefined;
@@ -209,6 +227,27 @@ export default function KakaoMap({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [status]);
+
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current || !onViewportChange) return undefined;
+
+    const { kakao } = window;
+    const map = mapRef.current;
+    const emitViewport = () => {
+      window.clearTimeout(viewportTimerRef.current);
+      viewportTimerRef.current = window.setTimeout(() => {
+        onViewportChange(getMapBoundsPayload(map));
+      }, 300);
+    };
+
+    kakao.maps.event.addListener(map, "idle", emitViewport);
+    emitViewport();
+
+    return () => {
+      window.clearTimeout(viewportTimerRef.current);
+      kakao.maps.event.removeListener(map, "idle", emitViewport);
+    };
+  }, [status, onViewportChange]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current || !onMapClick) return undefined;

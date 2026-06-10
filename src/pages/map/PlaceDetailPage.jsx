@@ -2,7 +2,24 @@
 import { COLORS, S } from "../../constants/colors";
 import { EmptyState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { addMarketLike, addPlaceLike, fetchNearbyStores, fetchPlaceDetail, fetchPlaceReviews, normalizePlace, removeMarketLike, removePlaceLike } from "../../services/placeService.js";
+import {
+  addMarketLike,
+  addPlaceLike,
+  fetchNearbyPlacesByPlace,
+  fetchNearbyStores,
+  fetchPlaceDetail,
+  fetchPlaceRecommendations,
+  fetchPlaceReviews,
+  normalizePlace,
+  removeMarketLike,
+  removePlaceLike,
+} from "../../services/placeService.js";
+
+const NEARBY_CATEGORY_TABS = [
+  { key: "RESTAURANT", label: "맛집" },
+  { key: "CAFE", label: "카페" },
+  { key: "ACCOMMODATION", label: "숙박" },
+];
 
 export default function PlaceDetailPage({ place, onBack, showToast, onDirection, onQrPay, onShopClick, onLikeChange }) {
   const [detail, setDetail] = useState(place ? normalizePlace(place) : null);
@@ -17,6 +34,10 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [reviewPhotoName, setReviewPhotoName] = useState("");
+  const [recommendations, setRecommendations] = useState([]);
+  const [nearbyCategory, setNearbyCategory] = useState("RESTAURANT");
+  const [nearbyCategoryPlaces, setNearbyCategoryPlaces] = useState([]);
+  const [nearbyCategoryStatus, setNearbyCategoryStatus] = useState("idle");
 
   useEffect(() => {
     let ignore = false;
@@ -58,23 +79,50 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
     if (!placeId) {
       setReviews([]);
       setNearbyStores([]);
+      setRecommendations([]);
       return undefined;
     }
 
-    Promise.all([fetchPlaceReviews(placeId), fetchNearbyStores(placeId)])
-      .then(([reviewData, storeData]) => {
+    Promise.allSettled([
+      fetchPlaceReviews(placeId),
+      fetchNearbyStores(placeId),
+      fetchPlaceRecommendations(placeId, { size: 5 }),
+    ])
+      .then(([reviewResult, storeResult, recommendResult]) => {
         if (ignore) return;
-        setReviews(reviewData);
-        setNearbyStores(storeData);
-      })
-      .catch(() => {
-        if (ignore) return;
-        setReviews([]);
-        setNearbyStores([]);
+        setReviews(reviewResult.status === "fulfilled" ? reviewResult.value : []);
+        setNearbyStores(storeResult.status === "fulfilled" ? storeResult.value : []);
+        setRecommendations(recommendResult.status === "fulfilled" ? recommendResult.value : []);
       });
 
     return () => { ignore = true; };
   }, [place?.id, place?.placeId]);
+
+  useEffect(() => {
+    let ignore = false;
+    const placeId = place?.placeId ?? place?.id;
+
+    if (!placeId) {
+      setNearbyCategoryPlaces([]);
+      setNearbyCategoryStatus("idle");
+      return undefined;
+    }
+
+    setNearbyCategoryStatus("loading");
+    fetchNearbyPlacesByPlace(placeId, { category: nearbyCategory, radius: 1000, size: 10 })
+      .then((items) => {
+        if (ignore) return;
+        setNearbyCategoryPlaces(items);
+        setNearbyCategoryStatus(items.length > 0 ? "success" : "empty");
+      })
+      .catch(() => {
+        if (ignore) return;
+        setNearbyCategoryPlaces([]);
+        setNearbyCategoryStatus("error");
+      });
+
+    return () => { ignore = true; };
+  }, [place?.id, place?.placeId, nearbyCategory]);
 
   const currentPlace = detail;
   const heroImage = getPlaceImageUrl(currentPlace) || getPlaceImageUrl(place);
@@ -248,11 +296,71 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
             <div>
               <p style={{ fontSize: 14, color: COLORS.textSub, lineHeight: 1.7 }}>{currentPlace.desc || "장소 소개가 아직 준비되지 않았습니다."}</p>
               <div className="place-explore-panel">
-                <EmptyState
-                  icon="코스"
-                  title="추천 코스 정보가 없습니다."
-                  description="장소별 먹거리와 코스 API가 연결되면 이곳에 표시됩니다."
-                />
+                <div className="place-action-head">
+                  <span>함께 가기 좋은 곳</span>
+                  <small>같은 카테고리의 가까운 관광지를 추천합니다.</small>
+                </div>
+                {recommendations.length === 0 ? (
+                  <EmptyState
+                    icon="코스"
+                    title="추천할 주변 장소가 없습니다."
+                    description="추천 API 응답이 비어 있거나 연결 가능한 장소가 없습니다."
+                  />
+                ) : (
+                  <div className="place-recommendation-grid">
+                    {recommendations.map((item, index) => (
+                      <div key={item.placeId ?? item.id ?? `${item.name}-${index}`} className="place-mini-place-card">
+                        <strong>{item.name}</strong>
+                        <span>{item.type} · {item.dist || "근처"}</span>
+                        <small>{item.addr || item.desc || "상세 정보는 장소 목록에서 확인하세요."}</small>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="place-explore-panel">
+                <div className="place-action-head">
+                  <span>주변 맛집·카페·숙박</span>
+                  <small>백엔드가 카카오 주변 장소를 캐싱해 내려주는 영역입니다.</small>
+                </div>
+                <div className="place-category-tabs">
+                  {NEARBY_CATEGORY_TABS.map((category) => (
+                    <button
+                      key={category.key}
+                      type="button"
+                      className={nearbyCategory === category.key ? "active" : ""}
+                      onClick={() => setNearbyCategory(category.key)}
+                    >
+                      {category.label}
+                    </button>
+                  ))}
+                </div>
+                {nearbyCategoryStatus === "loading" && <SkeletonList count={2} />}
+                {nearbyCategoryStatus === "error" && (
+                  <EmptyState
+                    icon="!"
+                    title="주변 장소를 불러오지 못했습니다."
+                    description="백엔드 nearby-places API 연결 상태를 확인해주세요."
+                  />
+                )}
+                {nearbyCategoryStatus === "empty" && (
+                  <EmptyState
+                    icon="주변"
+                    title="표시할 주변 장소가 없습니다."
+                    description="다른 분류를 선택하거나 반경 데이터가 쌓인 뒤 다시 확인해주세요."
+                  />
+                )}
+                {nearbyCategoryStatus === "success" && (
+                  <div className="place-external-list">
+                    {nearbyCategoryPlaces.map((item) => (
+                      <div key={item.id ?? item.placeId ?? `${item.name}-${item.addr}`} className="place-external-card">
+                        <strong>{item.name}</strong>
+                        <span>{item.addr || "주소 정보 없음"}</span>
+                        <small>{item.dist || item.type || "주변 장소"}</small>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ marginTop: 20 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>주변 인증 상점</div>
