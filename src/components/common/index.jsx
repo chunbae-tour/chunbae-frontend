@@ -307,3 +307,71 @@ export function ConfirmDialog({
     </div>
   );
 }
+
+export function ReportDialog({
+  open,
+  title = "신고하기",
+  targetLabel = "선택한 대상",
+  reasons = [],
+  initialDescription = "",
+  submitting = false,
+  onSubmit,
+  onCancel,
+}) {
+  const [reason, setReason] = useState(reasons[0]?.value || "OTHER");
+  const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setReason(reasons[0]?.value || "OTHER");
+    setDescription(initialDescription);
+  }, [open, reasons, initialDescription]);
+
+  if (!open) return null;
+
+  const handleSubmit = () => {
+    onSubmit?.({ reason, description: description.trim() });
+  };
+
+  return (
+    <div className="confirm-dialog-backdrop" role="presentation" onClick={onCancel}>
+      <div
+        className="confirm-dialog report-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-dialog-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <strong id="report-dialog-title">{title}</strong>
+        <p>{targetLabel}에 대한 신고 사유를 선택하고 필요한 내용을 적어주세요.</p>
+        <label className="report-dialog-field">
+          <span>신고 사유</span>
+          <select value={reason} onChange={(event) => setReason(event.target.value)}>
+            {reasons.map(item => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="report-dialog-field">
+          <span>상세 내용</span>
+          <textarea
+            value={description}
+            maxLength={500}
+            rows={5}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="상황을 확인할 수 있는 내용을 적어주세요."
+          />
+        </label>
+        <div className="report-dialog-count">{description.length}/500</div>
+        <div className="confirm-dialog-actions">
+          <button type="button" className="secondary" disabled={submitting} onClick={onCancel}>
+            취소
+          </button>
+          <button type="button" className="primary" disabled={submitting} onClick={handleSubmit}>
+            {submitting ? "접수 중..." : "신고 접수"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

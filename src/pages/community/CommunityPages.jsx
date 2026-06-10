@@ -1,9 +1,10 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors.js";
-import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
+import { EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts } from "../../services/communityService.js";
+import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { searchPlaces } from "../../services/searchService.js";
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
@@ -122,6 +123,8 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
   const [input, setInput] = useState("");
   const [joinState, setJoinState] = useState("idle");
   const [creatingRoom, setCreatingRoom] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -141,15 +144,39 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
   }, [initialPost?.id, initialPost?.type]);
 
   useEffect(() => {
+    if (!post?.id) {
+      setComments([]);
+      return undefined;
+    }
     let ignore = false;
-    fetchCommunityComments(post?.id, post?.type)
-      .then((data) => {
-        if (!ignore) setComments(data);
-      })
-      .catch(() => {
-        if (!ignore) setComments([]);
-      });
-    return () => { ignore = true; };
+    let loading = false;
+
+    const loadComments = ({ silent = false } = {}) => {
+      if (loading) return;
+      loading = true;
+      fetchCommunityComments(post.id, post.type)
+        .then((data) => {
+          if (ignore) return;
+          setComments(data);
+          setPost(prev => prev ? { ...prev, comments: data.length } : prev);
+        })
+        .catch(() => {
+          if (!ignore && !silent) setComments([]);
+        })
+        .finally(() => {
+          loading = false;
+        });
+    };
+
+    loadComments();
+    const intervalId = window.setInterval(() => {
+      loadComments({ silent: true });
+    }, 3000);
+
+    return () => {
+      ignore = true;
+      window.clearInterval(intervalId);
+    };
   }, [post?.id, post?.type]);
 
   useEffect(() => {
@@ -169,8 +196,54 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
       showToast?.(getApiErrorHint(error));
       return;
     }
-    setComments([...comments, comment]);
+    setComments(prev => [...prev, comment]);
+    setPost(prev => prev ? { ...prev, comments: (Number(prev.comments) || comments.length) + 1 } : prev);
     setInput("");
+  };
+
+  const getPostReportTargetType = () => (post?.type === "동행" ? "POST_COMPANION" : "POST_FREE");
+
+  const openPostReport = () => {
+    if (!post?.id) {
+      showToast?.("신고할 게시글 정보를 찾지 못했습니다.");
+      return;
+    }
+    setReportTarget({
+      targetType: getPostReportTargetType(),
+      targetId: post.id,
+      label: `${post.type} 게시글 "${post.title}"`,
+    });
+  };
+
+  const openCommentReport = (comment) => {
+    if (!comment?.id) {
+      showToast?.("신고할 댓글 정보를 찾지 못했습니다.");
+      return;
+    }
+    setReportTarget({
+      targetType: "COMMENT",
+      targetId: comment.id,
+      label: `${comment.author || "작성자"}님의 댓글`,
+    });
+  };
+
+  const submitReport = async ({ reason, description }) => {
+    if (!reportTarget || reportSubmitting) return;
+    setReportSubmitting(true);
+    try {
+      await createReport({
+        targetType: reportTarget.targetType,
+        targetId: reportTarget.targetId,
+        reason,
+        description,
+      });
+      setReportTarget(null);
+      showToast?.("신고가 접수되었습니다.");
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setReportSubmitting(false);
+    }
   };
 
   if (!post) {
@@ -284,7 +357,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
     <div style={S.screen} className="community-detail-screen">
       <div className="community-detail-topbar">
         <button type="button" onClick={onBack}>← 목록으로</button>
-        <button type="button" onClick={() => showToast("수정/삭제/신고")}>⋯</button>
+        <button type="button" onClick={openPostReport}>신고</button>
       </div>
 
       <div style={S.scrollArea} className="community-detail-scroll">
@@ -352,6 +425,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
                     <div>👤</div>
                     <strong>{c.author}</strong>
                     <span>{c.time}</span>
+                    <button type="button" className="community-comment-report" onClick={() => openCommentReport(c)}>신고</button>
                   </div>
                   <p>{c.text}</p>
                 </div>
@@ -375,7 +449,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
                 </div>
               ) : (
                 <div className="community-info-grid">
-                  <div><span>댓글</span><strong>{post.comments}</strong></div>
+                  <div><span>댓글</span><strong>{comments.length}</strong></div>
                   <div><span>작성일</span><strong>{post.date}</strong></div>
                   <div><span>분류</span><strong>자유 게시판</strong></div>
                   <div><span>장소</span><strong>{post.place}</strong></div>
@@ -396,11 +470,9 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
               <button type="button" onClick={handleCompanionAction}>
                 {isCompanion ? (isAuthor ? (creatingRoom ? "채팅방 생성 중..." : "채팅방 생성") : companionAction.label) : "관련 장소 보기"}
               </button>
-              {isCompanion && (
-                <button type="button" className="community-sub-action" onClick={() => showToast("신고 API가 아직 연결되지 않았습니다.")}>
-                  신고하기
-                </button>
-              )}
+              <button type="button" className="community-sub-action" onClick={openPostReport}>
+                신고하기
+              </button>
             </section>
 
             <section className="community-detail-card community-side-panel">
@@ -421,13 +493,22 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
             </section>
 
             <section className="community-detail-card community-stats-card">
-              <div><strong>{post.comments}</strong><span>댓글</span></div>
+              <div><strong>{comments.length}</strong><span>댓글</span></div>
               <div><strong>{post.views}</strong><span>조회</span></div>
               <div><strong>{isCompanion ? `${post.current}/${post.max}` : post.rating ?? 5}</strong><span>{isCompanion ? "참여" : "평점"}</span></div>
             </section>
           </aside>
         </div>
       </div>
+      <ReportDialog
+        open={Boolean(reportTarget)}
+        title="신고하기"
+        targetLabel={reportTarget?.label}
+        reasons={REPORT_REASONS}
+        submitting={reportSubmitting}
+        onSubmit={submitReport}
+        onCancel={() => setReportTarget(null)}
+      />
     </div>
   );
 }
@@ -439,6 +520,7 @@ export function CommunityWritePage({ onBack, showToast }) {
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeResults, setPlaceResults] = useState([]);
   const [placeSearchStatus, setPlaceSearchStatus] = useState("idle");
+  const [submitting, setSubmitting] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   useEffect(() => {
@@ -497,16 +579,20 @@ export function CommunityWritePage({ onBack, showToast }) {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
     if (type === "동행") {
       if (!form.placeId || !form.place) { showToast("동행할 관광지를 검색해서 선택해주세요."); return; }
       if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
     }
+    setSubmitting(true);
     try {
       await createCommunityPost({ type, ...form });
     } catch (error) {
       showToast(getApiErrorHint(error));
       return;
+    } finally {
+      setSubmitting(false);
     }
     showToast("게시글이 등록되었습니다! 🎉");
     setTimeout(onBack, 1200);
@@ -519,7 +605,6 @@ export function CommunityWritePage({ onBack, showToast }) {
           <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
           <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>게시글 작성</span>
         </div>
-        <div onClick={handleSubmit} style={{ background: COLORS.accent, color: COLORS.primary, fontSize: 14, fontWeight: 700, borderRadius: 20, padding: "6px 16px", cursor: "pointer" }}>등록</div>
       </div>
       <div style={{ ...S.scrollArea, padding: 20 }}>
         {/* 게시판 선택 */}
@@ -605,6 +690,11 @@ export function CommunityWritePage({ onBack, showToast }) {
               <div style={{ fontSize: 28, marginBottom: 4 }}>📷</div>
               <div style={{ fontSize: 14, color: COLORS.textMuted }}>사진을 추가하세요</div>
             </div>
+          </div>
+          <div className="community-write-actions">
+            <button type="button" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "등록 중..." : "게시글 등록"}
+            </button>
           </div>
         </div>
       </div>

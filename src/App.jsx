@@ -67,12 +67,41 @@ function getRoleEntryFromPath(pathname = window.location.pathname) {
 }
 
 const COMFORTABLE_VIEW_STORAGE_KEY = "chunbae_comfortable_view";
+const APP_NAVIGATION_STORAGE_KEY = "chunbae_navigation_state";
 
 function getStoredComfortableView() {
   try {
     return localStorage.getItem(COMFORTABLE_VIEW_STORAGE_KEY) === "true";
   } catch {
     return false;
+  }
+}
+
+function readStoredNavigationState() {
+  try {
+    const raw = sessionStorage.getItem(APP_NAVIGATION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.chunbaeTour ? parsed : null;
+  } catch {
+    sessionStorage.removeItem(APP_NAVIGATION_STORAGE_KEY);
+    return null;
+  }
+}
+
+function writeStoredNavigationState(state) {
+  try {
+    sessionStorage.setItem(APP_NAVIGATION_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // 세션 저장소를 사용할 수 없는 환경에서는 브라우저 히스토리만 사용합니다.
+  }
+}
+
+function clearStoredNavigationState() {
+  try {
+    sessionStorage.removeItem(APP_NAVIGATION_STORAGE_KEY);
+  } catch {
+    // ignore
   }
 }
 
@@ -109,24 +138,53 @@ export default function App() {
   const isSocialCallbackPath = Boolean(socialCallbackProvider);
   const [entryRole, setEntryRole] = useState(() => getRoleEntryFromPath());
   const [storedSession] = useState(() => getStoredAuthSession(entryRole || undefined));
+  const [storedNavigation] = useState(() => storedSession ? readStoredNavigationState() : null);
   const [hasPendingOauthSignup] = useState(() => !storedSession && Boolean(getPendingOauthSignup()?.signupTicket));
-  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : hasPendingOauthSignup ? "oauthSignup" : entryRole && !storedSession ? "roleLogin" : "splash");
+  const hasStoredMainNavigation = storedNavigation?.appState === "main";
+  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : hasPendingOauthSignup ? "oauthSignup" : entryRole && !storedSession ? "roleLogin" : hasStoredMainNavigation ? "main" : "splash");
   const [user, setUser] = useState(storedSession);
-  const [tab, setTab] = useState("home");
-  const [screen, setScreen] = useState(() => getInitialScreenForRole(storedSession?.role));
+  const [tab, setTab] = useState(storedNavigation?.tab || "home");
+  const [screen, setScreen] = useState(() => storedNavigation?.screen || getInitialScreenForRole(storedSession?.role));
   const [toast, setToast] = useState("");
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedShop, setSelectedShop] = useState(null);
-  const [selectedFestival, setSelectedFestival] = useState(null);
-  const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState(storedNavigation?.selectedPlace || null);
+  const [selectedRoom, setSelectedRoom] = useState(storedNavigation?.selectedRoom || null);
+  const [selectedPost, setSelectedPost] = useState(storedNavigation?.selectedPost || null);
+  const [selectedProduct, setSelectedProduct] = useState(storedNavigation?.selectedProduct || null);
+  const [selectedShop, setSelectedShop] = useState(storedNavigation?.selectedShop || null);
+  const [selectedFestival, setSelectedFestival] = useState(storedNavigation?.selectedFestival || null);
+  const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(storedNavigation?.selectedMerchantShopId || null);
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [likeChangeCounter, setLikeChangeCounter] = useState(0);
   const [privacyBackState, setPrivacyBackState] = useState("login");
   const historyInitializedRef = useRef(false);
   const restoringHistoryRef = useRef(false);
+
+  const getNavigationState = () => ({
+    chunbaeTour: true,
+    appState,
+    screen,
+    tab,
+    selectedPlace,
+    selectedRoom,
+    selectedPost,
+    selectedProduct,
+    selectedShop,
+    selectedFestival,
+    selectedMerchantShopId,
+  });
+
+  const restoreNavigationState = (state = {}) => {
+    setAppState(state.appState || "landing");
+    setScreen(state.screen || "home");
+    setTab(state.tab || "home");
+    setSelectedPlace(state.selectedPlace || null);
+    setSelectedRoom(state.selectedRoom || null);
+    setSelectedPost(state.selectedPost || null);
+    setSelectedProduct(state.selectedProduct || null);
+    setSelectedShop(state.selectedShop || null);
+    setSelectedFestival(state.selectedFestival || null);
+    setSelectedMerchantShopId(state.selectedMerchantShopId || null);
+  };
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
   const go = (scr) => setScreen(scr);
@@ -146,6 +204,7 @@ export default function App() {
   };
   const handleLogin = (userData) => {
     const role = String(userData?.role || "USER").toUpperCase();
+    clearStoredNavigationState();
     setUser(userData);
     setAppState("main");
     setTab("home");
@@ -155,6 +214,7 @@ export default function App() {
   };
   const handleLogout = () => {
     clearAuthSession();
+    clearStoredNavigationState();
     setUser(null);
     setAppState(entryRole ? "roleLogin" : "landing");
     setScreen("home");
@@ -207,9 +267,7 @@ export default function App() {
       const state = event.state;
       if (!state?.chunbaeTour) return;
       restoringHistoryRef.current = true;
-      setAppState(state.appState || "landing");
-      setScreen(state.screen || "home");
-      setTab(state.tab || "home");
+      restoreNavigationState(state);
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -219,7 +277,13 @@ export default function App() {
   useEffect(() => {
     if (appState === "splash") return;
 
-    const state = { chunbaeTour: true, appState, screen, tab };
+    const state = getNavigationState();
+    if (appState === "main") {
+      writeStoredNavigationState(state);
+    } else if (appState === "landing" || appState === "login" || appState === "roleLogin") {
+      clearStoredNavigationState();
+    }
+
     if (!historyInitializedRef.current) {
       window.history.replaceState(state, "", window.location.href);
       historyInitializedRef.current = true;
@@ -232,7 +296,7 @@ export default function App() {
     }
 
     window.history.pushState(state, "", window.location.href);
-  }, [appState, screen, tab]);
+  }, [appState, screen, tab, selectedPlace, selectedRoom, selectedPost, selectedProduct, selectedShop, selectedFestival, selectedMerchantShopId]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("comfortable-view", comfortableView);
@@ -258,6 +322,7 @@ export default function App() {
       .catch((error) => {
         if (ignore || !shouldClearSessionForError(error)) return;
         clearAuthSession();
+        clearStoredNavigationState();
         setUser(null);
         setAppState("login");
         setScreen("home");

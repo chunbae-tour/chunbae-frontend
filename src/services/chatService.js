@@ -1,5 +1,6 @@
 import { apiRequest, getPageContent } from "./apiClient.js";
 import { getStoredAuthSession } from "./authService.js";
+import { createReport } from "./reportService.js";
 
 class ChatApiError extends Error {
   constructor(message, code, status) {
@@ -212,20 +213,6 @@ export async function closeChatRoom(chatRoomId) {
 
 const DEFAULT_REPORT_REASON = "OTHER";
 
-async function createReport({ targetType, targetId, reason = DEFAULT_REPORT_REASON, description = "" }) {
-  return apiRequest("/reports", {
-    method: "POST",
-    auth: true,
-    role: "USER",
-    body: {
-      targetType,
-      targetId,
-      reason,
-      description,
-    },
-  });
-}
-
 export async function reportChatRoom({ chatRoomId }) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
   throw new ChatApiError(
@@ -244,7 +231,7 @@ export async function reportChatMessage({ chatRoomId, messageId }) {
   );
 }
 
-export async function reportChatParticipant({ userId, reason = DEFAULT_REPORT_REASON, description = "사용자 신고" }) {
+export async function reportChatParticipant({ userId, reason = DEFAULT_REPORT_REASON, description = "" }) {
   if (!userId) throw new ChatApiError("사용자 ID가 없습니다.", "MISSING_USER_ID", 400);
   await createReport({
     targetType: "USER",

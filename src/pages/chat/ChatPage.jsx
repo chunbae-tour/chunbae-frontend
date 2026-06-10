@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
-import { ConfirmDialog, EmptyState, ErrorState, SkeletonList } from "../../components/common";
+import { ConfirmDialog, EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { uploadChatAttachments } from "../../services/attachmentService.js";
 import {
@@ -11,12 +11,12 @@ import {
   kickChatParticipant,
   leaveChatRoom,
   markChatRoomRead,
-  reportChatMessage,
   reportChatParticipant,
-  reportChatRoom,
 } from "../../services/chatService.js";
 import { getStoredAuthSession } from "../../services/authService.js";
 import { createChatRealtimeClient } from "../../services/chatRealtimeService.js";
+import { REPORT_REASONS } from "../../services/reportService.js";
+import { LANG_CODE_MAP, translateText } from "../../services/translationService.js";
 
 function getMessageTimestamp(message = {}) {
   const raw = message.sentAt ?? message.createdAt ?? message.timestamp ?? message.time;
@@ -91,6 +91,11 @@ function getReadReceiptText(message = {}) {
 
 function isSystemMessage(message = {}) {
   return String(message.messageType ?? message.type ?? "").toUpperCase() === "SYSTEM";
+}
+
+function getTranslationTargetLanguage(session = {}) {
+  const rawLanguage = String(session.language ?? session.locale ?? "ko").trim();
+  return LANG_CODE_MAP[rawLanguage] || LANG_CODE_MAP[rawLanguage.toLowerCase()] || "KO";
 }
 
 function getRoomReadStorageKey(roomId) {
@@ -244,11 +249,18 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [realtimeStatus, setRealtimeStatus] = useState("idle");
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [kickConfirmTarget, setKickConfirmTarget] = useState(null);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [translatedMessages, setTranslatedMessages] = useState({});
+  const [translationErrors, setTranslationErrors] = useState({});
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const realtimeClientRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const currentUserId = getStoredAuthSession("USER")?.userId;
+  const translationPendingRef = useRef(new Set());
+  const currentUserSession = getStoredAuthSession("USER");
+  const currentUserId = currentUserSession?.userId;
 
   const roomId = room?.chatRoomId ?? room?.id;
   const activeRoom = roomDetail ?? room;
@@ -259,6 +271,9 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     hostId: activeRoom?.hostId ?? activeRoom?.ownerId,
   };
   const displayedMessages = sortMessages(messages);
+  const isCurrentUserHost = isSameUser(currentRoom.hostId, currentUserId)
+    || participants.some(participant => isSameUser(participant.userId, currentUserId) && String(participant.role || "").toUpperCase() === "HOST");
+  const translationTargetLanguage = getTranslationTargetLanguage(currentUserSession);
 
   const refreshMessages = ({ silent = true } = {}) => {
     if (!roomId) return Promise.resolve([]);
@@ -366,8 +381,36 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   }, [roomId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (!translationEnabled) return;
+
+    sortMessages(messages)
+      .filter((message) => {
+        if (isSystemMessage(message) || resolveMessageMine(message)) return false;
+        const key = getMessageKey(message);
+        const content = message.content ?? message.text ?? "";
+        return content && !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
+      })
+      .forEach((message) => {
+        const key = getMessageKey(message);
+        const content = message.content ?? message.text ?? "";
+        translationPendingRef.current.add(key);
+        translateText(content, translationTargetLanguage)
+          .then((result) => {
+            const translated = result?.translatedContent ?? result?.translatedText ?? result?.content ?? "";
+            setTranslatedMessages(prev => ({ ...prev, [key]: translated || content }));
+          })
+          .catch(() => {
+            setTranslationErrors(prev => ({ ...prev, [key]: true }));
+          })
+          .finally(() => {
+            translationPendingRef.current.delete(key);
+          });
+      });
+  }, [translationEnabled, messages, currentUserId, translationTargetLanguage, translatedMessages, translationErrors]);
 
   useEffect(() => {
     let ignore = false;
@@ -469,11 +512,9 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     }
   };
 
-  const handleRoomReport = () => runRoomAction({
-    key: "report-room",
-    action: () => reportChatRoom({ chatRoomId: roomId }),
-    successMessage: "채팅방 신고가 접수되었습니다.",
-  });
+  const handleRoomReport = () => {
+    showToast?.("채팅방 신고는 백엔드 ReportTargetType에 CHAT_ROOM 추가 후 연결할 수 있습니다.");
+  };
 
   const handleLeaveRoom = () => runRoomAction({
     key: "leave-room",
@@ -487,22 +528,59 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     handleLeaveRoom();
   };
 
-  const handleMessageReport = (message) => runRoomAction({
-    key: `report-message-${message.id}`,
-    action: () => reportChatMessage({ chatRoomId: roomId, messageId: message.id }),
-    successMessage: "채팅 신고가 접수되었습니다.",
-  });
+  const handleMessageReport = (message) => {
+    const messageProfile = getMessageProfile(message);
+    if (!messageProfile.userId) {
+      showToast?.("메시지 작성자 정보를 찾지 못해 신고할 수 없습니다.");
+      return;
+    }
+    if (resolveMessageMine(message)) {
+      showToast?.("내가 보낸 메시지는 신고할 수 없습니다.");
+      return;
+    }
+    const text = message.content ?? message.text ?? "";
+    const messageId = message.messageId ?? message.id;
+    const roomTitle = currentRoom?.title || room?.title || "채팅방";
+    const context = [
+      `채팅방: ${roomTitle}`,
+      messageId ? `메시지 ID: ${messageId}` : null,
+      text ? `메시지 내용: ${text}` : null,
+    ].filter(Boolean).join("\n");
+    setReportTarget({
+      userId: messageProfile.userId,
+      label: `${messageProfile.nickname || "상대방"}님의 메시지`,
+      initialDescription: context.slice(0, 500),
+    });
+  };
 
   const handleProfileReport = (target) => {
     if (!target.userId) {
       showToast?.("사용자 신고는 대상 userId가 연결되면 활성화됩니다.");
       return;
     }
-    runRoomAction({
-      key: `report-user-${target.userId}`,
-      action: () => reportChatParticipant({ userId: target.userId }),
-      successMessage: "사용자 신고가 접수되었습니다.",
+    setReportTarget({
+      userId: target.userId,
+      label: `${target.nickname || "상대방"} 사용자`,
     });
+  };
+
+  const submitUserReport = async ({ reason, description }) => {
+    if (!reportTarget || reportSubmitting) return;
+    setReportSubmitting(true);
+    try {
+      await reportChatParticipant({
+        userId: reportTarget.userId,
+        reason,
+        description,
+      });
+      setReportTarget(null);
+      setProfileTarget(null);
+      showToast?.("사용자 신고가 접수되었습니다.");
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setReportSubmitting(false);
+    }
   };
 
   const openParticipantPanel = () => {
@@ -562,8 +640,11 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           {roomMenuOpen && (
             <div className="chat-room-menu" role="menu">
               <button type="button" onClick={openParticipantPanel}>참여자 보기</button>
-              <button type="button" onClick={() => { setRoomMenuOpen(false); onRequest?.(); }}>참여 신청 관리</button>
-              <button type="button" onClick={openParticipantPanel}>상대방 내보내기</button>
+              <button type="button" onClick={() => { setTranslationEnabled(value => !value); setRoomMenuOpen(false); }}>
+                {translationEnabled ? "번역 끄기" : "번역 켜기"}
+              </button>
+              {isCurrentUserHost && <button type="button" onClick={() => { setRoomMenuOpen(false); onRequest?.(); }}>참여 신청 관리</button>}
+              {isCurrentUserHost && <button type="button" onClick={openParticipantPanel}>상대방 내보내기</button>}
               <button type="button" disabled={Boolean(actioning)} onClick={() => { setRoomMenuOpen(false); handleRoomReport(); }}>채팅방 신고</button>
               <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setRoomMenuOpen(false); setLeaveConfirmOpen(true); }}>채팅방 나가기</button>
             </div>
@@ -577,11 +658,14 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
         <div className="chat-participant-panel">
           <div className="chat-participant-head">
             <strong>참여자</strong>
-            <span>
-              {participantStatus === "loading" && "불러오는 중"}
-              {participantStatus === "error" && "API 확인 필요"}
-              {(participantStatus === "success" || participantStatus === "empty") && `${participants.length}명`}
-            </span>
+            <div>
+              <span>
+                {participantStatus === "loading" && "불러오는 중"}
+                {participantStatus === "error" && "API 확인 필요"}
+                {(participantStatus === "success" || participantStatus === "empty") && `${participants.length}명`}
+              </span>
+              <button type="button" onClick={() => setParticipantPanelOpen(false)}>닫기</button>
+            </div>
           </div>
           {participantStatus === "error" && (
             <div className="chat-api-note">참여자 목록 API와 권한 응답을 확인하세요.</div>
@@ -597,7 +681,9 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
               </button>
               <div>
                 <button type="button" onClick={() => handleProfileReport(participant)}>신고</button>
-                <button type="button" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
+                {isCurrentUserHost && !isSameUser(participant.userId, currentUserId) && (
+                  <button type="button" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
+                )}
               </div>
             </div>
           ))}
@@ -614,7 +700,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
         {displayedMessages.map(m => {
           if (isSystemMessage(m)) {
             return (
-              <div key={m.id} className="chat-system-message">
+              <div key={getMessageKey(m)} className="chat-system-message">
                 <span>{m.text}</span>
               </div>
             );
@@ -622,9 +708,12 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           const mine = resolveMessageMine(m);
           const readReceiptText = getReadReceiptText(m);
           const messageId = m.messageId ?? m.id;
+          const messageKey = getMessageKey(m);
           const messageProfile = !mine ? getMessageProfile(m) : null;
+          const translatedText = translatedMessages[messageKey];
+          const translationFailed = translationErrors[messageKey];
           return (
-          <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+          <div key={messageKey} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
             {!mine && <button type="button" onClick={() => openProfile(messageProfile)} style={{ width: 32, height: 32, borderRadius: "50%", background: COLORS.bg, border: 0, display: "flex", alignItems: "center", justifyContent: "center", marginRight: 8, fontSize: 14, flexShrink: 0, cursor: "pointer" }}>{messageProfile?.avatar ?? "👤"}</button>}
             <div className={mine ? "chat-message-stack mine" : "chat-message-stack"}>
               {!mine && <button type="button" className="chat-message-sender" onClick={() => openProfile(messageProfile)}>{messageProfile?.nickname ?? m.user}</button>}
@@ -664,6 +753,11 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
                   </div>
                 )}
               </div>
+              {!mine && translationEnabled && (
+                <div className={`chat-message-translation ${translationFailed ? "error" : ""}`}>
+                  {translatedText ? `번역: ${translatedText}` : translationFailed ? "번역을 불러오지 못했습니다." : "번역 중..."}
+                </div>
+              )}
             </div>
           </div>
           );
@@ -729,6 +823,16 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           </div>
         </div>
       )}
+      <ReportDialog
+        open={Boolean(reportTarget)}
+        title="사용자 신고"
+        targetLabel={reportTarget?.label}
+        reasons={REPORT_REASONS}
+        initialDescription={reportTarget?.initialDescription}
+        submitting={reportSubmitting}
+        onSubmit={submitUserReport}
+        onCancel={() => setReportTarget(null)}
+      />
     </div>
   );
 }
