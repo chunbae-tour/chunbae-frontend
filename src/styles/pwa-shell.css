@@ -2692,6 +2692,11 @@ button:disabled,
   box-shadow: 0 8px 18px rgba(47, 125, 90, 0.18);
 }
 
+.public-install-nav {
+  min-height: 40px;
+  padding: 0 16px;
+}
+
 .public-hero,
 .public-content-grid {
   width: min(100% - 64px, 1500px);
@@ -10012,6 +10017,13 @@ body {
   border-color: rgba(40, 104, 79, 0.26);
   background: #2f7d5a;
   color: #ffffff;
+}
+
+@media (max-width: 520px) {
+  .public-install-nav {
+    min-height: 38px;
+    padding: 0 14px;
+  }
 }
 
 .public-hero-signal-row span,
