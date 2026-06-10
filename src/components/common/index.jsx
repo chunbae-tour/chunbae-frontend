@@ -11,6 +11,10 @@ export function Toast({ msg }) {
 }
 
 const PWA_INSTALL_DISMISS_KEY = "chunbae:pwa-install-dismissed";
+let pwaInstallPromptEvent = null;
+let pwaInstallInstalled = false;
+let pwaInstallEventsBound = false;
+const pwaInstallSubscribers = new Set();
 
 function isStandaloneDisplay() {
   return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -36,48 +40,85 @@ function setInstallDismissed() {
   }
 }
 
-export function PwaInstallPrompt() {
-  const [installPrompt, setInstallPrompt] = useState(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isIos, setIsIos] = useState(false);
+function getPwaInstallSnapshot() {
+  const standalone = isStandaloneDisplay();
+  return {
+    canInstall: Boolean(pwaInstallPromptEvent),
+    installed: pwaInstallInstalled || standalone,
+    isIos: isIosDevice(),
+    isStandalone: standalone,
+  };
+}
+
+function notifyPwaInstallSubscribers() {
+  const snapshot = getPwaInstallSnapshot();
+  pwaInstallSubscribers.forEach((subscriber) => subscriber(snapshot));
+}
+
+function bindPwaInstallEvents() {
+  if (pwaInstallEventsBound || typeof window === "undefined") return;
+  pwaInstallEventsBound = true;
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    pwaInstallPromptEvent = event;
+    notifyPwaInstallSubscribers();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    pwaInstallInstalled = true;
+    pwaInstallPromptEvent = null;
+    setInstallDismissed();
+    notifyPwaInstallSubscribers();
+  });
+}
+
+function usePwaInstallState() {
+  const [state, setState] = useState(getPwaInstallSnapshot);
 
   useEffect(() => {
-    if (isStandaloneDisplay()) return undefined;
-
-    const dismissed = getInstallDismissed();
-    const ios = isIosDevice();
-    setIsIos(ios);
-    if (ios && !dismissed) setIsVisible(true);
-
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault();
-      if (dismissed) return;
-      setInstallPrompt(event);
-      setIsVisible(true);
-    };
-
-    const handleInstalled = () => {
-      setInstallPrompt(null);
-      setIsVisible(false);
-      setInstallDismissed();
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleInstalled);
+    bindPwaInstallEvents();
+    const handleChange = (nextState) => setState(nextState);
+    pwaInstallSubscribers.add(handleChange);
+    handleChange(getPwaInstallSnapshot());
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", handleInstalled);
+      pwaInstallSubscribers.delete(handleChange);
     };
   }, []);
+
+  const promptInstall = async () => {
+    if (!pwaInstallPromptEvent) return false;
+    const promptEvent = pwaInstallPromptEvent;
+    pwaInstallPromptEvent = null;
+    notifyPwaInstallSubscribers();
+    promptEvent.prompt();
+    await promptEvent.userChoice;
+    notifyPwaInstallSubscribers();
+    return true;
+  };
+
+  return { ...state, promptInstall };
+}
+
+export function PwaInstallPrompt() {
+  const [isVisible, setIsVisible] = useState(false);
+  const { canInstall, installed, isIos, promptInstall } = usePwaInstallState();
+
+  useEffect(() => {
+    if (installed) {
+      setIsVisible(false);
+      return;
+    }
+    const dismissed = getInstallDismissed();
+    setIsVisible(!dismissed && (isIos || canInstall));
+  }, [canInstall, installed, isIos]);
 
   if (!isVisible) return null;
 
   const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    await installPrompt.userChoice;
-    setInstallPrompt(null);
+    if (!canInstall) return;
+    await promptInstall();
     setIsVisible(false);
   };
 
@@ -93,7 +134,7 @@ export function PwaInstallPrompt() {
         <strong>춘배투어를 앱처럼 사용해보세요.</strong>
         <span>{isIos ? "Safari 공유 버튼에서 홈 화면에 추가를 선택하면 됩니다." : "홈 화면에 설치하면 바로 열 수 있어요."}</span>
       </div>
-      {installPrompt && (
+      {canInstall && (
         <button type="button" className="pwa-install-primary" onClick={handleInstall}>
           설치
         </button>
@@ -102,6 +143,42 @@ export function PwaInstallPrompt() {
         ×
       </button>
     </aside>
+  );
+}
+
+export function PwaInstallButton({ className = "", children = "앱 설치하기" }) {
+  const { canInstall, installed, isIos, promptInstall } = usePwaInstallState();
+  const [guideOpen, setGuideOpen] = useState(false);
+
+  if (installed) return null;
+
+  const handleClick = async () => {
+    if (canInstall) {
+      await promptInstall();
+      return;
+    }
+    setGuideOpen(true);
+  };
+
+  return (
+    <>
+      <button type="button" className={className} onClick={handleClick}>
+        {children}
+      </button>
+      <ConfirmDialog
+        open={guideOpen}
+        title={isIos ? "iPhone에서 홈 화면에 추가" : "브라우저 메뉴에서 앱 설치"}
+        description={
+          isIos
+            ? "Safari에서 공유 버튼을 누른 뒤 홈 화면에 추가를 선택해주세요. 카카오톡이나 네이버 인앱 브라우저에서는 Safari로 열어야 합니다."
+            : "Chrome 주소창 또는 메뉴에서 앱 설치, 홈 화면에 추가를 선택해주세요. 인앱 브라우저에서는 Chrome으로 다시 열어야 할 수 있습니다."
+        }
+        confirmLabel="확인"
+        cancelLabel="닫기"
+        onConfirm={() => setGuideOpen(false)}
+        onCancel={() => setGuideOpen(false)}
+      />
+    </>
   );
 }
 

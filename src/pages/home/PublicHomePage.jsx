@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { PwaInstallButton } from "../../components/common";
 import ChunbaeImg from "../../assets/hwangchunbae.png";
 
 const fadeUp = {
@@ -109,6 +110,15 @@ export default function PublicHomePage({ onLogin, onSignup, onExplore }) {
             >
               가까운 시장 찾기
             </motion.button>
+            <motion.div
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 340, damping: 20 }}
+            >
+              <PwaInstallButton className="public-install large">
+                앱 설치하기
+              </PwaInstallButton>
+            </motion.div>
           </motion.div>
           <motion.p
             className="public-hero-note"

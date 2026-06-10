@@ -2656,7 +2656,8 @@ button:disabled,
 }
 
 .public-primary,
-.public-ghost {
+.public-ghost,
+.public-install {
   min-height: 40px;
   border-radius: 999px;
   padding: 0 18px;
@@ -2678,9 +2679,17 @@ button:disabled,
 }
 
 .public-primary.large,
-.public-ghost.large {
+.public-ghost.large,
+.public-install.large {
   min-height: 48px;
   padding: 0 22px;
+}
+
+.public-install {
+  border: 1px solid rgba(47, 125, 90, 0.24);
+  background: #2f7d5a;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(47, 125, 90, 0.18);
 }
 
 .public-hero,
@@ -9955,6 +9964,7 @@ body {
 
 .public-primary,
 .public-ghost,
+.public-install,
 .public-hero-signal-row span,
 .public-hero-signal-row button {
   font-family: var(--font-primary);
@@ -9996,6 +10006,12 @@ body {
   border-color: rgba(31, 39, 51, 0.16);
   background: rgba(255, 253, 248, 0.72);
   color: #1f2733;
+}
+
+.public-install {
+  border-color: rgba(40, 104, 79, 0.26);
+  background: #2f7d5a;
+  color: #ffffff;
 }
 
 .public-hero-signal-row span,
