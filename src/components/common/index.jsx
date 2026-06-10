@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { COLORS } from "../../constants/colors";
 
 export function Toast({ msg }) {
@@ -6,6 +7,101 @@ export function Toast({ msg }) {
     <div className="app-toast" role="status" aria-live="polite" style={{ position: "absolute", bottom: 90, left: 16, right: 16, background: COLORS.primary, color: "#fff", borderRadius: 12, padding: "12px 16px", zIndex: 200, fontSize: 14, textAlign: "center" }}>
       {msg}
     </div>
+  );
+}
+
+const PWA_INSTALL_DISMISS_KEY = "chunbae:pwa-install-dismissed";
+
+function isStandaloneDisplay() {
+  return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+function getInstallDismissed() {
+  try {
+    return localStorage.getItem(PWA_INSTALL_DISMISS_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function setInstallDismissed() {
+  try {
+    localStorage.setItem(PWA_INSTALL_DISMISS_KEY, "true");
+  } catch {
+    // 저장소 접근이 막힌 브라우저에서도 안내 닫기는 현재 세션에서만 처리합니다.
+  }
+}
+
+export function PwaInstallPrompt() {
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+
+  useEffect(() => {
+    if (isStandaloneDisplay()) return undefined;
+
+    const dismissed = getInstallDismissed();
+    const ios = isIosDevice();
+    setIsIos(ios);
+    if (ios && !dismissed) setIsVisible(true);
+
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      if (dismissed) return;
+      setInstallPrompt(event);
+      setIsVisible(true);
+    };
+
+    const handleInstalled = () => {
+      setInstallPrompt(null);
+      setIsVisible(false);
+      setInstallDismissed();
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleInstalled);
+    };
+  }, []);
+
+  if (!isVisible) return null;
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+    setIsVisible(false);
+  };
+
+  const handleDismiss = () => {
+    setInstallDismissed();
+    setIsVisible(false);
+  };
+
+  return (
+    <aside className="pwa-install-card" aria-label="춘배투어 앱 설치 안내">
+      <div className="pwa-install-icon" aria-hidden="true">춘</div>
+      <div className="pwa-install-copy">
+        <strong>춘배투어를 앱처럼 사용해보세요.</strong>
+        <span>{isIos ? "Safari 공유 버튼에서 홈 화면에 추가를 선택하면 됩니다." : "홈 화면에 설치하면 바로 열 수 있어요."}</span>
+      </div>
+      {installPrompt && (
+        <button type="button" className="pwa-install-primary" onClick={handleInstall}>
+          설치
+        </button>
+      )}
+      <button type="button" className="pwa-install-close" onClick={handleDismiss} aria-label="설치 안내 닫기">
+        ×
+      </button>
+    </aside>
   );
 }
 

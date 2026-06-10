@@ -3,7 +3,7 @@ import { S } from "./constants/colors";
 import ChunbaeImg from "./assets/hwangchunbae.png";
 
 import AppShell from "./components/common/AppShell";
-import { Toast } from "./components/common";
+import { PwaInstallPrompt, Toast } from "./components/common";
 import LoginPage from "./pages/auth/LoginPage";
 import OauthSignupPage from "./pages/auth/OauthSignupPage";
 import PrivacyPolicyPage from "./pages/auth/PrivacyPolicyPage";
@@ -281,8 +281,15 @@ export default function App() {
   ];
   const showTab = !noTabScreens.includes(screen);
 
-  if (appState === "splash") return <div style={S.app}><SplashScreen onDone={() => setAppState(storedSession ? "main" : "landing")} /></div>;
-  if (appState === "socialCallback") return <div style={S.app}><SocialCallbackScreen /></div>;
+  const withPwaInstall = (content) => (
+    <div style={S.app}>
+      {content}
+      <PwaInstallPrompt />
+    </div>
+  );
+
+  if (appState === "splash") return withPwaInstall(<SplashScreen onDone={() => setAppState(storedSession ? "main" : "landing")} />);
+  if (appState === "socialCallback") return withPwaInstall(<SocialCallbackScreen />);
   if (appState === "landing") {
     const handlePublicExplore = (target = "home") => {
       setAppState("main");
@@ -296,14 +303,15 @@ export default function App() {
           onSignup={() => setAppState("signup")}
           onExplore={handlePublicExplore}
         />
+        <PwaInstallPrompt />
       </div>
     );
   }
-  if (appState === "roleLogin") return <div style={S.app}><LoginPage role={entryRole} onLogin={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("roleLogin")} /></div>;
-  if (appState === "login")  return <div style={S.app}><LoginPage role="USER" onLogin={handleLogin} onSignup={() => setAppState("signup")} onPrivacy={() => openPrivacyPolicy("login")} /></div>;
-  if (appState === "signup") return <div style={S.app}><SignupPage onBack={() => setAppState("login")} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("signup")} /></div>;
-  if (appState === "oauthSignup") return <div style={S.app}><OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("oauthSignup")} /></div>;
-  if (appState === "privacyPolicy") return <div style={S.app}><PrivacyPolicyPage onBack={() => setAppState(privacyBackState)} /></div>;
+  if (appState === "roleLogin") return withPwaInstall(<LoginPage role={entryRole} onLogin={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("roleLogin")} />);
+  if (appState === "login")  return withPwaInstall(<LoginPage role="USER" onLogin={handleLogin} onSignup={() => setAppState("signup")} onPrivacy={() => openPrivacyPolicy("login")} />);
+  if (appState === "signup") return withPwaInstall(<SignupPage onBack={() => setAppState("login")} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("signup")} />);
+  if (appState === "oauthSignup") return withPwaInstall(<OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("oauthSignup")} />);
+  if (appState === "privacyPolicy") return withPwaInstall(<PrivacyPolicyPage onBack={() => setAppState(privacyBackState)} />);
 
   return (
     <div style={S.app}>
@@ -356,6 +364,7 @@ export default function App() {
         {screen === "adminFestivals"   && <AdminFestivalsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
         {screen === "adminShops"       && <AdminShopsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
       </AppShell>
+      <PwaInstallPrompt />
       <Toast msg={toast} />
     </div>
   );

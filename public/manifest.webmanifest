@@ -1,0 +1,48 @@
+{
+  "name": "춘배투어",
+  "short_name": "춘배투어",
+  "description": "전통시장, 관광지, 동행 매칭을 한 번에 둘러보는 로컬 여행 PWA",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f1e8",
+  "theme_color": "#2f7d5a",
+  "icons": [
+    {
+      "src": "/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "지도",
+      "short_name": "지도",
+      "description": "주변 관광지와 전통시장을 확인합니다.",
+      "url": "/",
+      "icons": [{ "src": "/pwa-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "축제",
+      "short_name": "축제",
+      "description": "올해 남은 축제 일정을 확인합니다.",
+      "url": "/",
+      "icons": [{ "src": "/pwa-icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
