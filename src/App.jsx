@@ -19,7 +19,7 @@ import ChatRequestPage from "./pages/chat/ChatRequestPage";
 import { PayChargePage, PayHistoryPage } from "./pages/payment/PaymentPages";
 import QRPayPage from "./pages/payment/QRPayPage";
 import { StorePage, StoreProductPage, StoreShopDetailPage } from "./pages/store/StorePages";
-import { WishlistPage, MyReviewPage, OwnedItemsPage } from "./pages/my/MySubPages";
+import { WishlistPage, MyReviewPage, MyReportsPage, OwnedItemsPage } from "./pages/my/MySubPages";
 import FestivalCalendarPage from "./pages/festival/FestivalCalendarPage";
 import FestivalDetailPage from "./pages/festival/FestivalDetailPage";
 import { MerchantShopPage, MerchantMenuPage, MerchantSettlementPage } from "./pages/merchant/MerchantPages";
@@ -51,6 +51,8 @@ import {
   getStoredAuthSession,
   shouldClearSessionForError,
 } from "./services/authService";
+import { fetchNotifications, getNotificationToastText } from "./services/notificationService.js";
+import { createNotificationRealtimeClient } from "./services/notificationRealtimeService.js";
 
 function getInitialScreenForRole(role) {
   const normalizedRole = String(role || "USER").toUpperCase();
@@ -146,6 +148,7 @@ export default function App() {
   const [tab, setTab] = useState(storedNavigation?.tab || "home");
   const [screen, setScreen] = useState(() => storedNavigation?.screen || getInitialScreenForRole(storedSession?.role));
   const [toast, setToast] = useState("");
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [selectedPlace, setSelectedPlace] = useState(storedNavigation?.selectedPlace || null);
   const [selectedRoom, setSelectedRoom] = useState(storedNavigation?.selectedRoom || null);
   const [selectedPost, setSelectedPost] = useState(storedNavigation?.selectedPost || null);
@@ -158,6 +161,9 @@ export default function App() {
   const [privacyBackState, setPrivacyBackState] = useState("login");
   const historyInitializedRef = useRef(false);
   const restoringHistoryRef = useRef(false);
+  const notificationSeenIdsRef = useRef(new Set());
+  const notificationInitializedRef = useRef(false);
+  const notificationRealtimeRef = useRef(null);
 
   const getNavigationState = () => ({
     chunbaeTour: true,
@@ -187,6 +193,87 @@ export default function App() {
   };
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
+  const getNotificationIdentity = (notification) => {
+    if (!notification) return "";
+    if (notification.id) return String(notification.id);
+    return [
+      notification.type || "notification",
+      notification.referenceType || "none",
+      notification.referenceId || "none",
+      notification.time || "",
+    ].join(":");
+  };
+  const syncNotificationSnapshot = (items = [], announceNew = false) => {
+    setUnreadNotificationCount(items.filter(item => !item.read).length);
+
+    const previousSeenIds = notificationSeenIdsRef.current;
+    const nextSeenIds = new Set(previousSeenIds);
+    const freshUnread = [];
+
+    items.forEach((item) => {
+      const key = getNotificationIdentity(item);
+      if (!key) return;
+      if (!previousSeenIds.has(key) && !item.read) freshUnread.push(item);
+      nextSeenIds.add(key);
+    });
+
+    notificationSeenIdsRef.current = nextSeenIds;
+
+    if (announceNew && notificationInitializedRef.current && freshUnread.length > 0) {
+      showToast(getNotificationToastText(freshUnread[0]));
+    }
+    notificationInitializedRef.current = true;
+  };
+  const handleIncomingNotification = (notification) => {
+    const key = getNotificationIdentity(notification);
+    if (key && notificationSeenIdsRef.current.has(key)) return;
+    if (key) notificationSeenIdsRef.current.add(key);
+    if (!notification.read) {
+      setUnreadNotificationCount(count => count + 1);
+    }
+    showToast(getNotificationToastText(notification));
+  };
+  const handleNotificationNavigate = (notification) => {
+    const referenceType = String(notification?.referenceType || "").toUpperCase();
+    const notificationType = String(notification?.type || "").toUpperCase();
+    const referenceId = notification?.referenceId;
+    const explicitRoomId = notification?.chatRoomId
+      ?? notification?.roomId
+      ?? notification?.chatRoom?.chatRoomId
+      ?? notification?.data?.chatRoomId;
+    const roomId = explicitRoomId
+      ?? ((referenceType === "CHAT_ROOM" || notificationType.includes("CHAT")) ? referenceId : null);
+
+    if (roomId && (referenceType === "CHAT_ROOM" || notificationType.includes("CHAT"))) {
+      setSelectedRoom({
+        id: roomId,
+        chatRoomId: roomId,
+        title: notification.title || "채팅방",
+      });
+      setTab("chat");
+      setScreen("chatroom");
+      return;
+    }
+
+    if (referenceType === "JOIN_REQUEST") {
+      if (roomId) {
+        setSelectedRoom({
+          id: roomId,
+          chatRoomId: roomId,
+          title: notification.title || "참여 신청",
+        });
+        setTab("chat");
+        setScreen("chatRequest");
+        return;
+      }
+      setTab("chat");
+      setScreen("chat");
+      showToast("참여 신청 알림에 채팅방 ID가 없어 채팅방 목록으로 이동했습니다.");
+      return;
+    }
+
+    showToast("이 알림으로 이동할 화면 정보가 아직 없습니다.");
+  };
   const go = (scr) => setScreen(scr);
   const openPrivacyPolicy = (backState = "login") => {
     setPrivacyBackState(backState);
@@ -215,6 +302,11 @@ export default function App() {
   const handleLogout = () => {
     clearAuthSession();
     clearStoredNavigationState();
+    notificationRealtimeRef.current?.disconnect();
+    notificationRealtimeRef.current = null;
+    notificationSeenIdsRef.current = new Set();
+    notificationInitializedRef.current = false;
+    setUnreadNotificationCount(0);
     setUser(null);
     setAppState(entryRole ? "roleLogin" : "landing");
     setScreen("home");
@@ -308,6 +400,45 @@ export default function App() {
   }, [comfortableView]);
 
   useEffect(() => {
+    if (!user) {
+      notificationRealtimeRef.current?.disconnect();
+      notificationRealtimeRef.current = null;
+      notificationSeenIdsRef.current = new Set();
+      notificationInitializedRef.current = false;
+      setUnreadNotificationCount(0);
+      return undefined;
+    }
+
+    let stopped = false;
+    const pollNotifications = () => {
+      fetchNotifications({ size: 20 })
+        .then((items) => {
+          if (!stopped) syncNotificationSnapshot(items, true);
+        })
+        .catch(() => {});
+    };
+
+    pollNotifications();
+    const pollTimer = window.setInterval(pollNotifications, 30000);
+    const client = createNotificationRealtimeClient({
+      onNotification: (notification) => {
+        if (!stopped) handleIncomingNotification(notification);
+      },
+    });
+    notificationRealtimeRef.current = client;
+    client.connect();
+
+    return () => {
+      stopped = true;
+      window.clearInterval(pollTimer);
+      client.disconnect();
+      if (notificationRealtimeRef.current === client) {
+        notificationRealtimeRef.current = null;
+      }
+    };
+  }, [user?.userId]);
+
+  useEffect(() => {
     if (!storedSession) return;
     if (String(storedSession.role || "USER").toUpperCase() !== "USER") {
       // TODO: MERCHANT/ADMIN 내 정보 API가 확정되면 권한별 세션 검증을 추가합니다.
@@ -338,7 +469,7 @@ export default function App() {
     "ar", "notif", "search", "fest", "festCalendar", "festDetail",
     "pay", "payHistory", "qrpay", "storeProduct", "storeShop",
     "community", "communityPost", "communityWrite",
-    "wishlist", "myReview", "ownedItems", "notificationSettings", "faq",
+    "wishlist", "myReview", "myReports", "ownedItems", "notificationSettings", "faq",
     "merchant", "merchantMenu", "merchantSettlement", "merchantApply",
     "adminDashboard", "adminUsers", "adminReports", "adminMerchant", "adminContent",
     "adminRefunds", "adminSettlements", "adminAds", "adminCertifications", "adminSupport",
@@ -380,7 +511,7 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab}>
+      <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount}>
         {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={() => go("fest")} onTab={handleTab} showToast={showToast} user={user} />}
         {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
         {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} />}
@@ -404,9 +535,10 @@ export default function App() {
         {screen === "my"               && <MyPage key={likeChangeCounter} onTab={handleTab} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} onProfileUpdate={setUser} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
         {screen === "wishlist"         && <WishlistPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} />}
         {screen === "myReview"         && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
+        {screen === "myReports"        && <MyReportsPage onBack={() => go("my")} />}
         {screen === "ownedItems"       && <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "ar"               && <ARPage onBack={() => go(tab)} />}
-        {screen === "notif"            && <NotificationPage onBack={() => go(tab)} />}
+        {screen === "notif"            && <NotificationPage onBack={() => go(tab)} onNotificationClick={handleNotificationNavigate} onUnreadCountChange={setUnreadNotificationCount} />}
         {screen === "notificationSettings" && <NotificationSettingsPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "faq"              && <FAQPage onBack={() => go(tab)} />}
         {screen === "merchant"         && <MerchantShopPage onBack={() => go("my")} showToast={showToast} onMenuManage={() => go("merchantMenu")} onSettlement={() => go("merchantSettlement")} selectedShopId={selectedMerchantShopId} onShopChange={setSelectedMerchantShopId} />}

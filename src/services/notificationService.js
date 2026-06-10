@@ -6,20 +6,76 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   post: true,
   ad: false,
 };
+const NOTIFICATION_SETTINGS_STORAGE_KEY = "chunbae_notification_settings";
 
-function normalizeNotification(notification = {}) {
+function readLocalNotificationSettings() {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(NOTIFICATION_SETTINGS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalNotificationSettings(settings) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(NOTIFICATION_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+}
+
+function getNotificationIcon(type) {
+  if (String(type).startsWith("CHAT_")) return "💬";
+  if (String(type).startsWith("SUPPORT_")) return "🛟";
+  if (String(type).includes("PAYMENT")) return "💰";
+  return "🔔";
+}
+
+function formatNotificationTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function normalizeNotification(notification = {}) {
+  const id = notification.notificationId ?? notification.id;
+  const title = notification.title ?? "";
+  const message = notification.message ?? notification.text ?? "";
+  const createdAt = notification.createdAt ?? notification.time ?? "";
+  const type = notification.type;
+  const fallbackReferenceType = String(type || "").startsWith("CHAT_") ? "CHAT_ROOM" : null;
   return {
     ...notification,
-    id: notification.notificationId ?? notification.id,
-    text: notification.message ?? notification.text ?? notification.title ?? "",
-    time: notification.createdAt ?? notification.time ?? "",
+    id,
+    notificationId: id,
+    title,
+    message,
+    text: message || title,
+    time: createdAt,
+    timeText: formatNotificationTime(createdAt),
     read: Boolean(notification.isRead ?? notification.read),
-    icon: notification.icon ?? "🔔",
+    type,
+    referenceId: notification.referenceId ?? notification.targetId ?? notification.chatRoomId ?? notification.roomId ?? null,
+    referenceType: notification.referenceType ?? notification.targetType ?? fallbackReferenceType,
+    icon: notification.icon ?? getNotificationIcon(notification.type),
   };
 }
 
-export async function fetchNotifications() {
-  const data = await apiRequest("/notifications?size=20", { auth: true });
+export function getNotificationToastText(notification = {}) {
+  const title = notification.title || "새 알림";
+  const message = notification.message || notification.text || "";
+  return message ? `${title} - ${message}` : title;
+}
+
+export async function fetchNotifications({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/notifications?${params.toString()}`, { auth: true });
   return getPageContent(data).map(normalizeNotification);
 }
 
@@ -44,17 +100,13 @@ export async function deleteAllNotifications(notificationIds = []) {
 }
 
 export async function fetchNotificationSettings() {
-  // TODO: 알림 설정 API 경로/카테고리 enum 확정 필요.
-  const data = await apiRequest("/users/me/notification-settings", { auth: true });
-  return { ...DEFAULT_NOTIFICATION_SETTINGS, ...data };
+  // TODO: 백엔드 알림 설정 API가 생기면 서버 동기화로 교체합니다.
+  return { ...DEFAULT_NOTIFICATION_SETTINGS, ...readLocalNotificationSettings() };
 }
 
 export async function updateNotificationSettings(settings) {
-  // TODO: 알림 설정 저장 API 경로/카테고리 enum 확정 필요.
-  const data = await apiRequest("/users/me/notification-settings", {
-    method: "PUT",
-    auth: true,
-    body: settings,
-  });
-  return { ...DEFAULT_NOTIFICATION_SETTINGS, ...data };
+  // TODO: 백엔드 알림 설정 API가 생기면 서버 동기화로 교체합니다.
+  const nextSettings = { ...DEFAULT_NOTIFICATION_SETTINGS, ...settings };
+  saveLocalNotificationSettings(nextSettings);
+  return nextSettings;
 }

@@ -4,14 +4,18 @@ import { ConfirmDialog, EmptyState, ErrorState, ReportDialog, SkeletonList } fro
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { uploadChatAttachments } from "../../services/attachmentService.js";
 import {
+  addCompanionParticipants,
   fetchChatMessages,
+  fetchChatMessagesPage,
   fetchChatParticipants,
   fetchChatRoomDetail,
   fetchMyChatRooms,
+  endCompanion,
   kickChatParticipant,
   leaveChatRoom,
   markChatRoomRead,
   reportChatParticipant,
+  startCompanion,
 } from "../../services/chatService.js";
 import { getStoredAuthSession } from "../../services/authService.js";
 import { createChatRealtimeClient } from "../../services/chatRealtimeService.js";
@@ -235,6 +239,9 @@ export function ChatListPage({ onChatRoom, showToast }) {
 export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
+  const [olderCursor, setOlderCursor] = useState(null);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [actioning, setActioning] = useState("");
@@ -257,7 +264,10 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const realtimeClientRef = useRef(null);
+  const messageScrollRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const initialMessageScrollRef = useRef(false);
+  const shouldAutoScrollRef = useRef(true);
   const translationPendingRef = useRef(new Set());
   const currentUserSession = getStoredAuthSession("USER");
   const currentUserId = currentUserSession?.userId;
@@ -274,14 +284,34 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const isCurrentUserHost = isSameUser(currentRoom.hostId, currentUserId)
     || participants.some(participant => isSameUser(participant.userId, currentUserId) && String(participant.role || "").toUpperCase() === "HOST");
   const translationTargetLanguage = getTranslationTargetLanguage(currentUserSession);
+  const companionParticipantIds = participants
+    .map(participant => participant.userId)
+    .filter(userId => userId && !isSameUser(userId, currentUserId));
 
-  const refreshMessages = ({ silent = true } = {}) => {
+  const isMessageListNearBottom = () => {
+    const node = messageScrollRef.current;
+    if (!node) return true;
+    return node.scrollHeight - node.scrollTop - node.clientHeight < 120;
+  };
+
+  const scrollToLatestMessage = () => {
+    const node = messageScrollRef.current;
+    if (node) {
+      node.scrollTop = node.scrollHeight;
+      return;
+    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+  };
+
+  const refreshMessages = ({ silent = true, forceScroll = false } = {}) => {
     if (!roomId) return Promise.resolve([]);
 
-    return fetchChatMessages(roomId)
-      .then((data) => {
-        setMessages(prev => mergeMessages(prev, data));
-        return data;
+    shouldAutoScrollRef.current = forceScroll || isMessageListNearBottom();
+
+    return fetchChatMessagesPage(roomId, { size: 50 })
+      .then((page) => {
+        setMessages(prev => mergeMessages(prev, page.messages));
+        return page.messages;
       })
       .catch((error) => {
         if (!silent) {
@@ -300,6 +330,11 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   useEffect(() => {
     let ignore = false;
     setRoomDetail(null);
+    setMessages([]);
+    setOlderCursor(null);
+    setHasOlderMessages(false);
+    initialMessageScrollRef.current = false;
+    shouldAutoScrollRef.current = true;
 
     fetchChatRoomDetail(roomId)
       .then((detail) => {
@@ -316,10 +351,12 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
         }
       });
 
-    fetchChatMessages(roomId).then((data) => {
+    fetchChatMessagesPage(roomId, { size: 50 }).then((page) => {
       if (!ignore) {
-        const sortedMessages = sortMessages(data);
+        const sortedMessages = sortMessages(page.messages);
         setMessages(sortedMessages);
+        setOlderCursor(page.nextCursor);
+        setHasOlderMessages(page.hasNext);
         const latestTimestamp = getMessageTimestamp(sortedMessages[sortedMessages.length - 1]);
         setRoomLastReadAt(roomId, latestTimestamp || Date.now());
       }
@@ -332,7 +369,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   }, [roomId]);
 
   useEffect(() => {
-    if (!roomId) return undefined;
+    if (!roomId || realtimeStatus === "connected") return undefined;
 
     let polling = false;
     const intervalId = window.setInterval(() => {
@@ -341,12 +378,12 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
       refreshMessages().finally(() => {
         polling = false;
       });
-    }, 700);
+    }, 3000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [roomId]);
+  }, [roomId, realtimeStatus]);
 
   useEffect(() => {
     if (!roomId) return undefined;
@@ -355,6 +392,8 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
       chatRoomId: roomId,
       onStatus: setRealtimeStatus,
       onMessage: (message) => {
+        const senderId = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
+        shouldAutoScrollRef.current = isSameUser(senderId, currentUserId) || isMessageListNearBottom();
         setMessages(prev => mergeMessages(prev, [message]));
       },
       onError: (error) => {
@@ -381,36 +420,53 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   }, [roomId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+    if (!messages.length) return;
+    if (!initialMessageScrollRef.current || shouldAutoScrollRef.current) {
+      window.requestAnimationFrame(() => {
+        scrollToLatestMessage();
+        initialMessageScrollRef.current = true;
+      });
+    }
   }, [messages.length]);
 
   useEffect(() => {
-    if (!translationEnabled) return;
+    if (!translationEnabled) return undefined;
 
-    sortMessages(messages)
-      .filter((message) => {
-        if (isSystemMessage(message) || resolveMessageMine(message)) return false;
-        const key = getMessageKey(message);
-        const content = message.content ?? message.text ?? "";
-        return content && !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
-      })
-      .forEach((message) => {
+    let cancelled = false;
+    const targets = sortMessages(messages).filter((message) => {
+      if (isSystemMessage(message) || resolveMessageMine(message)) return false;
+      const key = getMessageKey(message);
+      const content = message.content ?? message.text ?? "";
+      return content && !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
+    });
+
+    const translateSequentially = async () => {
+      for (const message of targets) {
+        if (cancelled) break;
         const key = getMessageKey(message);
         const content = message.content ?? message.text ?? "";
         translationPendingRef.current.add(key);
-        translateText(content, translationTargetLanguage)
-          .then((result) => {
-            const translated = result?.translatedContent ?? result?.translatedText ?? result?.content ?? "";
+        try {
+          const result = await translateText(content, translationTargetLanguage);
+          const translated = result?.translatedContent ?? result?.translatedText ?? result?.content ?? "";
+          if (!cancelled) {
             setTranslatedMessages(prev => ({ ...prev, [key]: translated || content }));
-          })
-          .catch(() => {
+          }
+        } catch {
+          if (!cancelled) {
             setTranslationErrors(prev => ({ ...prev, [key]: true }));
-          })
-          .finally(() => {
-            translationPendingRef.current.delete(key);
-          });
-      });
-  }, [translationEnabled, messages, currentUserId, translationTargetLanguage, translatedMessages, translationErrors]);
+          }
+        } finally {
+          translationPendingRef.current.delete(key);
+        }
+      }
+    };
+
+    translateSequentially();
+    return () => {
+      cancelled = true;
+    };
+  }, [translationEnabled, messages, currentUserId, translationTargetLanguage]);
 
   useEffect(() => {
     let ignore = false;
@@ -436,6 +492,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     if ((!content && pendingAttachments.length === 0) || sending) return;
 
     setSending(true);
+    shouldAutoScrollRef.current = true;
     try {
       let uploadedAttachments = pendingAttachments;
 
@@ -449,28 +506,40 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
         return;
       }
 
+      shouldAutoScrollRef.current = true;
       realtimeClientRef.current.send({ content, attachmentIds });
-      setMessages(prev => [...prev, {
-        id: `local-${Date.now()}`,
-        userId: currentUserId,
-        senderId: currentUserId,
-        user: "여행자지수",
-        text: content || "첨부파일",
-        time: "지금",
-        createdAt: new Date().toISOString(),
-        me: true,
-        attachments: uploadedAttachments,
-      }]);
       setInput("");
       setPendingAttachments([]);
-      window.setTimeout(() => {
-        refreshMessages();
-      }, 150);
     } catch (error) {
       showToast?.(getApiErrorHint(error));
       return;
     } finally {
       setSending(false);
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!roomId || !olderCursor || loadingOlder) return;
+    const node = messageScrollRef.current;
+    const previousScrollHeight = node?.scrollHeight ?? 0;
+    const previousScrollTop = node?.scrollTop ?? 0;
+    shouldAutoScrollRef.current = false;
+    setLoadingOlder(true);
+
+    try {
+      const page = await fetchChatMessagesPage(roomId, { cursor: olderCursor, size: 50 });
+      setMessages(prev => mergeMessages(page.messages, prev));
+      setOlderCursor(page.nextCursor);
+      setHasOlderMessages(page.hasNext);
+      window.requestAnimationFrame(() => {
+        if (!node) return;
+        const heightDiff = node.scrollHeight - previousScrollHeight;
+        node.scrollTop = previousScrollTop + heightDiff;
+      });
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setLoadingOlder(false);
     }
   };
 
@@ -521,6 +590,36 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     action: () => leaveChatRoom(roomId),
     successMessage: "채팅방에서 나갔습니다.",
     afterSuccess: onBack,
+  });
+
+  const requireCompanionParticipants = () => {
+    if (companionParticipantIds.length > 0) return true;
+    showToast?.("동행을 시작하려면 본인을 제외한 참여자가 필요합니다.");
+    return false;
+  };
+
+  const handleStartCompanion = () => {
+    if (!requireCompanionParticipants()) return;
+    runRoomAction({
+      key: "companion-start",
+      action: () => startCompanion(roomId, companionParticipantIds),
+      successMessage: "동행을 시작했습니다.",
+    });
+  };
+
+  const handleAddCompanion = () => {
+    if (!requireCompanionParticipants()) return;
+    runRoomAction({
+      key: "companion-add",
+      action: () => addCompanionParticipants(roomId, companionParticipantIds),
+      successMessage: "동행 참여자를 추가했습니다.",
+    });
+  };
+
+  const handleEndCompanion = () => runRoomAction({
+    key: "companion-end",
+    action: () => endCompanion(roomId),
+    successMessage: "동행을 종료했습니다. 참여자 리뷰를 남길 수 있습니다.",
   });
 
   const confirmLeaveRoom = () => {
@@ -630,7 +729,16 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
       <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
         <div onClick={onBack} style={{ color: "#fff", fontSize: 14, cursor: "pointer" }}>←</div>
         <div style={{ flex: 1 }}>
-          <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{currentRoom.title}</div>
+          <div className="chat-room-title-line">
+            <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{currentRoom.title}</div>
+            {isCurrentUserHost && (
+              <div className="chat-companion-actions" aria-label="동행 관리">
+                <button type="button" disabled={Boolean(actioning)} onClick={handleStartCompanion}>동행 시작</button>
+                <button type="button" disabled={Boolean(actioning)} onClick={handleAddCompanion}>동행 추가</button>
+                <button type="button" disabled={Boolean(actioning)} onClick={handleEndCompanion}>동행 종료</button>
+              </div>
+            )}
+          </div>
           <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>👥 {currentRoom.members}/{currentRoom.maxMembers}명</div>
         </div>
         <div className="chat-room-menu-wrap">
@@ -689,13 +797,20 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           ))}
         </div>
       )}
-      <div className="web-chat-room-body" style={{ ...S.scrollArea, padding: 16 }}>
+      <div ref={messageScrollRef} className="web-chat-room-body" style={{ ...S.scrollArea, padding: 16 }}>
         {displayedMessages.length === 0 && (
           <EmptyState
             icon="💬"
             title="아직 채팅 기록이 없습니다."
             description="참여자가 승인되면 이 방에서 메시지를 주고받을 수 있어요."
           />
+        )}
+        {displayedMessages.length > 0 && hasOlderMessages && (
+          <div className="chat-history-loader">
+            <button type="button" disabled={loadingOlder} onClick={loadOlderMessages}>
+              {loadingOlder ? "불러오는 중..." : "이전 메시지 보기"}
+            </button>
+          </div>
         )}
         {displayedMessages.map(m => {
           if (isSystemMessage(m)) {

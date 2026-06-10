@@ -160,35 +160,41 @@ export async function fetchChatRoomDetail(chatRoomId) {
   return normalizeChatRoomDetail(data);
 }
 
-export async function fetchChatMessages(chatRoomId, { cursor = "", size = 30 } = {}) {
-  if (!chatRoomId) return [];
+export async function fetchChatMessagesPage(chatRoomId, { cursor = "", size = 30 } = {}) {
+  if (!chatRoomId) return { messages: [], nextCursor: null, hasNext: false };
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
   const data = await apiRequest(`/chat/rooms/${chatRoomId}/messages?${params.toString()}`, { auth: true, role: "USER" });
-  return getPageContent(data).map(normalizeChatMessage);
+  const messages = getPageContent(data).map(normalizeChatMessage);
+  return {
+    messages,
+    nextCursor: data?.nextCursor ?? data?.cursor ?? null,
+    hasNext: Boolean(data?.hasNext),
+  };
+}
+
+export async function fetchChatMessages(chatRoomId, options = {}) {
+  if (!chatRoomId) return [];
+  const page = await fetchChatMessagesPage(chatRoomId, options);
+  return page.messages;
 }
 
 export async function sendChatMessage({ chatRoomId, content, attachmentIds = [] }) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
-  // TODO: 메시지 전송 API 확정 필요. WebSocket/STOMP 도입 시 이 함수는 REST fallback 또는 임시 전송용으로 유지합니다.
-  const data = await apiRequest(`/chat/rooms/${chatRoomId}/messages`, {
-    method: "POST",
-    auth: true,
-    role: "USER",
-    body: { content, attachmentIds },
-  });
-  return normalizeChatMessage(data);
+  void content;
+  void attachmentIds;
+  throw new ChatApiError(
+    "채팅 메시지 전송은 STOMP /pub/chat/rooms/{chatRoomId}/messages 로만 지원됩니다.",
+    "CHAT_REST_SEND_UNSUPPORTED",
+    501
+  );
 }
 
 export async function markChatRoomRead(chatRoomId) {
   if (!chatRoomId) return false;
-  // TODO: 읽음 처리 endpoint 확정 필요.
-  await apiRequest(`/chat/rooms/${chatRoomId}/read`, {
-    method: "PATCH",
-    auth: true,
-    role: "USER",
-  });
-  return true;
+  // 백엔드에 읽음 처리 REST endpoint가 아직 없어, 프론트 로컬 읽음 시각만 갱신합니다.
+  // 실제 unreadCount/읽음 수 동기화는 백엔드 API가 추가되면 이 함수에서 연결합니다.
+  return false;
 }
 
 export async function leaveChatRoom(chatRoomId) {
@@ -209,6 +215,35 @@ export async function closeChatRoom(chatRoomId) {
     role: "USER",
   });
   return true;
+}
+
+export async function startCompanion(chatRoomId, participantUserIds = []) {
+  if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  return apiRequest(`/chat/rooms/${chatRoomId}/companion`, {
+    method: "POST",
+    auth: true,
+    role: "USER",
+    body: { participantUserIds },
+  });
+}
+
+export async function addCompanionParticipants(chatRoomId, userIds = []) {
+  if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  return apiRequest(`/chat/rooms/${chatRoomId}/companion/participants`, {
+    method: "POST",
+    auth: true,
+    role: "USER",
+    body: { userIds },
+  });
+}
+
+export async function endCompanion(chatRoomId) {
+  if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  return apiRequest(`/chat/rooms/${chatRoomId}/companion/end`, {
+    method: "PATCH",
+    auth: true,
+    role: "USER",
+  });
 }
 
 const DEFAULT_REPORT_REASON = "OTHER";

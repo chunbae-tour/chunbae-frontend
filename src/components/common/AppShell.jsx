@@ -40,7 +40,7 @@ const SCREEN_NAV_KEY = {
   merchantApply: "my",
 };
 
-export default function AppShell({ active, screen, onTab, onAR, onHome, user, onLogin, showMobileTab, children }) {
+export default function AppShell({ active, screen, onTab, onAR, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, children }) {
   const selectedKey = SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
   const hideFaqFloating = [
     "chatroom",
@@ -56,6 +56,7 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
     "signup",
   ].includes(screen);
   const isLoggedIn = Boolean(user);
+  const notificationBadgeText = unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
   const openAuthOrTab = (key) => {
     if (!isLoggedIn && ["my", "pay", "notif"].includes(key)) {
       onLogin?.();
@@ -113,7 +114,7 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
             )}
             <button type="button" className="topbar-notification" onClick={() => openAuthOrTab("notif")} aria-label="알림">
               🔔
-              {isLoggedIn && <span />}
+              {isLoggedIn && unreadNotificationCount > 0 && <span>{notificationBadgeText}</span>}
             </button>
             <button type="button" className="topbar-user" onClick={() => openAuthOrTab("my")}>
               <span>{user?.nickname || "로그인"}</span>

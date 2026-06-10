@@ -1223,7 +1223,10 @@ button:disabled,
 @media (max-width: 520px) {
   .pwa-install-card {
     grid-template-columns: 38px minmax(0, 1fr) 32px;
-    bottom: max(92px, env(safe-area-inset-bottom));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 28px);
+    overflow: auto;
+    padding: 10px;
   }
 
   .pwa-install-icon {
@@ -1232,8 +1235,12 @@ button:disabled,
   }
 
   .pwa-install-primary {
-    grid-column: 2 / 4;
+    grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .pwa-install-close {
+    align-self: start;
   }
 }
 
@@ -1452,14 +1459,20 @@ button:disabled,
 }
 
 .topbar-notification span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
   background: #ffb41e;
   border: 1.5px solid #ffffff;
+  color: #1a1a2e;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 15px;
+  text-align: center;
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 2px;
+  right: 0;
 }
 
 .topbar-user b {
@@ -3854,6 +3867,25 @@ button:disabled,
   color: #888;
   font-size: 14px;
   font-weight: 800;
+}
+
+.community-list-meta-stack {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.community-list-meta-stack b {
+  color: #4f4f4f;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.community-list-meta-stack small {
+  color: #9a968e;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .community-detail-topbar {
@@ -6534,10 +6566,21 @@ button:disabled,
   gap: 12px;
   align-items: flex-start;
   border-bottom: 0.5px solid rgba(26, 26, 46, 0.06);
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
   background: #fffbf0;
+  color: inherit;
   cursor: pointer;
+  font-family: inherit;
   padding: 16px 20px;
   position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.notification-row:hover {
+  background: #fff7db;
 }
 
 .notification-row::before {
@@ -6564,6 +6607,26 @@ button:disabled,
 
 .notification-row.read {
   background: #ffffff;
+}
+
+.notification-row.read:hover {
+  background: #fbfaf7;
+}
+
+.notification-title {
+  color: #1a1a2e;
+  font-size: 13px;
+  font-weight: 900;
+  margin-bottom: 3px;
+}
+
+.notification-unread-dot {
+  width: 8px;
+  height: 8px;
+  background: #ffb41e;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
 }
 
 .web-history-list {
@@ -6681,7 +6744,33 @@ button:disabled,
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   min-width: 0;
+}
+
+.chat-companion-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chat-companion-actions button {
+  min-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 10px;
+}
+
+.chat-companion-actions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .chat-room-row strong {
@@ -6750,9 +6839,11 @@ button:disabled,
 }
 
 .web-chat-room-page {
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .web-chat-room-body {
@@ -6762,15 +6853,10 @@ button:disabled,
   width: calc(100% - 64px);
   box-sizing: border-box;
   margin: 0 auto;
-  padding: 24px 0 !important;
-  display: flex;
-  flex-direction: column;
-}
-
-.web-chat-room-body::before {
-  content: "";
-  flex: 1 0 auto;
-  min-height: 12px;
+  overflow-y: auto !important;
+  padding: 16px 0 18px !important;
+  overscroll-behavior: contain;
+  scroll-padding-bottom: 112px;
 }
 
 .chat-room-tools {
@@ -7029,6 +7115,29 @@ button:disabled,
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+}
+
+.chat-history-loader {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0 18px;
+}
+
+.chat-history-loader button {
+  border: 1px solid rgba(26, 26, 46, 0.1);
+  border-radius: var(--radius-full);
+  background: #ffffff;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 9px 16px;
+}
+
+.chat-history-loader button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .chat-message-sender {
@@ -7452,6 +7561,7 @@ button:disabled,
 }
 
 .web-chat-input {
+  flex: 0 0 auto;
   max-width: 1000px;
   width: calc(100% - 64px);
   box-sizing: border-box;
