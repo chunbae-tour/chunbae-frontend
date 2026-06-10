@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors";
 import { signupAndLogin } from "../../services/authService.js";
 
-export default function SignupPage({ onBack, onDone }) {
+export default function SignupPage({ onBack, onDone, onPrivacy }) {
   const [form, setForm] = useState({ email: "", pw: "", pwConfirm: "", nickname: "" });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
@@ -71,6 +71,9 @@ export default function SignupPage({ onBack, onDone }) {
           <button type="button" disabled={loading} onClick={handleSignup} style={{ width: "100%", background: COLORS.accent, color: COLORS.primary, border: "none", borderRadius: 14, padding: "14px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: loading ? "default" : "pointer", marginTop: 8, opacity: loading ? 0.7 : 1 }}>
             {loading ? "가입 및 로그인 중..." : "가입하기"}
           </button>
+          <p className="auth-consent-copy">
+            가입하면 춘배투어의 <button type="button" onClick={onPrivacy}>개인정보처리방침</button>을 확인하고 동의한 것으로 간주됩니다.
+          </p>
         </div>
       </div>
     </div>

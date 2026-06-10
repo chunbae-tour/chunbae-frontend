@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { completeOauthSignup, getPendingOauthSignup } from "../../services/authService.js";
 
-export default function OauthSignupPage({ onBack, onDone }) {
+export default function OauthSignupPage({ onBack, onDone, onPrivacy }) {
   const pending = useMemo(() => getPendingOauthSignup(), []);
   const [form, setForm] = useState({
     name: "",
@@ -94,6 +94,9 @@ export default function OauthSignupPage({ onBack, onDone }) {
           <button type="button" disabled={loading || !pending?.signupTicket} onClick={handleSubmit} style={{ width: "100%", background: COLORS.accent, color: COLORS.primary, border: "none", borderRadius: 14, padding: "14px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: loading ? "default" : "pointer", marginTop: 8, opacity: loading || !pending?.signupTicket ? 0.7 : 1 }}>
             {loading ? "가입 완료 중..." : "가입 완료하기"}
           </button>
+          <p className="auth-consent-copy">
+            가입을 완료하면 춘배투어의 <button type="button" onClick={onPrivacy}>개인정보처리방침</button>을 확인하고 동의한 것으로 간주됩니다.
+          </p>
         </div>
       </div>
     </div>

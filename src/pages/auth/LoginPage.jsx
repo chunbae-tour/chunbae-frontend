@@ -3,11 +3,46 @@ import { COLORS, S } from "../../constants/colors.js";
 import ChunbaeImg from "../../assets/hwangchunbae.png";
 import { getSocialLoginUrl, login } from "../../services/authService.js";
 
-export default function LoginPage({ onLogin, onSignup }) {
+const ROLE_LOGIN_CONFIG = {
+  USER: {
+    title: "춘배투어",
+    subtitle: "전통시장 · 관광지 · 동행 매칭",
+    buttonLabel: "로그인",
+    loadingLabel: "로그인 중...",
+    background: COLORS.primary,
+    showSocial: true,
+    showSignup: true,
+    badge: null,
+  },
+  MERCHANT: {
+    title: "상인 로그인",
+    subtitle: "가게 운영과 QR 결제를 관리합니다.",
+    buttonLabel: "상인으로 로그인",
+    loadingLabel: "상인 로그인 중...",
+    background: "#245f48",
+    showSocial: false,
+    showSignup: false,
+    badge: "MERCHANT",
+  },
+  ADMIN: {
+    title: "관리자 로그인",
+    subtitle: "춘배투어 운영자 전용 페이지입니다.",
+    buttonLabel: "관리자로 로그인",
+    loadingLabel: "관리자 로그인 중...",
+    background: "#1f2733",
+    showSocial: false,
+    showSignup: false,
+    badge: "ADMIN",
+  },
+};
+
+export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role = "USER" }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const normalizedRole = String(role || "USER").toUpperCase();
+  const loginConfig = ROLE_LOGIN_CONFIG[normalizedRole] ?? ROLE_LOGIN_CONFIG.USER;
 
   const handleLogin = async () => {
     if (loading) return;
@@ -17,7 +52,7 @@ export default function LoginPage({ onLogin, onSignup }) {
     setLoading(true);
 
     try {
-      const user = await login({ email, password: pw });
+      const user = await login({ role: normalizedRole, email, password: pw });
       onLogin(user);
     } catch (err) {
       setError(err.message || "로그인 중 문제가 발생했습니다.");
@@ -35,7 +70,7 @@ export default function LoginPage({ onLogin, onSignup }) {
   };
 
   return (
-    <div className="auth-screen" style={{ ...S.screen, background: COLORS.primary }}>
+    <div className="auth-screen" style={{ ...S.screen, background: loginConfig.background }}>
       <div style={{ flex: 1, width: "100%", maxWidth: 460, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <img
@@ -43,8 +78,9 @@ export default function LoginPage({ onLogin, onSignup }) {
             alt="춘배 캐릭터"
             style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 12 }}
           />
-          <div style={{ color: COLORS.accent, fontSize: 26, fontWeight: 700 }}>춘배투어</div>
-          <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginTop: 6 }}>전통시장 · 관광지 · 동행 매칭</div>
+          {loginConfig.badge && <div className="role-login-badge">{loginConfig.badge}</div>}
+          <div style={{ color: COLORS.accent, fontSize: 26, fontWeight: 700 }}>{loginConfig.title}</div>
+          <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginTop: 6 }}>{loginConfig.subtitle}</div>
         </div>
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
           <input
@@ -63,26 +99,42 @@ export default function LoginPage({ onLogin, onSignup }) {
           />
           {error && <div style={{ color: "#FF6B6B", fontSize: 14, paddingLeft: 4 }}>{error}</div>}
           <button type="button" disabled={loading} onClick={handleLogin} style={{ width: "100%", background: COLORS.accent, color: COLORS.primary, border: "none", borderRadius: 14, padding: "14px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: loading ? "default" : "pointer", marginTop: 4, opacity: loading ? 0.7 : 1 }}>
-            {loading ? "로그인 중..." : "로그인"}
+            {loading ? loginConfig.loadingLabel : loginConfig.buttonLabel}
           </button>
         </div>
-        <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
-          <div style={{ flex: 1, height: "0.5px", background: "rgba(255,255,255,0.15)" }} />
-          <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 14 }}>또는</span>
-          <div style={{ flex: 1, height: "0.5px", background: "rgba(255,255,255,0.15)" }} />
-        </div>
-        <div style={{ marginTop: 20, display: "flex", gap: 12, width: "100%" }}>
-          {[{ icon: "🟡", label: "카카오 로그인", provider: "KAKAO" }, { icon: "🟢", label: "네이버 로그인", provider: "NAVER" }].map(s => (
-            <div key={s.label} onClick={() => handleSocialLogin(s.provider)} style={{ flex: 1, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 0", textAlign: "center", cursor: "pointer" }}>
-              <div style={{ fontSize: 18 }}>{s.icon}</div>
-              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginTop: 4 }}>{s.label}</div>
+        {loginConfig.showSocial && (
+          <>
+            <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+              <div style={{ flex: 1, height: "0.5px", background: "rgba(255,255,255,0.15)" }} />
+              <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 14 }}>또는</span>
+              <div style={{ flex: 1, height: "0.5px", background: "rgba(255,255,255,0.15)" }} />
             </div>
-          ))}
-        </div>
+            <div className="social-login-stack">
+              {[
+                { icon: "talk", label: "Kakao로 시작하기", provider: "KAKAO", className: "kakao" },
+                { icon: "N", label: "Naver로 시작하기", provider: "NAVER", className: "naver" },
+              ].map(s => (
+                <button key={s.label} type="button" onClick={() => handleSocialLogin(s.provider)} className={`social-login-button ${s.className}`}>
+                  <span className={`social-login-icon ${s.className}`} aria-hidden="true">{s.icon}</span>
+                  <span>{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
       <div style={{ width: "100%", maxWidth: 460, margin: "0 auto", padding: "0 24px 40px", textAlign: "center" }}>
-        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>아직 계정이 없으신가요? </span>
-        <span onClick={onSignup} style={{ color: COLORS.accent, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>회원가입</span>
+        {loginConfig.showSignup ? (
+          <>
+            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>아직 계정이 없으신가요? </span>
+            <span onClick={onSignup} style={{ color: COLORS.accent, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>회원가입</span>
+          </>
+        ) : (
+          <button type="button" className="role-login-home-link" onClick={onHome}>춘배투어 홈으로</button>
+        )}
+        <div className="auth-policy-link">
+          <button type="button" onClick={onPrivacy}>개인정보처리방침</button>
+        </div>
       </div>
     </div>
   );

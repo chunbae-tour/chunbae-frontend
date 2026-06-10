@@ -6,6 +6,7 @@ import AppShell from "./components/common/AppShell";
 import { Toast } from "./components/common";
 import LoginPage from "./pages/auth/LoginPage";
 import OauthSignupPage from "./pages/auth/OauthSignupPage";
+import PrivacyPolicyPage from "./pages/auth/PrivacyPolicyPage";
 import SignupPage from "./pages/auth/SignupPage";
 import HomePage from "./pages/home/HomePage";
 import PublicHomePage from "./pages/home/PublicHomePage";
@@ -58,6 +59,13 @@ function getInitialScreenForRole(role) {
   return "home";
 }
 
+function getRoleEntryFromPath(pathname = window.location.pathname) {
+  const normalizedPath = pathname.replace(/\/+$/, "").toLowerCase();
+  if (normalizedPath === "/admin") return "ADMIN";
+  if (normalizedPath === "/merchant") return "MERCHANT";
+  return null;
+}
+
 const COMFORTABLE_VIEW_STORAGE_KEY = "chunbae_comfortable_view";
 
 function getStoredComfortableView() {
@@ -99,9 +107,10 @@ export default function App() {
   const socialCallbackMatch = window.location.pathname.match(/^\/oauth\/(naver|kakao)\/callback$/i);
   const socialCallbackProvider = socialCallbackMatch?.[1];
   const isSocialCallbackPath = Boolean(socialCallbackProvider);
-  const [storedSession] = useState(() => getStoredAuthSession());
+  const [entryRole, setEntryRole] = useState(() => getRoleEntryFromPath());
+  const [storedSession] = useState(() => getStoredAuthSession(entryRole || undefined));
   const [hasPendingOauthSignup] = useState(() => !storedSession && Boolean(getPendingOauthSignup()?.signupTicket));
-  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : hasPendingOauthSignup ? "oauthSignup" : "splash");
+  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : hasPendingOauthSignup ? "oauthSignup" : entryRole && !storedSession ? "roleLogin" : "splash");
   const [user, setUser] = useState(storedSession);
   const [tab, setTab] = useState("home");
   const [screen, setScreen] = useState(() => getInitialScreenForRole(storedSession?.role));
@@ -115,11 +124,16 @@ export default function App() {
   const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(null);
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [likeChangeCounter, setLikeChangeCounter] = useState(0);
+  const [privacyBackState, setPrivacyBackState] = useState("login");
   const historyInitializedRef = useRef(false);
   const restoringHistoryRef = useRef(false);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
   const go = (scr) => setScreen(scr);
+  const openPrivacyPolicy = (backState = "login") => {
+    setPrivacyBackState(backState);
+    setAppState("privacyPolicy");
+  };
   const goHome = () => {
     setAppState("main");
     setTab("home");
@@ -142,9 +156,14 @@ export default function App() {
   const handleLogout = () => {
     clearAuthSession();
     setUser(null);
-    setAppState("landing");
+    setAppState(entryRole ? "roleLogin" : "landing");
     setScreen("home");
     setTab("home");
+  };
+  const handleRoleLoginHome = () => {
+    setEntryRole(null);
+    window.history.pushState({ chunbaeTour: true, appState: "landing", screen: "home", tab: "home" }, "", "/");
+    setAppState("landing");
   };
   const handlePlaceClick = (place) => { setSelectedPlace(place); go("place"); };
   const handleProductClick = (product) => { setSelectedProduct(product); go("storeProduct"); };
@@ -280,9 +299,11 @@ export default function App() {
       </div>
     );
   }
-  if (appState === "login")  return <div style={S.app}><LoginPage onLogin={handleLogin} onSignup={() => setAppState("signup")} /></div>;
-  if (appState === "signup") return <div style={S.app}><SignupPage onBack={() => setAppState("login")} onDone={handleLogin} /></div>;
-  if (appState === "oauthSignup") return <div style={S.app}><OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} /></div>;
+  if (appState === "roleLogin") return <div style={S.app}><LoginPage role={entryRole} onLogin={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("roleLogin")} /></div>;
+  if (appState === "login")  return <div style={S.app}><LoginPage role="USER" onLogin={handleLogin} onSignup={() => setAppState("signup")} onPrivacy={() => openPrivacyPolicy("login")} /></div>;
+  if (appState === "signup") return <div style={S.app}><SignupPage onBack={() => setAppState("login")} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("signup")} /></div>;
+  if (appState === "oauthSignup") return <div style={S.app}><OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("oauthSignup")} /></div>;
+  if (appState === "privacyPolicy") return <div style={S.app}><PrivacyPolicyPage onBack={() => setAppState(privacyBackState)} /></div>;
 
   return (
     <div style={S.app}>

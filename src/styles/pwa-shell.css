@@ -102,6 +102,221 @@
   font-weight: 800;
 }
 
+.social-login-stack {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin-top: 22px;
+}
+
+.role-login-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 234, 54, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 234, 54, 0.12);
+  color: #ffea36;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0;
+  padding: 0 12px;
+}
+
+.role-login-home-link {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 850;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.social-login-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px 1fr 52px;
+  align-items: center;
+  min-height: 58px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 0 10px 22px rgba(31, 39, 51, 0.14);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.social-login-button.kakao {
+  background: #fee500;
+  color: #1f2733;
+}
+
+.social-login-button.naver {
+  background: #03c75a;
+  color: #ffffff;
+}
+
+.social-login-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  justify-self: center;
+  width: 34px;
+  height: 34px;
+}
+
+.social-login-icon.kakao {
+  font-size: 0;
+}
+
+.social-login-icon.kakao::before {
+  content: "";
+  width: 24px;
+  height: 18px;
+  border-radius: 50%;
+  background: #111111;
+}
+
+.social-login-icon.kakao::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  bottom: 9px;
+  width: 8px;
+  height: 8px;
+  background: #111111;
+  clip-path: polygon(0 0, 100% 45%, 14% 100%);
+  transform: rotate(12deg);
+}
+
+.social-login-icon.naver {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.auth-policy-link {
+  margin-top: 16px;
+}
+
+.auth-policy-link button,
+.auth-consent-copy button {
+  border: 0;
+  background: transparent;
+  color: #ffe62e;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-policy-link button {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 13px;
+}
+
+.auth-consent-copy {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.privacy-policy-page {
+  color: var(--color-text-primary);
+}
+
+.privacy-policy-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 30px 24px 18px;
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.privacy-policy-header button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.privacy-policy-header div {
+  display: grid;
+  gap: 4px;
+}
+
+.privacy-policy-header span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.privacy-policy-header strong {
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.privacy-policy-content {
+  display: grid;
+  gap: 14px;
+  padding: 18px 18px 42px;
+}
+
+.privacy-policy-intro,
+.privacy-policy-section {
+  border: 1px solid rgba(31, 39, 51, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(31, 39, 51, 0.06);
+  padding: 18px;
+}
+
+.privacy-policy-intro strong {
+  color: var(--color-primary);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.privacy-policy-intro p,
+.privacy-policy-section p {
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.privacy-policy-section h2 {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 16px;
+  font-weight: 950;
+}
+
 button,
 [role="button"],
 [style*="cursor: pointer"] {
