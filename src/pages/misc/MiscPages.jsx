@@ -3,7 +3,7 @@ import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog, EmptyState, ErrorState, SkeletonBlock, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchFestivals } from "../../services/festivalService.js";
-import { fetchFaqs } from "../../services/faqService.js";
+import { fetchFaqs, fetchFaqTranslation } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
 import { updateCurrentUserProfile } from "../../services/authService.js";
@@ -21,6 +21,16 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   ad: false,
 };
 
+function normalizeProfileLanguage(language) {
+  const value = String(language || "ko").trim();
+  const normalized = value.toLowerCase().replace("_", "-");
+  if (normalized === "ko") return "ko";
+  if (normalized === "en") return "en";
+  if (normalized === "ja") return "ja";
+  if (normalized === "zh" || normalized === "zh-cn") return "zh-CN";
+  return "ko";
+}
+
 export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = () => {}, user, comfortableView = false, onComfortableViewChange = () => {} }) {
   const isLoggedIn = Boolean(user);
   const role = String(user?.role || "USER").toUpperCase();
@@ -34,11 +44,26 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
   const [profileSaving, setProfileSaving] = useState(false);
   const [homeStats, setHomeStats] = useState({ likedPlacesCount: 0, companionWaitingCount: 0, reviewCount: 0 });
   const [homeStatsStatus, setHomeStatsStatus] = useState("loading");
+  const companionCompletedCount = user?.companionCompletedCount ?? user?.companionReviewCount ?? 0;
+  const travelerLevel = user?.travelerLevel || "새내기 여행자";
 
   const tripSummary = [
-    { label: "찜한 골목", value: homeStatsStatus === "loading" ? "-" : homeStats.likedPlacesCount, action: "wishlist" },
-    { label: "동행 대기", value: homeStatsStatus === "loading" ? "-" : homeStats.companionWaitingCount, action: "community" },
-    { label: "작성 후기", value: homeStatsStatus === "loading" ? "-" : homeStats.reviewCount, action: "myReview" },
+    { icon: "❤️", label: "찜한 골목", value: homeStatsStatus === "loading" ? "-" : homeStats.likedPlacesCount, action: "wishlist" },
+    { icon: "🧭", label: "동행 대기", value: homeStatsStatus === "loading" ? "-" : homeStats.companionWaitingCount, action: "community" },
+    { icon: "✍️", label: "작성 후기", value: homeStatsStatus === "loading" ? "-" : homeStats.reviewCount, action: "myReview" },
+  ];
+  const activityMenus = [
+    { icon: "❤️", label: "찜 목록", tab: "wishlist", count: homeStats.likedPlacesCount },
+    { icon: "✍️", label: "내 리뷰", tab: "myReview", count: homeStats.reviewCount },
+    { icon: "🚩", label: "내 신고 내역", tab: "myReports" },
+    { icon: "🧾", label: "이용 내역", tab: "payHistory" },
+    { icon: "🎁", label: "보유 아이템", tab: "ownedItems" },
+  ];
+  const serviceMenus = [
+    { icon: "🔔", label: "알림 설정", tab: "notificationSettings" },
+    { icon: "🌐", label: "언어 설정", tab: null },
+    { icon: "💬", label: "고객센터 문의", tab: "support" },
+    { icon: "❓", label: "FAQ", tab: "faq" },
   ];
 
   useEffect(() => {
@@ -91,7 +116,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
   const openProfileEditor = () => {
     setProfileForm({
       nickname: user?.nickname || "",
-      language: user?.language || "ko",
+      language: normalizeProfileLanguage(user?.language),
       profileImageUrl: user?.profileImageUrl || "",
     });
     setProfileError("");
@@ -174,19 +199,25 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
           </>
         ) : (
           <>
-        <div style={{ background: "#fff", padding: 20, display: "flex", gap: 16, alignItems: "center", marginBottom: 8 }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>👤</div>
+        <div className="my-profile-card">
+          <div className="my-profile-avatar">
+            {user?.profileImageUrl ? <img src={user.profileImageUrl} alt={`${user?.nickname || "사용자"} 프로필`} /> : "👤"}
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>{user?.nickname || user?.email || "사용자"}</div>
               {role === "MERCHANT" && <span style={{ background: COLORS.accent, color: COLORS.primary, fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>🏪 상인</span>}
               {role === "ADMIN" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>👑 관리자</span>}
             </div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted }}>동행 점수 {user?.companionScore ? `★ ${user.companionScore}` : "아직 없음"}</div>
+            <div className="my-traveler-level">{travelerLevel}</div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted }}>
+              동행 점수 {user?.companionScore ? `★ ${user.companionScore}` : "아직 없음"} · 동행 {companionCompletedCount}회 완료
+            </div>
             <button type="button" onClick={openProfileEditor} style={{ marginTop: 6, display: "inline-block", fontSize: 14, color: COLORS.primary, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>프로필 수정</button>
           </div>
         </div>
-        <div className="my-balance-card" style={{ background: COLORS.primary, margin: "0 16px 12px", borderRadius: 16, padding: 18 }}>
+        <div className="my-balance-card">
+          <div className="my-certified-badge">춘배 인증</div>
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
             <img src={YeopjeonImg} alt="" style={{ width: 58, height: 58, borderRadius: "50%", objectFit: "cover", boxShadow: "0 8px 22px rgba(255,180,30,0.28)" }} />
             <div>
@@ -197,15 +228,16 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
                   <SkeletonBlock className="caption" />
                 </div>
               ) : (
-                <div style={{ color: COLORS.accent, fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{balance.toLocaleString()} 엽전</div>
+                <div style={{ color: "#ffd369", fontSize: 26, fontWeight: 800, lineHeight: 1 }}>🪙 {balance.toLocaleString()} 엽전</div>
               )}
+              <div className="my-balance-subtext">충전 후 전통시장에서 QR 결제 가능</div>
             </div>
           </div>
           {balanceStatus === "error" && <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, marginBottom: 10 }}>{balanceError}</div>}
           <div style={{ display: "flex", gap: 8 }}>
-            <div className="my-balance-action" onClick={() => onTab("pay")} style={{ flex: 1, background: COLORS.accent, color: COLORS.primary, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>엽전 충전</div>
-            <div className="my-balance-action" onClick={() => onTab("qrpay")} style={{ flex: 1, background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>🪙 QR 현장결제</div>
-            <div className="my-balance-action" onClick={() => onTab("payHistory")} style={{ flex: 1, background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>이용 내역</div>
+            <button type="button" className="my-balance-action primary" onClick={() => onTab("pay")}><strong>엽전 충전</strong><span>잔액 채우기</span></button>
+            <button type="button" className="my-balance-action" onClick={() => onTab("qrpay")}><strong>QR 결제</strong><span>현장 결제</span></button>
+            <button type="button" className="my-balance-action" onClick={() => onTab("payHistory")}><strong>이용 내역</strong><span>충전·결제 확인</span></button>
           </div>
         </div>
         <div className="my-trip-board">
@@ -219,63 +251,64 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
           <div className="my-trip-grid">
             {tripSummary.map(item => (
               <button key={item.label} type="button" onClick={() => onTab(item.action)}>
+                <em>{item.icon}</em>
                 <strong>{item.value}</strong>
                 <span>{item.label}</span>
               </button>
             ))}
           </div>
           <div className="my-next-card">
-            <b>다음 추천 행동</b>
-            <span>찜한 장소를 방문하거나 동행 게시판에서 여행 친구를 찾아보세요.</span>
+            <i aria-hidden="true">⌖</i>
+            <div>
+              <b>다음 추천 행동</b>
+              <span>찜한 장소를 방문하거나<br />동행 게시판에서 여행 친구를 찾아보세요.</span>
+            </div>
           </div>
         </div>
-        <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>나의 활동</div>
-          {[
-            { icon: "❤️", label: "찜 목록", tab: "wishlist" },
-            { icon: "✍️", label: "내 리뷰", tab: "myReview" },
-            { icon: "🚩", label: "내 신고 내역", tab: "myReports" },
-            { icon: "🧾", label: "이용 내역", tab: "payHistory" },
-            { icon: "🎁", label: "보유 아이템", tab: "ownedItems" },
-          ].map((m, i) => (
-            <div key={i} onClick={() => m.tab ? onTab(m.tab) : showToast("준비 중입니다")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 4 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
-              <span style={{ fontSize: 14 }}>{m.icon} {m.label}</span>
-              <span style={{ color: COLORS.textMuted }}>›</span>
+        <div className="my-menu-card">
+          <div className="my-menu-head">나의 활동</div>
+          {activityMenus.map((m, i) => (
+            <div key={i} className="my-menu-row" onClick={() => m.tab ? onTab(m.tab) : showToast("준비 중입니다")}>
+              <span>{m.icon} {m.label}</span>
+              <div>
+                {typeof m.count === "number" && homeStatsStatus !== "loading" && <b>{m.count}</b>}
+                <span>›</span>
+              </div>
             </div>
           ))}
         </div>
         {/* 상인 신청 버튼 (일반 유저만) */}
         {role === "USER" && (
-          <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>상인 서비스</div>
-            <div onClick={() => onTab("merchantApply")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-              <span style={{ fontSize: 14 }}>🏪 상인 신청</span>
-              <span style={{ color: COLORS.textMuted }}>›</span>
+          <div className="my-menu-card">
+            <div className="my-menu-head">상인 서비스</div>
+            <div className="my-menu-row" onClick={() => onTab("merchantApply")}>
+              <span>🏪 상인 신청</span>
+              <div><span>›</span></div>
             </div>
           </div>
         )}
         {/* 상인 전용 메뉴 */}
         {role === "MERCHANT" && (
-          <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>🏪 상인 메뉴</div>
-            <div onClick={() => onTab("merchant")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-              <span style={{ fontSize: 14 }}>🏪 가게 관리</span>
-              <span style={{ color: COLORS.textMuted }}>›</span>
+          <div className="my-menu-card">
+            <div className="my-menu-head">🏪 상인 메뉴</div>
+            <div className="my-menu-row" onClick={() => onTab("merchant")}>
+              <span>🏪 가게 관리</span>
+              <div><span>›</span></div>
             </div>
           </div>
         )}
         {/* 관리자 전용 메뉴 */}
         {role === "ADMIN" && (
-          <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>👑 관리자 메뉴</div>
-            <div onClick={() => onTab("adminDashboard")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-              <span style={{ fontSize: 14 }}>👑 관리자 대시보드</span>
-              <span style={{ color: COLORS.textMuted }}>›</span>
+          <div className="my-menu-card">
+            <div className="my-menu-head">👑 관리자 메뉴</div>
+            <div className="my-menu-row" onClick={() => onTab("adminDashboard")}>
+              <span>👑 관리자 대시보드</span>
+              <div><span>›</span></div>
             </div>
           </div>
         )}
-        <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>서비스</div>
+        <div className="my-menu-card">
+          <div className="my-menu-head">서비스</div>
           <button
             type="button"
             className="settings-row comfortable-view-toggle"
@@ -292,15 +325,10 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
             </div>
             <em className={comfortableView ? "on" : ""}>{comfortableView ? "ON" : "OFF"}</em>
           </button>
-          {[
-            { icon: "🔔", label: "알림 설정", tab: "notificationSettings" },
-            { icon: "🌐", label: "언어 설정", tab: null },
-            { icon: "💬", label: "고객센터 문의", tab: "support" },
-            { icon: "❓", label: "FAQ", tab: "faq" },
-          ].map((m, i) => (
-            <div key={i} onClick={() => m.tab ? onTab(m.tab) : showToast(`${m.label}으로 이동합니다`)} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
-              <span style={{ fontSize: 14 }}>{m.icon} {m.label}</span>
-              <span style={{ color: COLORS.textMuted }}>›</span>
+          {serviceMenus.map((m, i) => (
+            <div key={i} className="my-menu-row" onClick={() => m.tab ? onTab(m.tab) : showToast(`${m.label}으로 이동합니다`)}>
+              <span>{m.icon} {m.label}</span>
+              <div><span>›</span></div>
             </div>
           ))}
           <div className="danger-service-action" onClick={() => setLogoutConfirmOpen(true)} style={{ padding: "14px 16px", color: "#E24B4A", fontSize: 14, cursor: "pointer" }}>🚪 로그아웃하기</div>
@@ -341,6 +369,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
                 <option value="ko">한국어</option>
                 <option value="en">English</option>
                 <option value="ja">日本語</option>
+                <option value="zh-CN">中文</option>
               </select>
             </label>
             <label className="profile-edit-field">
@@ -489,6 +518,24 @@ export function FAQPage({ onBack }) {
   const [faqs, setFaqs] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [translationLanguage, setTranslationLanguage] = useState("EN");
+  const [translations, setTranslations] = useState({});
+  const [translationLoadingId, setTranslationLoadingId] = useState(null);
+
+  const loadTranslation = async (faqId) => {
+    setTranslationLoadingId(faqId);
+    try {
+      const data = await fetchFaqTranslation(faqId, translationLanguage);
+      setTranslations(prev => ({ ...prev, [faqId]: data }));
+    } catch (error) {
+      setTranslations(prev => ({
+        ...prev,
+        [faqId]: { error: getApiErrorHint(error) || "번역을 불러오지 못했습니다." },
+      }));
+    } finally {
+      setTranslationLoadingId(null);
+    }
+  };
   const loadFaqs = () => {
     setStatus("loading");
     setErrorMessage("");
@@ -550,10 +597,32 @@ export function FAQPage({ onBack }) {
         )}
         <div className="faq-list">
           {faqs.map(item => (
-            <button key={item.id} type="button" className={openId === item.id ? "open" : ""} onClick={() => setOpenId(openId === item.id ? null : item.id)}>
-              <strong>{item.q}</strong>
-              {openId === item.id && <span>{item.a}</span>}
-            </button>
+            <div key={item.id} className={`faq-card ${openId === item.id ? "open" : ""}`}>
+              <button type="button" onClick={() => setOpenId(openId === item.id ? null : item.id)}>
+                <strong>{item.q}</strong>
+                {openId === item.id && <span>{item.a}</span>}
+              </button>
+              {openId === item.id && (
+                <div className="faq-translation-panel">
+                  <select value={translationLanguage} onChange={(event) => setTranslationLanguage(event.target.value)}>
+                    <option value="EN">English</option>
+                    <option value="JA">日本語</option>
+                    <option value="ZH_CN">中文</option>
+                    <option value="KO">한국어</option>
+                  </select>
+                  <button type="button" onClick={() => loadTranslation(item.id)} disabled={translationLoadingId === item.id}>
+                    {translationLoadingId === item.id ? "번역 중" : "번역 보기"}
+                  </button>
+                  {translations[item.id]?.error && <p className="faq-translation-error">{translations[item.id].error}</p>}
+                  {translations[item.id]?.answer && (
+                    <div className="faq-translation-result">
+                      <strong>{translations[item.id].question || item.q}</strong>
+                      <span>{translations[item.id].answer}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -687,12 +756,27 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
 }
 
 // ─── 알림 페이지 ──────────────────────────────────────────────────────
+const NOTIFICATION_FILTER_TABS = [
+  { key: "all", label: "전체" },
+  { key: "unread", label: "안 읽은 알림" },
+  { key: "participation", label: "참여" },
+  { key: "system", label: "시스템" },
+];
+
+const NOTIFICATION_TYPE_META = {
+  approved: { icon: "✓", label: "참여 신청 승인" },
+  rejected: { icon: "×", label: "참여 신청 거절" },
+  kicked: { icon: "−", label: "채팅방 강퇴" },
+  system: { icon: "i", label: "시스템 알림" },
+};
+
 export function NotificationPage({ onBack, onNotificationClick, onUnreadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [status, setStatus] = useState("loading");
   const [markingAll, setMarkingAll] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
 
   const syncNotifications = (items) => {
     setNotifications(items);
@@ -721,10 +805,15 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
   }, []);
 
   const markOne = async (notification) => {
-    if (!notification?.id) return;
-    await markNotificationRead(notification.id).catch(() => {});
+    if (!notification) return;
+    if (notification.id) {
+      await markNotificationRead(notification.id).catch(() => {});
+    }
     const nextNotification = { ...notification, read: true };
-    syncNotifications(notifications.map(x => x.id === notification.id ? nextNotification : x));
+    syncNotifications(notifications.map(x => {
+      const isTarget = notification.id ? x.id === notification.id : x === notification;
+      return isTarget ? nextNotification : x;
+    }));
     onNotificationClick?.(nextNotification);
   };
 
@@ -747,12 +836,12 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const getNotificationType = (text = "") => {
-    if (text.includes("결제") || text.includes("엽전")) return "payment";
-    if (text.includes("참여") || text.includes("채팅")) return "companion";
-    if (text.includes("리뷰")) return "review";
-    return "general";
-  };
+  const filteredNotifications = notifications.filter((notification) => {
+    if (activeFilter === "all") return true;
+    if (activeFilter === "unread") return !notification.read;
+    return (notification.filterType || "system") === activeFilter;
+  });
+  const isFilteredEmpty = status === "success" && filteredNotifications.length === 0;
 
   return (
     <div style={S.screen}>
@@ -762,25 +851,41 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
           <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>알림</span>
         </div>
         <div className="notification-top-actions">
-          <button type="button" onClick={markAll} disabled={markingAll}>{markingAll ? "처리 중..." : "전체 읽음"}</button>
-          <button type="button" onClick={() => setDeleteConfirmOpen(true)}>전체 삭제</button>
+          <button type="button" className="notification-read-action" onClick={markAll} disabled={markingAll || unreadCount === 0}>{markingAll ? "처리 중..." : "전체 읽음"}</button>
+          <button type="button" className="notification-delete-action" onClick={() => setDeleteConfirmOpen(true)} disabled={notifications.length === 0}>전체 삭제</button>
         </div>
       </div>
       <div style={S.scrollArea}>
-        <div className="notification-summary">
-          <div>
-            <span>읽지 않은 알림</span>
-            <strong>{unreadCount}개</strong>
-          </div>
-          <p>QR 결제 승인, 동행 신청, 리뷰 반응을 이곳에서 확인합니다.</p>
+        <div className="notification-filter-tabs" role="tablist" aria-label="알림 필터">
+          {NOTIFICATION_FILTER_TABS.map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={activeFilter === tab.key}
+              className={activeFilter === tab.key ? "active" : ""}
+              onClick={() => setActiveFilter(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
         {status === "loading" && <div style={{ padding: "0 16px 16px" }}><SkeletonList count={4} /></div>}
         {status === "empty" && (
           <div style={{ padding: "0 16px 16px" }}>
             <EmptyState
-              icon="🔔"
-              title="새 알림이 없습니다."
-              description="동행 신청, QR 결제 승인, 리뷰 반응이 생기면 이곳에 모아 보여드릴게요."
+              icon="🔕"
+              title="알림이 없어요"
+              description="QR 결제 승인, 동행 신청, 리뷰 반응을 이곳에서 확인해요"
+            />
+          </div>
+        )}
+        {isFilteredEmpty && (
+          <div style={{ padding: "0 16px 16px" }}>
+            <EmptyState
+              icon="🔕"
+              title="해당 알림이 없어요"
+              description="다른 필터를 선택하면 남아 있는 알림을 확인할 수 있어요."
             />
           </div>
         )}
@@ -793,15 +898,16 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
             />
           </div>
         )}
-        {notifications.map(n => {
-          const type = getNotificationType(`${n.title || ""} ${n.text || ""}`);
+        {status === "success" && filteredNotifications.map((n, index) => {
+          const visualType = NOTIFICATION_TYPE_META[n.visualType] ? n.visualType : "system";
+          const meta = NOTIFICATION_TYPE_META[visualType];
           return (
-          <button key={n.id} type="button" onClick={() => markOne(n)} className={`notification-row ${type} ${n.read ? "read" : ""}`}>
-            <span style={{ fontSize: 22 }}>{n.icon}</span>
-            <div style={{ flex: 1 }}>
+          <button key={n.id ?? `${n.type || "notification"}-${n.time || index}`} type="button" onClick={() => markOne(n)} className={`notification-row ${n.read ? "read" : "unread"} ${visualType}`}>
+            <span className={`notification-type-icon ${visualType}`} aria-label={meta.label}>{meta.icon}</span>
+            <div className="notification-row-content">
               {n.title && <div className="notification-title">{n.title}</div>}
-              <div style={{ fontSize: 14, color: COLORS.primary, lineHeight: 1.5, marginBottom: 4 }}>{n.text}</div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted }}>{n.timeText || n.time}</div>
+              <div className="notification-message">{n.displayMessage || n.text}</div>
+              <div className="notification-time">{n.timeText || n.time}</div>
             </div>
             {!n.read && <span className="notification-unread-dot" />}
           </button>
