@@ -108,7 +108,7 @@ export function WishlistPage({ onBack, onPlaceClick }) {
                   <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 4 }}>{p.addr}</div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <span style={{ fontSize: 14, color: COLORS.textMuted }}>📍 {p.dist}</span>
-                    <span style={{ color: COLORS.accent, fontSize: 14, fontWeight: 700 }}>★ {p.rating}</span>
+                    <span style={{ color: "#E8A020", fontSize: 14, fontWeight: 700 }}>★ {p.rating}</span>
                   </div>
                 </div>
                 <div onClick={() => removeLike(p.id)} style={{ fontSize: 22, cursor: "pointer" }}>❤️</div>
@@ -177,7 +177,7 @@ export function MyReviewPage({ onBack, showToast }) {
                 <div style={{ fontSize: 28, width: 44, height: 44, background: COLORS.bg, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{r.emoji}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>{r.place}</div>
-                  <div style={{ color: COLORS.accent, fontSize: 14 }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
+                  <div style={{ color: "#E8A020", fontSize: 14 }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <span onClick={() => showToast("리뷰 수정")} style={{ fontSize: 18, cursor: "pointer" }}>✏️</span>
