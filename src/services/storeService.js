@@ -16,6 +16,26 @@ function normalizeProduct(product = {}) {
   };
 }
 
+function normalizeStoreOrder(order = {}) {
+  const id = order.orderId ?? order.id;
+  const product = order.product ?? {};
+  const productName = order.productName ?? product.name ?? order.name ?? "스토어 상품";
+  const quantity = Number(order.quantity ?? 1);
+  const totalPrice = Number(order.totalPrice ?? order.totalAmount ?? order.amount ?? order.price ?? 0);
+
+  return {
+    ...order,
+    id,
+    orderId: id,
+    productId: order.productId ?? product.productId ?? product.id,
+    productName,
+    quantity,
+    totalPrice,
+    status: order.status ?? "",
+    orderedAt: order.orderedAt ?? order.createdAt ?? "",
+  };
+}
+
 export async function fetchStoreProducts({ category, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (category && category !== "전체") params.set("category", category);
@@ -35,4 +55,11 @@ export async function purchaseStoreProduct({ productId, quantity }) {
     role: "USER",
     body: { productId, quantity },
   });
+}
+
+export async function fetchStoreOrders({ cursor, size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/store/orders?${params.toString()}`, { auth: true, role: "USER" });
+  return getPageContent(data).map(normalizeStoreOrder);
 }
