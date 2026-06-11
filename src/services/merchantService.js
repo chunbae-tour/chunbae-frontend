@@ -108,6 +108,13 @@ export async function fetchMerchantShop(shopId) {
   return normalizeShop(data);
 }
 
+export async function fetchMerchantMenus(shopId) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/menus`, { auth: true, role: "MERCHANT" });
+  const menus = Array.isArray(data) ? data : getPageContent(data);
+  return menus.map(normalizeMenu);
+}
+
 export async function updateMerchantShop(shopId, payload) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
   const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}`, {
@@ -306,6 +313,20 @@ export async function updateShopAccount(shopId, payload) {
 export async function fetchShopQrCode(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
   const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/qr`, { auth: true, role: "MERCHANT" });
+  return {
+    shopId: data.shopId ?? resolvedShopId,
+    shopName: data.shopName ?? "",
+    qrPayload: data.qrPayload ?? "",
+  };
+}
+
+export async function reissueShopQrCode(shopId) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/qr/reissue`, {
+    method: "POST",
+    auth: true,
+    role: "MERCHANT",
+  });
   return {
     shopId: data.shopId ?? resolvedShopId,
     shopName: data.shopName ?? "",
