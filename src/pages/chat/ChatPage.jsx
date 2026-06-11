@@ -18,10 +18,10 @@ import {
   startCompanion,
 } from "../../services/chatService.js";
 import { getStoredAuthSession } from "../../services/authService.js";
-import { createCompanionReview } from "../../services/companionReviewService.js";
+import { createCompanionReview, fetchUserCompanionReviews } from "../../services/companionReviewService.js";
 import { createChatRealtimeClient } from "../../services/chatRealtimeService.js";
 import { REPORT_REASONS } from "../../services/reportService.js";
-import { LANG_CODE_MAP, translateText } from "../../services/translationService.js";
+import { normalizeTranslationLanguage, translateText } from "../../services/translationService.js";
 
 const TRANSLATION_BATCH_SIZE = 5;
 const TRANSLATION_REQUEST_DELAY_MS = 650;
@@ -108,7 +108,30 @@ function isSystemMessage(message = {}) {
 
 function getTranslationTargetLanguage(session = {}) {
   const rawLanguage = String(session.language ?? session.locale ?? "ko").trim();
-  return LANG_CODE_MAP[rawLanguage] || LANG_CODE_MAP[rawLanguage.toLowerCase()] || "KO";
+  return normalizeTranslationLanguage(rawLanguage);
+}
+
+function isProbablyAlreadyTargetLanguage(content = "", targetLanguage = "KO") {
+  const text = String(content || "").trim();
+  if (!text) return true;
+
+  const hasHangul = /[가-힣]/.test(text);
+  const hasKana = /[\u3040-\u30ff]/.test(text);
+  const hasHan = /[\u4e00-\u9fff]/.test(text);
+  const hasLatin = /[A-Za-z]/.test(text);
+
+  switch (targetLanguage) {
+    case "KO":
+      return hasHangul;
+    case "JA":
+      return hasKana;
+    case "ZH_CN":
+      return hasHan && !hasHangul && !hasKana;
+    case "EN":
+      return hasLatin && !hasHangul && !hasKana && !hasHan;
+    default:
+      return false;
+  }
 }
 
 function getRoomReadStorageKey(roomId) {
@@ -261,6 +284,8 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [participantPanelOpen, setParticipantPanelOpen] = useState(false);
   const [roomMenuOpen, setRoomMenuOpen] = useState(false);
   const [profileTarget, setProfileTarget] = useState(null);
+  const [profileReviews, setProfileReviews] = useState([]);
+  const [profileReviewStatus, setProfileReviewStatus] = useState("idle");
   const [messageMenuId, setMessageMenuId] = useState(null);
   const [realtimeStatus, setRealtimeStatus] = useState("idle");
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
@@ -274,6 +299,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translatedMessages, setTranslatedMessages] = useState({});
   const [translationErrors, setTranslationErrors] = useState({});
+  const [translationSkippedMessages, setTranslationSkippedMessages] = useState({});
   const [translationNotice, setTranslationNotice] = useState("");
   const [translationCooldownUntil, setTranslationCooldownUntil] = useState(0);
   const imageInputRef = useRef(null);
@@ -341,6 +367,13 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     if (typeof message.me === "boolean") return message.me;
     return isSameUser(message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId, currentUserId);
   };
+
+  useEffect(() => {
+    setTranslatedMessages({});
+    setTranslationErrors({});
+    setTranslationSkippedMessages({});
+    translationPendingRef.current.clear();
+  }, [translationTargetLanguage]);
 
   useEffect(() => {
     let ignore = false;
@@ -449,14 +482,34 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     if (translationCooldownUntil && Date.now() < translationCooldownUntil) return undefined;
 
     let cancelled = false;
+    const skippedKeys = [];
     const targets = sortMessages(messages)
       .filter((message) => {
         if (isSystemMessage(message) || resolveMessageMine(message)) return false;
         const key = getMessageKey(message);
         const content = message.content ?? message.text ?? "";
-        return content && !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
+        if (!content || translationSkippedMessages[key]) return false;
+        if (isProbablyAlreadyTargetLanguage(content, translationTargetLanguage)) {
+          skippedKeys.push(key);
+          return false;
+        }
+        return !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
       })
       .slice(-TRANSLATION_BATCH_SIZE);
+
+    if (skippedKeys.length > 0) {
+      setTranslationSkippedMessages((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        skippedKeys.forEach((key) => {
+          if (!next[key]) {
+            next[key] = true;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
 
     if (targets.length === 0) return undefined;
 
@@ -499,7 +552,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     return () => {
       cancelled = true;
     };
-  }, [translationEnabled, messages, translationTargetLanguage, translatedMessages, translationErrors, translationCooldownUntil]);
+  }, [translationEnabled, messages, translationTargetLanguage, translatedMessages, translationErrors, translationSkippedMessages, translationCooldownUntil]);
 
   useEffect(() => {
     let ignore = false;
@@ -758,6 +811,19 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const openProfile = (target) => {
     setProfileTarget(target);
     setMessageMenuId(null);
+    setProfileReviews([]);
+    setProfileReviewStatus(target?.userId ? "loading" : "empty");
+    if (!target?.userId) return;
+
+    fetchUserCompanionReviews(target.userId, { size: 3 })
+      .then((items) => {
+        setProfileReviews(items);
+        setProfileReviewStatus(items.length > 0 ? "success" : "empty");
+      })
+      .catch(() => {
+        setProfileReviews([]);
+        setProfileReviewStatus("error");
+      });
   };
 
   const getMessageProfile = (message) => {
@@ -918,6 +984,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           const messageProfile = !mine ? getMessageProfile(m) : null;
           const translatedText = translatedMessages[messageKey];
           const translationFailed = translationErrors[messageKey];
+          const translationSkipped = translationSkippedMessages[messageKey];
           const translationErrorText = typeof translationFailed === "string" ? translationFailed : "번역을 불러오지 못했습니다.";
           return (
           <div key={messageKey} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
@@ -953,16 +1020,17 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
                     </button>
                     {messageMenuId === messageId && (
                       <div className="chat-message-menu" role="menu">
-                        <button type="button" disabled={Boolean(actioning)} onClick={() => { setMessageMenuId(null); handleMessageReport(m); }}>메시지 신고</button>
                         <button type="button" onClick={() => { setMessageMenuId(null); openProfile(messageProfile); }}>프로필 보기</button>
+                        <button type="button" disabled={reviewSubmitting} onClick={() => { setMessageMenuId(null); openCompanionReview(messageProfile); }}>동행 리뷰</button>
+                        <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setMessageMenuId(null); handleMessageReport(m); }}>메시지 신고</button>
                       </div>
                     )}
                   </div>
                 )}
               </div>
-              {!mine && translationEnabled && (
+              {!mine && translationEnabled && !translationSkipped && (
                 <div className={`chat-message-translation ${translationFailed ? "error" : ""}`}>
-                  {translatedText ? `번역: ${translatedText}` : translationFailed ? translationErrorText : "번역 대기 중..."}
+                  {translatedText || (translationFailed ? translationErrorText : "번역 대기 중...")}
                 </div>
               )}
             </div>
@@ -1026,7 +1094,24 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
             <strong>{profileTarget.nickname ?? "상대방"}</strong>
             <span>{profileTarget.role === "HOST" ? "방장" : "참여자"}</span>
             <p>{profileTarget.language || "언어 미설정"} · 동행지수 {profileTarget.score || "-"}</p>
-            <button type="button" onClick={() => { handleProfileReport(profileTarget); setProfileTarget(null); }}>사용자 신고하기</button>
+            <div className="chat-profile-reviews">
+              <div className="chat-profile-reviews-title">동행 리뷰</div>
+              {profileReviewStatus === "loading" && <span>리뷰를 불러오는 중입니다.</span>}
+              {profileReviewStatus === "empty" && <span>아직 받은 동행 리뷰가 없습니다.</span>}
+              {profileReviewStatus === "error" && <span>동행 리뷰를 불러오지 못했습니다.</span>}
+              {profileReviewStatus === "success" && profileReviews.map((review) => (
+                <div key={review.id ?? `${review.reviewerNickname}-${review.createdAt}`} className="chat-profile-review-item">
+                  <strong><span className="star-score">★ {review.score}</span> · {review.reviewerNickname}</strong>
+                  <span>{review.content || "내용 없는 리뷰입니다."}</span>
+                </div>
+              ))}
+            </div>
+            <div className="chat-profile-actions">
+              {!isSameUser(profileTarget.userId, currentUserId) && (
+                <button type="button" disabled={reviewSubmitting} onClick={() => { openCompanionReview(profileTarget); setProfileTarget(null); }}>동행 리뷰 남기기</button>
+              )}
+              <button type="button" className="danger" onClick={() => { handleProfileReport(profileTarget); setProfileTarget(null); }}>사용자 신고하기</button>
+            </div>
           </div>
         </div>
       )}

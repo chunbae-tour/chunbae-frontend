@@ -7,14 +7,16 @@ import { apiRequest } from "./apiClient.js";
  *
  * @param {string} content - 번역할 텍스트
  * @param {string} targetLanguage - 백엔드 LanguageCode enum (예: "EN", "JA", "ZH_CN")
+ * @param {string} sourceType - 백엔드 TranslationSourceType enum
  * @returns {Promise<{ translatedContent: string, translatedText?: string }>}
  */
-export async function translateText(content, targetLanguage) {
+export async function translateText(content, targetLanguage, sourceType = "CHAT") {
+  const normalizedTargetLanguage = normalizeTranslationLanguage(targetLanguage);
   return apiRequest("/translations", {
     method: "POST",
     auth: true,
     role: "USER",
-    body: { content, targetLanguage },
+    body: { content, targetLanguage: normalizedTargetLanguage, sourceType },
   });
 }
 
@@ -24,7 +26,20 @@ export async function translateText(content, targetLanguage) {
  */
 export const LANG_CODE_MAP = {
   ko: "KO",
+  KO: "KO",
   en: "EN",
+  EN: "EN",
   ja: "JA",
+  JA: "JA",
+  zh: "ZH_CN",
   "zh-CN": "ZH_CN",
+  "zh-cn": "ZH_CN",
+  zh_CN: "ZH_CN",
+  zh_cn: "ZH_CN",
+  ZH_CN: "ZH_CN",
 };
+
+export function normalizeTranslationLanguage(language) {
+  const raw = String(language ?? "ko").trim();
+  return LANG_CODE_MAP[raw] || LANG_CODE_MAP[raw.toLowerCase()] || "KO";
+}
