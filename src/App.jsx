@@ -194,6 +194,30 @@ export default function App() {
   };
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
+  const requestSystemNotificationPermission = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      showToast("이 브라우저는 시스템 알림을 지원하지 않습니다.");
+      return "unsupported";
+    }
+
+    const currentPermission = window.Notification.permission;
+    if (currentPermission === "granted") return currentPermission;
+
+    if (currentPermission === "denied") {
+      showToast("브라우저 알림이 차단되어 있습니다. 주소창 설정에서 알림을 허용해주세요.");
+      return currentPermission;
+    }
+
+    try {
+      const permission = await window.Notification.requestPermission();
+      if (permission === "granted") {
+        showToast("다른 탭을 보고 있을 때도 알림을 받을 수 있어요.");
+      }
+      return permission;
+    } catch {
+      return window.Notification.permission;
+    }
+  };
   const getNotificationIdentity = (notification) => {
     if (!notification) return "";
     if (notification.id) return String(notification.id);
@@ -210,7 +234,7 @@ export default function App() {
     if (window.Notification.permission !== "granted") return;
 
     const popup = new window.Notification(notification?.title || "춘배투어 알림", {
-      body: notification?.message || notification?.text || "새 알림이 도착했습니다.",
+      body: notification?.displayMessage || notification?.text || notification?.message || "새 알림이 도착했습니다.",
       icon: "/chunbae-favicon.png",
       tag: getNotificationIdentity(notification) || undefined,
     });
@@ -535,10 +559,10 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <AppShell active={tab} screen={screen} onTab={handleTab} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount}>
-        {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={() => go("fest")} onTab={handleTab} showToast={showToast} user={user} />}
+      <AppShell active={tab} screen={screen} onTab={handleTab} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount} onNotificationIntent={requestSystemNotificationPermission}>
+        {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={(festival) => { setSelectedFestival(festival); go("festDetail"); }} onTab={handleTab} onSignup={() => setAppState("signup")} showToast={showToast} user={user} />}
         {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
-        {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} />}
+        {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} onCompanionMore={() => go("community")} onCompanionWrite={() => go("communityWrite")} />}
         {screen === "direction"        && <DirectionPage place={selectedPlace} onBack={() => go("place")} />}
         {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} />}
         {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
