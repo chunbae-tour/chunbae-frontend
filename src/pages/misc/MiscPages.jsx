@@ -295,9 +295,10 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
           {[
             { icon: "🔔", label: "알림 설정", tab: "notificationSettings" },
             { icon: "🌐", label: "언어 설정", tab: null },
+            { icon: "💬", label: "고객센터 문의", tab: "support" },
             { icon: "❓", label: "FAQ", tab: "faq" },
           ].map((m, i) => (
-            <div key={i} onClick={() => m.tab ? onTab(m.tab) : showToast(`${m.label}으로 이동합니다`)} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 2 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
+            <div key={i} onClick={() => m.tab ? onTab(m.tab) : showToast(`${m.label}으로 이동합니다`)} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
               <span style={{ fontSize: 14 }}>{m.icon} {m.label}</span>
               <span style={{ color: COLORS.textMuted }}>›</span>
             </div>
@@ -365,6 +366,10 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
 export function NotificationSettingsPage({ onBack, showToast }) {
   const [settings, setSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS);
   const [status, setStatus] = useState("loading");  const [errorMessage, setErrorMessage] = useState("");
+  const [browserPermission, setBrowserPermission] = useState(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+    return window.Notification.permission;
+  });
   const items = [
     { key: "payment", title: "결제/엽전 알림", desc: "충전, QR 결제 승인, 잔액 변동" },
     { key: "companion", title: "동행 채팅 알림", desc: "참여 신청, 수락, 채팅 메시지" },
@@ -407,6 +412,16 @@ export function NotificationSettingsPage({ onBack, showToast }) {
       showToast(getApiErrorHint(error));
     }
   };
+  const requestBrowserNotificationPermission = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      showToast?.("이 브라우저는 시스템 알림을 지원하지 않습니다.");
+      return;
+    }
+
+    const result = await window.Notification.requestPermission();
+    setBrowserPermission(result);
+    showToast?.(result === "granted" ? "브라우저 알림을 켰습니다." : "브라우저 알림 권한이 허용되지 않았습니다.");
+  };
 
   return (
     <div style={S.screen} className="notification-settings-page">
@@ -417,6 +432,28 @@ export function NotificationSettingsPage({ onBack, showToast }) {
       <div style={S.scrollArea}>
         <div className="settings-note">
           알림 목록은 서버와 연결되어 있고, 카테고리별 수신 설정은 백엔드 API가 준비될 때까지 이 기기에 저장됩니다.
+        </div>
+        <div className="settings-list">
+          <button
+            type="button"
+            className="settings-row"
+            onClick={requestBrowserNotificationPermission}
+            disabled={browserPermission === "unsupported" || browserPermission === "granted"}
+          >
+            <div>
+              <strong>브라우저 알림 권한</strong>
+              <span>
+                {browserPermission === "granted"
+                  ? "앱을 열어둔 상태에서 새 알림을 시스템 알림으로 받을 수 있어요."
+                  : browserPermission === "unsupported"
+                    ? "현재 브라우저에서는 시스템 알림을 사용할 수 없어요."
+                    : "앱이 백그라운드에 있을 때 알림을 표시하려면 권한이 필요해요."}
+              </span>
+            </div>
+            <em className={browserPermission === "granted" ? "on" : ""}>
+              {browserPermission === "granted" ? "허용됨" : browserPermission === "denied" ? "차단됨" : "허용하기"}
+            </em>
+          </button>
         </div>
         {status === "loading" && <div style={{ margin: "0 16px 12px" }}><SkeletonList count={2} /></div>}
         {status === "error" && (
@@ -644,25 +681,6 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
             </button>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── AR 카메라 페이지 ─────────────────────────────────────────────────
-export function ARPage({ onBack }) {
-  return (
-    <div style={S.screen}>
-      <div style={{ background: "#000", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
-        <div onClick={onBack} style={{ position: "absolute", top: 50, left: 20, color: "#fff", fontSize: 14, cursor: "pointer", background: "rgba(255,255,255,0.2)", padding: "8px 14px", borderRadius: 20 }}>← 닫기</div>
-        <div style={{ fontSize: 60, marginBottom: 16 }}>📷</div>
-        <div style={{ color: "#fff", fontSize: 16, fontWeight: 700, marginBottom: 8 }}>AR 카메라</div>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, textAlign: "center", padding: "0 40px", lineHeight: 1.6 }}>카메라를 가게에 갖다 대면<br />가게 정보를 확인할 수 있어요</div>
-        <div style={{ marginTop: 32, background: "rgba(255,180,30,0.15)", border: "1px solid rgba(255,180,30,0.4)", borderRadius: 16, padding: "16px 24px", textAlign: "center" }}>
-          <div style={{ color: COLORS.accent, fontWeight: 700, marginBottom: 4 }}>가게 인식 결과가 없습니다.</div>
-          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>AR/QR 스캔 API 연결 후 결과가 표시됩니다.</div>
-        </div>
-        <div style={{ position: "absolute", bottom: 40, width: 64, height: 64, background: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, cursor: "pointer" }}>📷</div>
       </div>
     </div>
   );

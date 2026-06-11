@@ -36,6 +36,35 @@ function normalizeImageUrls(value) {
     .filter(Boolean);
 }
 
+function formatDateTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function normalizePlaceReview(review = {}) {
+  const id = review.reviewId ?? review.id;
+  const createdAt = review.createdAt ?? review.date ?? "";
+  return {
+    ...review,
+    id,
+    reviewId: id,
+    user: review.authorNickname ?? review.nickname ?? review.user ?? "여행자",
+    rating: review.rating ?? 0,
+    text: review.content ?? review.text ?? "",
+    date: formatDateTime(createdAt),
+    createdAt,
+    imageUrls: normalizeImageUrls(review.imageUrls),
+  };
+}
+
 function normalizeCoordinate(value) {
   if (value == null || value === "") return null;
   const number = Number(value);
@@ -281,13 +310,26 @@ export async function fetchPlaceReviews(placeId) {
   if (!placeId) return [];
 
   const data = await apiRequest(`/places/${placeId}/reviews?size=10`);
-  return getPageContent(data).map(review => ({
-    id: review.reviewId ?? review.id,
-    user: review.nickname ?? review.user ?? "여행자",
-    rating: review.rating ?? 0,
-    text: review.content ?? review.text ?? "",
-    date: review.createdAt ?? review.date ?? "",
-  }));
+  return getPageContent(data).map(normalizePlaceReview);
+}
+
+export async function createPlaceReview(placeId, { rating, content, imageUrls = [] } = {}) {
+  if (!placeId) {
+    throw new PlaceApiError("장소 식별자가 없습니다.", "PLACE_ID_MISSING");
+  }
+
+  const payload = {
+    rating: Number(rating),
+    content: String(content || "").trim(),
+    imageUrls: normalizeImageUrls(imageUrls).slice(0, 5),
+  };
+
+  const data = await apiRequest(`/places/${placeId}/reviews`, {
+    method: "POST",
+    auth: true,
+    body: payload,
+  });
+  return normalizePlaceReview(data);
 }
 
 export async function fetchNearbyStores(placeId) {

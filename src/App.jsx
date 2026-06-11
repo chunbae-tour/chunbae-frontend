@@ -41,7 +41,8 @@ import {
   AdminSupportPage,
   AdminUsersPage,
 } from "./pages/admin/AdminPages";
-import { MyPage, FestivalPage, ARPage, NotificationPage, NotificationSettingsPage, FAQPage, SearchPage } from "./pages/misc/MiscPages";
+import { MyPage, FestivalPage, NotificationPage, NotificationSettingsPage, FAQPage, SearchPage } from "./pages/misc/MiscPages";
+import SupportPage from "./pages/support/SupportPage.jsx";
 import {
   clearAuthSession,
   clearPendingOauthSignup,
@@ -203,6 +204,22 @@ export default function App() {
       notification.time || "",
     ].join(":");
   };
+  const showSystemNotification = (notification) => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (document.visibilityState === "visible") return;
+    if (window.Notification.permission !== "granted") return;
+
+    const popup = new window.Notification(notification?.title || "춘배투어 알림", {
+      body: notification?.message || notification?.text || "새 알림이 도착했습니다.",
+      icon: "/chunbae-favicon.png",
+      tag: getNotificationIdentity(notification) || undefined,
+    });
+    popup.onclick = () => {
+      window.focus();
+      handleNotificationNavigate(notification);
+      popup.close();
+    };
+  };
   const syncNotificationSnapshot = (items = [], announceNew = false) => {
     setUnreadNotificationCount(items.filter(item => !item.read).length);
 
@@ -221,6 +238,7 @@ export default function App() {
 
     if (announceNew && notificationInitializedRef.current && freshUnread.length > 0) {
       showToast(getNotificationToastText(freshUnread[0]));
+      showSystemNotification(freshUnread[0]);
     }
     notificationInitializedRef.current = true;
   };
@@ -232,17 +250,33 @@ export default function App() {
       setUnreadNotificationCount(count => count + 1);
     }
     showToast(getNotificationToastText(notification));
+    showSystemNotification(notification);
   };
   const handleNotificationNavigate = (notification) => {
+    const data = notification?.data ?? notification?.payload ?? {};
     const referenceType = String(notification?.referenceType || "").toUpperCase();
     const notificationType = String(notification?.type || "").toUpperCase();
     const referenceId = notification?.referenceId;
     const explicitRoomId = notification?.chatRoomId
       ?? notification?.roomId
       ?? notification?.chatRoom?.chatRoomId
-      ?? notification?.data?.chatRoomId;
+      ?? data?.chatRoomId
+      ?? data?.roomId
+      ?? data?.chatRoom?.chatRoomId;
     const roomId = explicitRoomId
-      ?? ((referenceType === "CHAT_ROOM" || notificationType.includes("CHAT")) ? referenceId : null);
+      ?? (referenceType === "CHAT_ROOM" ? referenceId : null);
+    const isJoinRequestNotification = referenceType === "JOIN_REQUEST" || notificationType.includes("JOIN_REQUEST");
+
+    if (roomId && isJoinRequestNotification) {
+      setSelectedRoom({
+        id: roomId,
+        chatRoomId: roomId,
+        title: notification.title || "참여 신청",
+      });
+      setTab("chat");
+      setScreen("chatRequest");
+      return;
+    }
 
     if (roomId && (referenceType === "CHAT_ROOM" || notificationType.includes("CHAT"))) {
       setSelectedRoom({
@@ -255,20 +289,10 @@ export default function App() {
       return;
     }
 
-    if (referenceType === "JOIN_REQUEST") {
-      if (roomId) {
-        setSelectedRoom({
-          id: roomId,
-          chatRoomId: roomId,
-          title: notification.title || "참여 신청",
-        });
-        setTab("chat");
-        setScreen("chatRequest");
-        return;
-      }
+    if (isJoinRequestNotification) {
       setTab("chat");
       setScreen("chat");
-      showToast("참여 신청 알림에 채팅방 ID가 없어 채팅방 목록으로 이동했습니다.");
+      showToast("신청이 들어온 채팅방 정보를 알림에서 찾지 못했어요. 채팅방 목록에서 해당 방을 열어 신청 관리를 확인해주세요.");
       return;
     }
 
@@ -285,7 +309,7 @@ export default function App() {
     setScreen("home");
   };
   const handleTab = (key) => {
-    const mainTabs = ["home", "map", "chat", "my"];
+    const mainTabs = ["home", "map", "community", "chat", "my"];
     if (mainTabs.includes(key)) setTab(key);
     setScreen(key);
   };
@@ -466,10 +490,10 @@ export default function App() {
 
   const noTabScreens = [
     "place", "direction", "chatroom", "chatRequest",
-    "ar", "notif", "search", "fest", "festCalendar", "festDetail",
+    "notif", "search", "fest", "festCalendar", "festDetail",
     "pay", "payHistory", "qrpay", "storeProduct", "storeShop",
     "community", "communityPost", "communityWrite",
-    "wishlist", "myReview", "myReports", "ownedItems", "notificationSettings", "faq",
+    "wishlist", "myReview", "myReports", "ownedItems", "notificationSettings", "faq", "support",
     "merchant", "merchantMenu", "merchantSettlement", "merchantApply",
     "adminDashboard", "adminUsers", "adminReports", "adminMerchant", "adminContent",
     "adminRefunds", "adminSettlements", "adminAds", "adminCertifications", "adminSupport",
@@ -511,7 +535,7 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <AppShell active={tab} screen={screen} onTab={handleTab} onAR={() => go("ar")} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount}>
+      <AppShell active={tab} screen={screen} onTab={handleTab} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount}>
         {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={() => go("fest")} onTab={handleTab} showToast={showToast} user={user} />}
         {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
         {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} />}
@@ -537,10 +561,10 @@ export default function App() {
         {screen === "myReview"         && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "myReports"        && <MyReportsPage onBack={() => go("my")} />}
         {screen === "ownedItems"       && <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />}
-        {screen === "ar"               && <ARPage onBack={() => go(tab)} />}
         {screen === "notif"            && <NotificationPage onBack={() => go(tab)} onNotificationClick={handleNotificationNavigate} onUnreadCountChange={setUnreadNotificationCount} />}
         {screen === "notificationSettings" && <NotificationSettingsPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "faq"              && <FAQPage onBack={() => go(tab)} />}
+        {screen === "support"          && <SupportPage onBack={() => go("my")} showToast={showToast} user={user} onLogin={() => setAppState("login")} />}
         {screen === "merchant"         && <MerchantShopPage onBack={() => go("my")} showToast={showToast} onMenuManage={() => go("merchantMenu")} onSettlement={() => go("merchantSettlement")} selectedShopId={selectedMerchantShopId} onShopChange={setSelectedMerchantShopId} />}
         {screen === "merchantMenu"     && <MerchantMenuPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}
         {screen === "merchantSettlement" && <MerchantSettlementPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}

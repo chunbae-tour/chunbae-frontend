@@ -56,6 +56,8 @@ import {
   updateAdminShopPlace,
   updateAdminShopStatus,
 } from "../../services/adminService.js";
+import { mergeSupportMessages } from "../../services/supportService.js";
+import { createSupportRealtimeClient } from "../../services/supportRealtimeService.js";
 
 function getApiErrorHint(error) {
   return error?.message || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요.";
@@ -1120,13 +1122,17 @@ export function AdminSupportPage({ onBack, showToast }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messagesStatus, setMessagesStatus] = useState("idle");
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState("idle");
+  const [realtimeClient, setRealtimeClient] = useState(null);
 
   const loadMessages = async (room) => {
     setSelectedRoom(room);
     setMessagesStatus("loading");
     try {
       const data = await fetchAdminSupportMessages(room.supportRoomId, { size: 100 });
-      setMessages(data);
+      setMessages(mergeSupportMessages([], data));
       setMessagesStatus(data.length > 0 ? "success" : "empty");
     } catch (error) {
       setMessages([]);
@@ -1157,6 +1163,70 @@ export function AdminSupportPage({ onBack, showToast }) {
     }
   };
 
+  useEffect(() => {
+    const supportRoomId = selectedRoom?.supportRoomId;
+    if (!supportRoomId) return undefined;
+
+    const client = createSupportRealtimeClient({
+      supportRoomId,
+      role: "ADMIN",
+      onStatus: setRealtimeStatus,
+      onMessage: (message) => {
+        setMessages(prev => mergeSupportMessages(prev, [message]));
+        setMessagesStatus("success");
+      },
+      onError: (error) => {
+        console.error("Admin support realtime failed", error);
+      },
+    });
+
+    setRealtimeClient(client);
+    client.connect();
+
+    return () => {
+      client.disconnect();
+      setRealtimeClient(null);
+    };
+  }, [selectedRoom?.supportRoomId]);
+
+  useEffect(() => {
+    if (!selectedRoom?.supportRoomId || realtimeStatus === "connected") return undefined;
+
+    const intervalId = window.setInterval(() => {
+      fetchAdminSupportMessages(selectedRoom.supportRoomId, { size: 100 })
+        .then((data) => {
+          setMessages(mergeSupportMessages([], data));
+          setMessagesStatus(data.length > 0 ? "success" : "empty");
+        })
+        .catch(() => {});
+    }, 4000);
+
+    return () => window.clearInterval(intervalId);
+  }, [selectedRoom?.supportRoomId, realtimeStatus]);
+
+  const handleSend = () => {
+    const content = reply.trim();
+    if (!content || sending) return;
+    if (selectedRoom?.status === "CLOSED") {
+      showToast("종료된 상담방에는 답장을 보낼 수 없습니다.");
+      return;
+    }
+    if (!realtimeClient?.isConnected()) {
+      showToast("상담 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    setSending(true);
+    try {
+      realtimeClient.send({ content });
+      setReply("");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <AdminShell title="상담 관리" onBack={onBack}>
       <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="상담방이 없습니다." emptyDescription="고객센터 상담방이 생성되면 이곳에서 확인할 수 있습니다." onRetry={reload} />
@@ -1179,7 +1249,12 @@ export function AdminSupportPage({ onBack, showToast }) {
             {selectedRoom && (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <strong style={{ color: COLORS.primary }}>상담 #{selectedRoom.supportRoomId}</strong>
+                  <div>
+                    <strong style={{ color: COLORS.primary }}>상담 #{selectedRoom.supportRoomId}</strong>
+                    <div style={{ marginTop: 4, fontSize: 13, color: COLORS.textMuted }}>
+                      {realtimeStatus === "connected" ? "실시간 연결됨" : "실시간 연결 확인 중"}
+                    </div>
+                  </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <AdminButton tone="ghost" onClick={() => handleAssign(selectedRoom)}>배정</AdminButton>
                     <AdminButton tone="danger" onClick={() => handleClose(selectedRoom)}>종료</AdminButton>
@@ -1194,6 +1269,19 @@ export function AdminSupportPage({ onBack, showToast }) {
                     <div style={{ marginTop: 4, color: COLORS.text }}>{message.content || message.fileUrl || "-"}</div>
                   </div>
                 ))}
+                <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                  <input
+                    value={reply}
+                    disabled={selectedRoom.status === "CLOSED"}
+                    onChange={(event) => setReply(event.target.value)}
+                    onKeyDown={(event) => event.key === "Enter" && handleSend()}
+                    placeholder={selectedRoom.status === "CLOSED" ? "종료된 상담입니다." : "관리자 답장을 입력하세요."}
+                    style={{ ...adminInputStyle, flex: 1 }}
+                  />
+                  <AdminButton onClick={handleSend} disabled={!reply.trim() || sending || selectedRoom.status === "CLOSED"}>
+                    {sending ? "전송 중" : "답장"}
+                  </AdminButton>
+                </div>
               </>
             )}
           </div>

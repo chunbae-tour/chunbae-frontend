@@ -5,6 +5,7 @@ import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import {
   addMarketLike,
   addPlaceLike,
+  createPlaceReview,
   fetchNearbyPlacesByPlace,
   fetchNearbyStores,
   fetchPlaceDetail,
@@ -34,6 +35,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [reviewPhotoName, setReviewPhotoName] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
   const [nearbyCategory, setNearbyCategory] = useState("RESTAURANT");
   const [nearbyCategoryPlaces, setNearbyCategoryPlaces] = useState([]);
@@ -159,13 +161,49 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
       setLikeLoading(false);
     }
   };
-  const submitReview = () => {
-    if (!reviewText.trim()) {
-      showToast("후기 내용을 입력해주세요.");
+  const submitReview = async () => {
+    if (reviewSubmitting) return;
+    const content = reviewText.trim();
+    const placeId = currentPlace?.placeId ?? currentPlace?.id;
+
+    if (!content) {
+      showToast?.("후기 내용을 입력해주세요.");
+      return;
+    }
+    if (content.length > 500) {
+      showToast?.("후기는 500자 이내로 입력해주세요.");
+      return;
+    }
+    if (!placeId) {
+      showToast?.("리뷰를 남길 장소 정보를 찾지 못했습니다.");
       return;
     }
 
-    showToast("리뷰 작성 API가 아직 연결되지 않았습니다.");
+    setReviewSubmitting(true);
+    try {
+      const savedReview = await createPlaceReview(placeId, {
+        rating: reviewRating,
+        content,
+        imageUrls: [],
+      });
+      setReviews(prev => [savedReview, ...prev.filter(item => String(item.id) !== String(savedReview.id))]);
+      setDetail(prev => prev
+        ? {
+            ...prev,
+            reviews: (Number(prev.reviews) || 0) + 1,
+            reviewCount: (Number(prev.reviewCount) || 0) + 1,
+          }
+        : prev);
+      setReviewText("");
+      setReviewPhotoName("");
+      setReviewRating(5);
+      setReviewFormOpen(false);
+      showToast?.("리뷰가 등록되었습니다.");
+    } catch (err) {
+      showToast?.(err.message || "리뷰 등록에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
   const primaryActions = currentPlace ? [
     {
@@ -191,7 +229,6 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
       onClick: () => {
         setTab("리뷰");
         setReviewFormOpen(true);
-        showToast("리뷰 작성 API가 아직 연결되지 않았습니다.");
       },
     },
     {
@@ -402,12 +439,11 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
             </div>
           ) : (
             <div>
-              {/* TODO: POST /places/{placeId}/reviews API 연동 */}
               {place?.reviewIntent && (
                 <div className="place-review-intent">
                   <span>결제내역에서 이동했습니다.</span>
                   <strong>{place.shopName || currentPlace.name} · {place.paidAmount || "결제 금액 확인 중"}</strong>
-                  <small>방문한 상점의 후기를 남길 수 있게 실제 리뷰 작성 API 연결이 필요합니다.</small>
+                  <small>방문한 장소의 별점과 후기를 남길 수 있어요.</small>
                 </div>
               )}
               <button type="button" className="place-review-open-button" onClick={() => setReviewFormOpen(!reviewFormOpen)}>
@@ -433,7 +469,9 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
                       <input type="file" accept="image/*" onChange={(event) => setReviewPhotoName(event.target.files?.[0]?.name || "")} />
                     </label>
                     <span>{reviewPhotoName || "선택된 사진 없음"}</span>
-                    <button type="button" onClick={submitReview}>등록</button>
+                    <button type="button" onClick={submitReview} disabled={reviewSubmitting}>
+                      {reviewSubmitting ? "등록 중..." : "등록"}
+                    </button>
                   </div>
                 </div>
               )}

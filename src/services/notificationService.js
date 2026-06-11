@@ -43,12 +43,30 @@ function formatNotificationTime(value) {
 }
 
 export function normalizeNotification(notification = {}) {
+  const data = notification.data ?? notification.payload ?? {};
   const id = notification.notificationId ?? notification.id;
   const title = notification.title ?? "";
   const message = notification.message ?? notification.text ?? "";
   const createdAt = notification.createdAt ?? notification.time ?? "";
   const type = notification.type;
-  const fallbackReferenceType = String(type || "").startsWith("CHAT_") ? "CHAT_ROOM" : null;
+  const chatRoomId = notification.chatRoomId
+    ?? notification.roomId
+    ?? notification.chatRoom?.chatRoomId
+    ?? data.chatRoomId
+    ?? data.roomId
+    ?? data.chatRoom?.chatRoomId
+    ?? null;
+  const postId = notification.postId
+    ?? notification.companionPostId
+    ?? data.postId
+    ?? data.companionPostId
+    ?? data.post?.postId
+    ?? null;
+  const joinRequestId = notification.joinRequestId ?? data.joinRequestId ?? null;
+  const referenceId = notification.referenceId ?? notification.targetId ?? data.referenceId ?? data.targetId ?? null;
+  const referenceType = notification.referenceType ?? notification.targetType ?? data.referenceType ?? data.targetType;
+  const fallbackReferenceType = chatRoomId && String(type || "").startsWith("CHAT_") ? "CHAT_ROOM" : null;
+
   return {
     ...notification,
     id,
@@ -60,8 +78,13 @@ export function normalizeNotification(notification = {}) {
     timeText: formatNotificationTime(createdAt),
     read: Boolean(notification.isRead ?? notification.read),
     type,
-    referenceId: notification.referenceId ?? notification.targetId ?? notification.chatRoomId ?? notification.roomId ?? null,
-    referenceType: notification.referenceType ?? notification.targetType ?? fallbackReferenceType,
+    chatRoomId,
+    roomId: chatRoomId,
+    postId,
+    companionPostId: postId,
+    joinRequestId,
+    referenceId,
+    referenceType: referenceType ?? fallbackReferenceType,
     icon: notification.icon ?? getNotificationIcon(notification.type),
   };
 }

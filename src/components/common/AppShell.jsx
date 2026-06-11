@@ -1,10 +1,10 @@
+import { useState } from "react";
 import { COLORS } from "../../constants/colors.js";
 import TabBar from "./TabBar.jsx";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import MascotDefault from "../../assets/brand/mascot-default.png";
 
 const NAV_ITEMS = [
-  { key: "home", label: "홈", icon: "🏠" },
   { key: "map", label: "지도", icon: "🗺️" },
   { key: "search", label: "검색", icon: "🔍" },
   { key: "fest", label: "축제", icon: "🎉" },
@@ -40,12 +40,12 @@ const SCREEN_NAV_KEY = {
   merchantApply: "my",
 };
 
-export default function AppShell({ active, screen, onTab, onAR, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, children }) {
+export default function AppShell({ active, screen, onTab, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const selectedKey = SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
   const hideFaqFloating = [
     "chatroom",
     "qrpay",
-    "ar",
     "pay",
     "payHistory",
     "merchant",
@@ -66,19 +66,30 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${sidebarOpen ? "sidebar-expanded" : "sidebar-collapsed"}`}>
       <aside className="desktop-sidebar">
-        <button type="button" className="sidebar-brand" onClick={onHome || (() => onTab("home"))} aria-label="춘배투어 홈으로 이동">
-          <div className="brand-mark">
-            <img src={MascotDefault} alt="" />
-          </div>
-          <div>
-            <strong>춘배투어</strong>
-            <span>ChunBae Tour</span>
-          </div>
-        </button>
+        <div className="sidebar-head">
+          <button type="button" className="sidebar-brand" onClick={onHome || (() => onTab("home"))} aria-label="춘배투어 홈으로 이동">
+            <div className="brand-mark">
+              <img src={MascotDefault} alt="" />
+            </div>
+            <div className="sidebar-brand-text">
+              <strong>춘배투어</strong>
+              <span>ChunBae Tour</span>
+            </div>
+          </button>
+          <button
+            type="button"
+            className="sidebar-menu-toggle"
+            onClick={() => setSidebarOpen(open => !open)}
+            aria-label={sidebarOpen ? "사이드 메뉴 접기" : "사이드 메뉴 열기"}
+            aria-expanded={sidebarOpen}
+          >
+            ☰
+          </button>
+        </div>
 
-        <nav className="sidebar-nav" aria-label="주요 화면">
+        <nav className="sidebar-nav" aria-label="주요 화면" aria-hidden={!sidebarOpen}>
           {NAV_ITEMS.map((item) => {
             const isActive = selectedKey === item.key;
 
@@ -88,18 +99,14 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
                 type="button"
                 className={isActive ? "sidebar-nav-item active" : "sidebar-nav-item"}
                 onClick={() => onTab(item.key)}
+                title={item.label}
               >
-                <span>{item.icon}</span>
-                {item.label}
+                <span className="sidebar-nav-icon">{item.icon}</span>
+                <span className="sidebar-nav-label">{item.label}</span>
               </button>
             );
           })}
         </nav>
-
-        <button type="button" className="sidebar-ar-button" onClick={onAR}>
-          <span>📷</span>
-          AR 카메라
-        </button>
       </aside>
 
       <main className="shell-main">
@@ -132,7 +139,7 @@ export default function AppShell({ active, screen, onTab, onAR, onHome, user, on
 
         {showMobileTab && (
           <div className="mobile-tabbar-shell">
-            <TabBar active={active} onTab={onTab} onAR={onAR} />
+            <TabBar active={active} onTab={onTab} />
           </div>
         )}
       </main>

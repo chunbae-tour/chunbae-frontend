@@ -31,17 +31,38 @@ export function getReportStatusLabel(status) {
   }[status] ?? "상태 확인 중";
 }
 
+function getReportTargetDetail(report = {}) {
+  const target = report.target ?? {};
+  return report.targetTitle
+    ?? report.targetName
+    ?? report.targetNickname
+    ?? report.targetEmail
+    ?? target.title
+    ?? target.name
+    ?? target.nickname
+    ?? target.email
+    ?? "";
+}
+
 export function normalizeMyReport(report = {}) {
   const reason = report.reason ?? "OTHER";
   const targetType = report.targetType ?? "";
+  const targetId = report.targetId;
+  const targetDetail = getReportTargetDetail(report);
+  const targetBaseLabel = getReportTargetLabel(targetType);
   const status = report.status ?? "";
 
   return {
     id: report.reportId ?? report.id,
     reportId: report.reportId ?? report.id,
     targetType,
-    targetId: report.targetId,
-    targetLabel: getReportTargetLabel(targetType),
+    targetId,
+    targetDetail,
+    targetLabel: targetDetail
+      ? `${targetBaseLabel} · ${targetDetail}`
+      : targetId
+        ? `${targetBaseLabel} #${targetId}`
+        : targetBaseLabel,
     reason,
     reasonLabel: getReportReasonLabel(reason),
     description: report.description ?? "",

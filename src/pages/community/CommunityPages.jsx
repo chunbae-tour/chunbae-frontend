@@ -7,6 +7,26 @@ import { createCommunityComment, createCommunityPost, fetchCommunityComments, fe
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { searchPlaces } from "../../services/searchService.js";
 
+function getCompanionJoinErrorMessage(error) {
+  const code = String(error?.code ?? "").toUpperCase();
+  const message = String(error?.message ?? "");
+
+  if (code === "COMPANION_CHAT_ROOM_ID_MISSING") {
+    return "이 모집글에 연결된 채팅방 정보를 찾지 못했습니다. 방장이 채팅방을 생성한 뒤 다시 신청해주세요.";
+  }
+  if (error?.status === 403) {
+    return "이 채팅방에는 다시 참여 신청할 수 없습니다. 이전에 내보내졌거나 방장 권한으로 참여가 제한된 상태예요.";
+  }
+  if (code.includes("KICK") || code.includes("BAN") || code.includes("BLOCK")) {
+    return "이전에 내보내진 채팅방이라 다시 참여 신청할 수 없습니다.";
+  }
+  if (code.includes("ALREADY") || message.includes("이미")) {
+    return "이미 참여 신청했거나 참여 중인 채팅방입니다.";
+  }
+
+  return getApiErrorHint(error);
+}
+
 function parseDateValue(value) {
   if (!value) return null;
   const raw = String(value);
@@ -402,7 +422,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
           showToast("채팅방 참여 신청을 보냈습니다. 방장 신청 목록에서 확인할 수 있어요.");
         })
         .catch((error) => {
-          showToast(getApiErrorHint(error));
+          showToast(getCompanionJoinErrorMessage(error));
         });
       return;
     }
@@ -494,7 +514,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
                   <div className="community-comment-head">
                     <div>👤</div>
                     <strong>{c.author}</strong>
-                    <span>{c.time}</span>
+                    <span>{formatKoreanDateTime(c.time ?? c.createdAt) || "방금 전"}</span>
                     <button type="button" className="community-comment-report" onClick={() => openCommentReport(c)}>신고</button>
                   </div>
                   <p>{c.text}</p>

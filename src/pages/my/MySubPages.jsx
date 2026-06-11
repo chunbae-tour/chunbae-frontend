@@ -9,9 +9,10 @@ function isRoleDeniedError(error) {
   return error?.status === 403;
 }
 
-function formatReportDate(value) {
+function formatKoreanDateTime(value) {
   if (!value) return "-";
-  const date = new Date(value);
+  const normalized = String(value).replace(/(\.\d{3})\d+/, "$1");
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
@@ -20,6 +21,10 @@ function formatReportDate(value) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function formatReportDate(value) {
+  return formatKoreanDateTime(value);
 }
 
 function getReportStatusStyle(status) {
@@ -181,7 +186,7 @@ export function MyReviewPage({ onBack, showToast }) {
               </div>
               <p style={{ fontSize: 14, color: COLORS.textSub, lineHeight: 1.6, marginBottom: 10 }}>{r.text}</p>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.textMuted }}>
-                <span>{r.date}</span>
+                <span>{formatKoreanDateTime(r.date)}</span>
                 <span>❤️ {r.likes}</span>
               </div>
             </div>
@@ -337,6 +342,7 @@ export function MyReportsPage({ onBack }) {
                       )}
                       {detail && detailStatus !== "loading" && (
                         <div style={{ display: "grid", gap: 8, fontSize: 14, color: COLORS.textSub, lineHeight: 1.5 }}>
+                          <div><b style={{ color: COLORS.textMain }}>신고 대상</b> {detail.targetLabel}</div>
                           <div><b style={{ color: COLORS.textMain }}>대상 ID</b> {detail.targetId ?? "-"}</div>
                           <div><b style={{ color: COLORS.textMain }}>처리 상태</b> {detail.statusLabel}</div>
                           <div>

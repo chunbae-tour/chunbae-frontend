@@ -18,6 +18,7 @@ import {
   startCompanion,
 } from "../../services/chatService.js";
 import { getStoredAuthSession } from "../../services/authService.js";
+import { createCompanionReview } from "../../services/companionReviewService.js";
 import { createChatRealtimeClient } from "../../services/chatRealtimeService.js";
 import { REPORT_REASONS } from "../../services/reportService.js";
 import { LANG_CODE_MAP, translateText } from "../../services/translationService.js";
@@ -266,6 +267,10 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [kickConfirmTarget, setKickConfirmTarget] = useState(null);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [reviewScore, setReviewScore] = useState(5);
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translatedMessages, setTranslatedMessages] = useState({});
   const [translationErrors, setTranslationErrors] = useState({});
@@ -691,6 +696,41 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     });
   };
 
+  const openCompanionReview = (participant) => {
+    if (!participant?.userId || isSameUser(participant.userId, currentUserId)) {
+      showToast?.("리뷰를 남길 참여자 정보를 찾지 못했습니다.");
+      return;
+    }
+    setReviewTarget(participant);
+    setReviewScore(5);
+    setReviewContent("");
+  };
+
+  const submitCompanionReview = async () => {
+    if (!reviewTarget || reviewSubmitting) return;
+    setReviewSubmitting(true);
+    try {
+      await createCompanionReview({
+        chatRoomId: Number(roomId),
+        targetUserId: Number(reviewTarget.userId),
+        score: reviewScore,
+        content: reviewContent.trim(),
+      });
+      showToast?.(`${reviewTarget.nickname || "참여자"} 님에게 동행 리뷰를 남겼습니다.`);
+      setReviewTarget(null);
+      setReviewContent("");
+      setReviewScore(5);
+    } catch (error) {
+      if (error?.status === 403) {
+        showToast?.("동행 종료 후 함께한 참여자에게만 리뷰를 남길 수 있습니다.");
+      } else {
+        showToast?.(getApiErrorHint(error));
+      }
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   const submitUserReport = async ({ reason, description }) => {
     if (!reportTarget || reportSubmitting) return;
     setReportSubmitting(true);
@@ -836,6 +876,9 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
                 </div>
               </button>
               <div>
+                {!isSameUser(participant.userId, currentUserId) && (
+                  <button type="button" disabled={reviewSubmitting} onClick={() => openCompanionReview(participant)}>리뷰</button>
+                )}
                 <button type="button" onClick={() => handleProfileReport(participant)}>신고</button>
                 {isCurrentUserHost && !isSameUser(participant.userId, currentUserId) && (
                   <button type="button" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
@@ -864,7 +907,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           if (isSystemMessage(m)) {
             return (
               <div key={getMessageKey(m)} className="chat-system-message">
-                <span>{m.text}</span>
+                <span>{m.text ?? m.content ?? "채팅방 알림입니다."}</span>
               </div>
             );
           }
@@ -889,7 +932,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
                   </div>
                 )}
                 <div className="web-message-bubble" style={{ background: mine ? COLORS.primary : "#fff", color: mine ? "#fff" : COLORS.primary, borderRadius: mine ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "10px 14px", maxWidth: 220, fontSize: 14, border: mine ? "none" : "0.5px solid rgba(0,0,0,0.08)" }}>
-                  {m.text}
+                  {m.text ?? m.content ?? ""}
                   {m.attachments?.length > 0 && (
                     <div className="chat-attachment-preview">
                       {m.attachments.map(file => (
@@ -984,6 +1027,36 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
             <span>{profileTarget.role === "HOST" ? "방장" : "참여자"}</span>
             <p>{profileTarget.language || "언어 미설정"} · 동행지수 {profileTarget.score || "-"}</p>
             <button type="button" onClick={() => { handleProfileReport(profileTarget); setProfileTarget(null); }}>사용자 신고하기</button>
+          </div>
+        </div>
+      )}
+      {reviewTarget && (
+        <div className="chat-profile-modal" role="dialog" aria-modal="true">
+          <div className="chat-companion-review-card">
+            <button type="button" className="chat-profile-close" onClick={() => setReviewTarget(null)} aria-label="닫기">×</button>
+            <strong>{reviewTarget.nickname || "참여자"} 동행 리뷰</strong>
+            <p>함께한 동행 경험을 1~5점으로 남겨주세요.</p>
+            <div className="chat-companion-review-stars" aria-label="동행 리뷰 점수">
+              {[1, 2, 3, 4, 5].map(score => (
+                <button
+                  key={score}
+                  type="button"
+                  className={score <= reviewScore ? "active" : ""}
+                  onClick={() => setReviewScore(score)}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={reviewContent}
+              maxLength={1000}
+              onChange={(event) => setReviewContent(event.target.value)}
+              placeholder="좋았던 점이나 다음 동행자를 위한 참고 내용을 적어주세요."
+            />
+            <button type="button" disabled={reviewSubmitting} onClick={submitCompanionReview}>
+              {reviewSubmitting ? "등록 중..." : "리뷰 등록"}
+            </button>
           </div>
         </div>
       )}

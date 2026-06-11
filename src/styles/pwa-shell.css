@@ -384,7 +384,6 @@ button:disabled,
 }
 
 :root.comfortable-view .sidebar-nav-item,
-:root.comfortable-view .sidebar-ar-button,
 :root.comfortable-view .topbar-user,
 :root.comfortable-view .section-more-button,
 :root.comfortable-view .ui-state-card p,
@@ -670,15 +669,6 @@ button:disabled,
 :root.comfortable-view .mobile-tabbar-button span {
   font-size: 18px !important;
   font-weight: 900 !important;
-}
-
-:root.comfortable-view .mobile-tabbar-ar-mark {
-  width: 58px !important;
-  height: 58px !important;
-}
-
-:root.comfortable-view .mobile-tabbar-ar {
-  min-height: 68px !important;
 }
 
 :root.comfortable-view .app-toast {
@@ -1297,7 +1287,16 @@ button:disabled,
 .desktop-sidebar {
   background: #ffffff;
   border-right: 1px solid rgba(26, 26, 46, 0.08);
-  padding: 24px 18px;
+  overflow: hidden;
+  padding: 18px 12px;
+}
+
+.sidebar-head {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  margin-bottom: 28px;
 }
 
 .sidebar-brand {
@@ -1305,7 +1304,6 @@ button:disabled,
   align-items: center;
   gap: 12px;
   width: 100%;
-  margin-bottom: 28px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -1348,14 +1346,53 @@ button:disabled,
   margin-top: 2px;
 }
 
+.sidebar-brand-text,
+.sidebar-nav-label {
+  overflow: hidden;
+  transition: opacity 160ms ease, transform 160ms ease, width 160ms ease;
+  white-space: nowrap;
+}
+
+.sidebar-menu-toggle {
+  align-items: center;
+  background: #fff8e6;
+  border: 1px solid rgba(244, 182, 63, 0.36);
+  border-radius: 12px;
+  color: #1f2733;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 900;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.sidebar-menu-toggle:hover {
+  background: #f4b63f;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: max-height 180ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.app-shell.sidebar-expanded .sidebar-nav {
+  max-height: calc(100vh - 112px);
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .sidebar-nav-item,
-.sidebar-ar-button,
 .topbar-user {
   border: 0;
   font-family: inherit;
@@ -1381,17 +1418,6 @@ button:disabled,
 .sidebar-nav-item:hover {
   background: #fff3d0;
   color: #1a1a2e;
-}
-
-.sidebar-ar-button {
-  width: 100%;
-  min-height: 44px;
-  border-radius: 8px;
-  margin-top: 18px;
-  background: #ffb41e;
-  color: #1a1a2e;
-  font-size: 14px;
-  font-weight: 800;
 }
 
 .desktop-topbar {
@@ -6585,10 +6611,20 @@ button:disabled,
 
 .notification-row.read {
   background: #ffffff;
+  opacity: 0.58;
 }
 
 .notification-row.read:hover {
   background: #fbfaf7;
+  opacity: 0.78;
+}
+
+.notification-row.read::before {
+  background: rgba(31, 39, 51, 0.12);
+}
+
+.notification-row.read .notification-title {
+  color: #667085;
 }
 
 .notification-title {
@@ -6817,16 +6853,21 @@ button:disabled,
 }
 
 .web-chat-room-page {
-  height: 100dvh;
-  min-height: 0;
+  height: calc(100dvh - 24px);
+  min-height: 0 !important;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.web-chat-room-page > .web-page-topbar {
+  flex: 0 0 auto;
 }
 
 .web-chat-room-body {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 140px;
   max-width: 1000px;
   width: calc(100% - 64px);
   box-sizing: border-box;
@@ -7456,6 +7497,83 @@ button:disabled,
   font-weight: 900;
 }
 
+.chat-companion-review-card {
+  position: relative;
+  width: min(420px, 100%);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: var(--shadow-lg);
+  padding: 26px 20px 20px;
+}
+
+.chat-companion-review-card strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.chat-companion-review-card p {
+  margin: 8px 0 14px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.chat-companion-review-stars {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chat-companion-review-stars button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #c7c7d2;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.chat-companion-review-stars button.active {
+  border-color: #f4b400;
+  background: #fff5cf;
+  color: #f4b400;
+}
+
+.chat-companion-review-card textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 12px;
+}
+
+.chat-companion-review-card > button:last-child {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 900;
+}
+
+.chat-companion-review-card > button:last-child:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .chat-attachment-wrap {
   position: relative;
   flex: 0 0 auto;
@@ -7557,10 +7675,12 @@ button:disabled,
   max-width: 1000px;
   width: calc(100% - 64px);
   box-sizing: border-box;
-  margin: 0 auto 28px;
+  margin: 0 auto;
   border: 1px solid rgba(26, 26, 46, 0.08) !important;
   border-radius: 8px;
   padding: 12px !important;
+  box-shadow: 0 14px 32px rgba(31, 39, 51, 0.08);
+  z-index: var(--z-sticky);
 }
 
 .web-product-grid {
@@ -8974,6 +9094,10 @@ button:disabled,
     padding: 24px 40px 40px;
   }
 
+  .web-chat-room-page {
+    height: calc(100dvh - 136px);
+  }
+
   .mobile-tabbar-shell {
     display: none;
   }
@@ -9731,8 +9855,7 @@ body {
 }
 
 .sidebar-brand .brand-mark,
-.topbar-user b,
-.mobile-tabbar-ar-mark {
+.topbar-user b {
   box-shadow: inset 0 0 0 1px rgba(31, 39, 51, 0.08), 0 8px 18px rgba(244, 182, 63, 0.25);
 }
 
@@ -9747,7 +9870,6 @@ body {
   color: #fffdf8;
 }
 
-.sidebar-ar-button,
 .public-primary,
 .home-route-cta,
 .home-course-actions button:first-child {
