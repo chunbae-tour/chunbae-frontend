@@ -18,6 +18,24 @@ export async function fetchCommunityPosts() {
   return [...companionPosts, ...reviewPosts];
 }
 
+export async function fetchCompanionPostsByPlace(place, { size = 50 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  const data = await apiRequest(`/community/posts/companions?${params.toString()}`);
+  const placeId = place?.placeId ?? place?.id;
+  const placeName = String(place?.name ?? place?.placeName ?? "").trim();
+
+  return getPageContent(data)
+    .map(normalizeCompanionPost)
+    .filter((post) => {
+      const postPlaceId = post.placeId ?? post.place?.placeId;
+      const postPlaceName = String(post.placeName ?? post.place ?? "").trim();
+
+      if (placeId && postPlaceId) return String(postPlaceId) === String(placeId);
+      if (placeName && postPlaceName) return postPlaceName === placeName;
+      return false;
+    });
+}
+
 export async function fetchCommunityPostDetail(postId, postType = "free") {
   if (!postId) return null;
 

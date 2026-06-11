@@ -12,3 +12,18 @@ export async function fetchFaqs({ category, size = 50 } = {}) {
     category: item.category ?? "",
   }));
 }
+
+export async function fetchFaqTranslation(faqId, targetLanguage) {
+  const params = new URLSearchParams({ targetLanguage });
+  const data = await apiRequest(`/faqs/${faqId}/translation?${params.toString()}`, {
+    auth: true,
+    role: "USER",
+  });
+
+  return {
+    faqId: data.faqId ?? faqId,
+    targetLanguage: data.targetLanguage ?? targetLanguage,
+    question: data.question ?? data.translatedQuestion ?? "",
+    answer: data.answer ?? data.translatedAnswer ?? "",
+  };
+}
