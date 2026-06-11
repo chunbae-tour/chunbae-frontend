@@ -20,6 +20,7 @@ import {
   deleteAdminFestival,
   deleteAdminPlace,
   deleteAdminProduct,
+  fetchAdminAd,
   fetchAdminAds,
   fetchAdminBanners,
   fetchAdminCertifications,
@@ -53,6 +54,7 @@ import {
   updateAdminPlace,
   updateAdminProduct,
   updateAdminShop,
+  updateAdminShopMarket,
   updateAdminShopPlace,
   updateAdminShopStatus,
 } from "../../services/adminService.js";
@@ -1006,6 +1008,8 @@ export function AdminSettlementsPage({ onBack, showToast }) {
 
 export function AdminAdsPage({ onBack, showToast }) {
   const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminAds({ size: 100 }));
+  const [detailById, setDetailById] = useState({});
+  const [loadingDetailId, setLoadingDetailId] = useState(null);
 
   const handleDecision = async (ad, decision) => {
     const adId = getItemId(ad, ["applicationId", "adId", "id"]);
@@ -1028,6 +1032,18 @@ export function AdminAdsPage({ onBack, showToast }) {
     }
   };
 
+  const loadAdDetail = async (adId) => {
+    setLoadingDetailId(adId);
+    try {
+      const detail = await fetchAdminAd(adId);
+      setDetailById(prev => ({ ...prev, [adId]: detail }));
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    } finally {
+      setLoadingDetailId(null);
+    }
+  };
+
   return (
     <AdminShell title="광고 신청 관리" onBack={onBack}>
       <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="광고 신청이 없습니다." emptyDescription="상인의 광고 신청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다." onRetry={reload} />
@@ -1043,13 +1059,23 @@ export function AdminAdsPage({ onBack, showToast }) {
               가게 {ad.shopId ?? "-"} · {ad.adType ?? "BANNER"} · {ad.startDate ?? "-"} ~ {ad.endDate ?? "-"}
             </div>
             <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(ad.cost)} 엽전</div>
-            {ad.rejectReason && <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>{ad.rejectReason}</div>}
-            {ad.status === "PENDING" && (
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <AdminButton tone="danger" onClick={() => handleDecision(ad, "reject")} style={{ flex: 1 }}>거절</AdminButton>
-                <AdminButton onClick={() => handleDecision(ad, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+            {detailById[adId] && (
+              <div style={{ marginTop: 8, fontSize: 14, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                신청자 {detailById[adId].merchantId ?? detailById[adId].userId ?? "-"} · 제목 {detailById[adId].title ?? detailById[adId].adTitle ?? "-"}
               </div>
             )}
+            {ad.rejectReason && <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>{ad.rejectReason}</div>}
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <AdminButton tone="ghost" onClick={() => loadAdDetail(adId)} disabled={loadingDetailId === adId} style={{ flex: 1 }}>
+                {loadingDetailId === adId ? "조회 중" : "상세 조회"}
+              </AdminButton>
+              {ad.status === "PENDING" && (
+                <>
+                <AdminButton tone="danger" onClick={() => handleDecision(ad, "reject")} style={{ flex: 1 }}>거절</AdminButton>
+                <AdminButton onClick={() => handleDecision(ad, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+                </>
+              )}
+            </div>
           </AdminCard>
         );
       })}
@@ -1758,7 +1784,7 @@ export function AdminShopsPage({ onBack, showToast }) {
   const [shopId, setShopId] = useState("");
   const [shop, setShop] = useState(null);
   const [status, setStatus] = useState("idle");
-  const [form, setForm] = useState({ status: "ACTIVE", description: "", phone: "", operatingHours: "", placeId: "" });
+  const [form, setForm] = useState({ status: "ACTIVE", description: "", phone: "", operatingHours: "", placeId: "", traditionalMarketId: "" });
 
   const loadShop = async () => {
     if (!shopId) {
@@ -1775,6 +1801,7 @@ export function AdminShopsPage({ onBack, showToast }) {
         phone: data.phone ?? "",
         operatingHours: data.operatingHours ?? "",
         placeId: data.placeId != null ? String(data.placeId) : "",
+        traditionalMarketId: data.traditionalMarketId != null ? String(data.traditionalMarketId) : "",
       });
       setStatus("success");
     } catch (error) {
@@ -1827,6 +1854,18 @@ export function AdminShopsPage({ onBack, showToast }) {
     }
   };
 
+  const saveMarket = async () => {
+    if (!shop?.id && !shopId) return showToast("가게를 먼저 조회해주세요.");
+    try {
+      const marketId = form.traditionalMarketId ? Number(form.traditionalMarketId) : null;
+      const updated = await updateAdminShopMarket(shop?.id ?? shopId, marketId);
+      setShop(prev => prev ? { ...prev, ...updated, traditionalMarketId: marketId } : prev);
+      showToast(marketId ? "가게와 전통시장을 연결했습니다." : "가게 전통시장 연결을 해제했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    }
+  };
+
   return (
     <AdminShell title="가게 도구" onBack={onBack}>
       <AdminCard style={{ background: "#FFF7D7" }}>
@@ -1858,6 +1897,8 @@ export function AdminShopsPage({ onBack, showToast }) {
             <AdminButton onClick={saveStatus}>상태 저장</AdminButton>
             <input placeholder="연결할 placeId, 비우면 해제" value={form.placeId} onChange={(e) => setForm(prev => ({ ...prev, placeId: e.target.value }))} style={adminInputStyle} />
             <AdminButton onClick={savePlace}>장소 연결 저장</AdminButton>
+            <input placeholder="traditionalMarketId, 비우면 해제" value={form.traditionalMarketId} onChange={(e) => setForm(prev => ({ ...prev, traditionalMarketId: e.target.value }))} style={adminInputStyle} />
+            <AdminButton onClick={saveMarket}>시장 연결 저장</AdminButton>
             <input placeholder="전화번호" value={form.phone} onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))} style={adminInputStyle} />
             <input placeholder="운영시간" value={form.operatingHours} onChange={(e) => setForm(prev => ({ ...prev, operatingHours: e.target.value }))} style={adminInputStyle} />
             <textarea placeholder="가게 소개" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 90, resize: "vertical" }} />
