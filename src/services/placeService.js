@@ -42,10 +42,24 @@ function normalizeCoordinate(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function normalizeLatLngPair(latValue, lngValue) {
+  const lat = normalizeCoordinate(latValue);
+  const lng = normalizeCoordinate(lngValue);
+
+  if (lat == null || lng == null) {
+    return { latitude: lat, longitude: lng };
+  }
+
+  if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) {
+    return { latitude: lng, longitude: lat };
+  }
+
+  return { latitude: lat, longitude: lng };
+}
+
 export function normalizePlace(place = {}) {
   const id = place.placeId ?? place.id;
-  const latitude = normalizeCoordinate(place.latitude ?? place.lat);
-  const longitude = normalizeCoordinate(place.longitude ?? place.lng);
+  const { latitude, longitude } = normalizeLatLngPair(place.latitude ?? place.lat, place.longitude ?? place.lng);
   const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
   const category = place.category ?? place.categoryName;
   const targetType = place.targetType ?? (category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");

@@ -13,27 +13,44 @@ import {
 
 const MAP_FILTERS = ["전체", "관광지", "전통시장", "찜한 장소"];
 const MAX_MAP_SPAN_DEGREES = 2;
+const MARKER_REQUEST_MIN_INTERVAL_MS = 1200;
+const MARKER_RATE_LIMIT_COOLDOWN_MS = 5000;
 
 function filterPlacesByType(items, filter) {
   if (filter === "찜한 장소") return items.filter((place) => place.isLiked);
   return filter === "전체" ? items : items.filter((place) => place.type === filter);
 }
 
-const getPlaceMeta = (place) => {
-  if (place.type === "전통시장") {
-    return {
-      mood: "먹거리 4곳",
-      time: "70~90분",
-      status: "저녁 방문 추천",
-    };
-  }
+function hasMarkerCoordinate(place) {
+  return Number.isFinite(Number(place?.lat ?? place?.latitude))
+    && Number.isFinite(Number(place?.lng ?? place?.longitude));
+}
 
-  return {
-    mood: "산책 코스",
-    time: "45~60분",
-    status: "낮 산책 추천",
-  };
-};
+function getMarkerIdentity(place) {
+  const type = place?.targetType ?? place?.type ?? "PLACE";
+  return `${type}:${place?.placeId ?? place?.id ?? place?.name}`;
+}
+
+function mergeMarkerSources(...sources) {
+  const merged = new Map();
+  sources.flat().forEach((place) => {
+    if (!place || !hasMarkerCoordinate(place)) return;
+    const key = getMarkerIdentity(place);
+    if (!merged.has(key)) {
+      merged.set(key, place);
+    }
+  });
+  return Array.from(merged.values());
+}
+
+function getMarkerBoundsKey(bounds) {
+  return [
+    bounds.swLat,
+    bounds.swLng,
+    bounds.neLat,
+    bounds.neLng,
+  ].map((value) => Number(value).toFixed(4)).join("|");
+}
 
 export default function MapPage({ onPlaceClick }) {
   const [filter, setFilter] = useState("전체");
@@ -51,10 +68,15 @@ export default function MapPage({ onPlaceClick }) {
   const [markerStatus, setMarkerStatus] = useState("idle");
   const [markerNotice, setMarkerNotice] = useState("");
   const markerRequestSeq = useRef(0);
+  const markerRequestTimer = useRef(null);
+  const markerLastBoundsKey = useRef("");
+  const markerLastRequestAt = useRef(0);
+  const markerRateLimitedUntil = useRef(0);
+  const markerPendingBounds = useRef(null);
   const filtered = filterPlacesByType(places, filter);
   const markerSource = filter === "찜한 장소"
     ? places
-    : (mapMarkers.length > 0 || markerStatus === "wide" ? mapMarkers : places);
+    : mergeMarkerSources(mapMarkers, places);
   const filteredMarkers = filterPlacesByType(markerSource, filter);
   const accessOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const isSecureAccess = typeof window !== "undefined" ? window.isSecureContext : true;
@@ -93,22 +115,13 @@ export default function MapPage({ onPlaceClick }) {
     }
   };
 
-  const loadMapMarkers = useCallback(async (bounds) => {
-    if (!bounds) return;
-
-    if (bounds.latSpan > MAX_MAP_SPAN_DEGREES || bounds.lngSpan > MAX_MAP_SPAN_DEGREES) {
-      markerRequestSeq.current += 1;
-      setMapMarkers([]);
-      setSelectedPlace(null);
-      setMarkerStatus("wide");
-      setMarkerNotice("지도를 확대해 주세요. 넓은 범위에서는 마커 조회를 잠시 멈춥니다.");
-      return;
-    }
-
+  const executeMapMarkerLoad = useCallback(async (bounds, boundsKey) => {
     setMarkerStatus("loading");
     setMarkerNotice("");
     const requestSeq = markerRequestSeq.current + 1;
     markerRequestSeq.current = requestSeq;
+    markerLastRequestAt.current = Date.now();
+    markerLastBoundsKey.current = boundsKey;
 
     try {
       const result = await fetchMapMarkers(bounds);
@@ -122,12 +135,63 @@ export default function MapPage({ onPlaceClick }) {
       );
     } catch (err) {
       if (requestSeq !== markerRequestSeq.current) return;
+      markerLastBoundsKey.current = "";
+      if (err?.status === 429 || err?.code === "TOO_MANY_REQUESTS") {
+        markerRateLimitedUntil.current = Date.now() + MARKER_RATE_LIMIT_COOLDOWN_MS;
+        setMarkerStatus("error");
+        setMarkerNotice("지도를 빠르게 움직여 마커 요청이 잠시 제한되었습니다. 잠시 후 다시 움직여주세요.");
+        return;
+      }
       setMapMarkers([]);
       setSelectedPlace(null);
       setMarkerStatus("error");
       setMarkerNotice(getApiErrorHint(err));
     }
   }, []);
+
+  const loadMapMarkers = useCallback((bounds) => {
+    if (!bounds) return;
+
+    if (bounds.latSpan > MAX_MAP_SPAN_DEGREES || bounds.lngSpan > MAX_MAP_SPAN_DEGREES) {
+      window.clearTimeout(markerRequestTimer.current);
+      markerPendingBounds.current = null;
+      markerRequestSeq.current += 1;
+      markerLastBoundsKey.current = "";
+      setMapMarkers([]);
+      setSelectedPlace(null);
+      setMarkerStatus("wide");
+      setMarkerNotice("지도를 확대해 주세요. 넓은 범위에서는 마커 조회를 잠시 멈춥니다.");
+      return;
+    }
+
+    const now = Date.now();
+    if (now < markerRateLimitedUntil.current) {
+      setMarkerStatus("error");
+      setMarkerNotice("마커 요청이 잠시 제한되었습니다. 몇 초 뒤 다시 지도를 움직여주세요.");
+      return;
+    }
+
+    const boundsKey = getMarkerBoundsKey(bounds);
+    if (boundsKey === markerLastBoundsKey.current) {
+      return;
+    }
+
+    const remainingWait = MARKER_REQUEST_MIN_INTERVAL_MS - (now - markerLastRequestAt.current);
+    window.clearTimeout(markerRequestTimer.current);
+
+    if (remainingWait > 0) {
+      markerPendingBounds.current = { bounds, boundsKey };
+      markerRequestTimer.current = window.setTimeout(() => {
+        const pending = markerPendingBounds.current;
+        markerPendingBounds.current = null;
+        if (!pending) return;
+        executeMapMarkerLoad(pending.bounds, pending.boundsKey);
+      }, remainingWait);
+      return;
+    }
+
+    executeMapMarkerLoad(bounds, boundsKey);
+  }, [executeMapMarkerLoad]);
 
   const requestUserLocation = async () => {
     setRequestingLocation(true);
@@ -162,6 +226,10 @@ export default function MapPage({ onPlaceClick }) {
   useEffect(() => {
     setSelectedPlace(null);
   }, [filter]);
+
+  useEffect(() => () => {
+    window.clearTimeout(markerRequestTimer.current);
+  }, []);
 
   return (
     <div style={S.screen} className="map-explorer-page">
@@ -282,37 +350,29 @@ export default function MapPage({ onPlaceClick }) {
           />
         )}
         <div className="map-result-grid">
-          {filtered.map(p => {
-            const meta = getPlaceMeta(p);
-            return (
-              <div key={p.id} className="map-result-card" onClick={() => onPlaceClick({ ...p, imageUrl: getPlaceImageUrl(p) })}>
-                <div
-                  className={p.type === "전통시장" ? "map-result-thumb market has-image" : "map-result-thumb has-image"}
-                  style={{ "--place-card-image": getPlaceImageUrl(p) ? `url("${getPlaceImageUrl(p)}")` : undefined }}
-                >
-                  {!getPlaceImageUrl(p) && <span>{p.emoji}</span>}
-                </div>
-                <div className="map-result-body">
-                  <div className="map-result-title">
-                    <span>{p.name}</span>
-                    <small className={p.type === "관광지" ? "palace" : ""}>{p.type}</small>
-                  </div>
-                  <p>{p.addr}</p>
-                  <div className="map-service-meta">
-                    <span>{meta.mood}</span>
-                    <span>{meta.time}</span>
-                    <span>{meta.status}</span>
-                  </div>
-                  <div className="map-result-foot">
-                    <span>📍 {p.dist}</span>
-                    <StarRating rating={p.rating} />
-                    <span>리뷰 {p.reviews}</span>
-                  </div>
-                </div>
-                <button type="button">골목 보기</button>
+          {filtered.map(p => (
+            <div key={p.id} className="map-result-card" onClick={() => onPlaceClick({ ...p, imageUrl: getPlaceImageUrl(p) })}>
+              <div
+                className={p.type === "전통시장" ? "map-result-thumb market has-image" : "map-result-thumb has-image"}
+                style={{ "--place-card-image": getPlaceImageUrl(p) ? `url("${getPlaceImageUrl(p)}")` : undefined }}
+              >
+                {!getPlaceImageUrl(p) && <span>{p.emoji}</span>}
               </div>
-            );
-          })}
+              <div className="map-result-body">
+                <div className="map-result-title">
+                  <span>{p.name}</span>
+                  <small className={p.type === "관광지" ? "palace" : ""}>{p.type}</small>
+                </div>
+                <p>{p.addr}</p>
+                <div className="map-result-foot">
+                  <span>📍 {p.dist}</span>
+                  <StarRating rating={p.rating} />
+                  <span>리뷰 {p.reviews}</span>
+                </div>
+              </div>
+              <button type="button">골목 보기</button>
+            </div>
+          ))}
         </div>
       </div>
     </div>

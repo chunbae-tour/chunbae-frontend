@@ -4,7 +4,7 @@ import { COLORS } from "../../constants/colors";
 export function Toast({ msg }) {
   if (!msg) return null;
   return (
-    <div className="app-toast" role="status" aria-live="polite" style={{ position: "absolute", bottom: 90, left: 16, right: 16, background: COLORS.primary, color: "#fff", borderRadius: 12, padding: "12px 16px", zIndex: 200, fontSize: 14, textAlign: "center" }}>
+    <div className="app-toast" role="status" aria-live="polite">
       {msg}
     </div>
   );

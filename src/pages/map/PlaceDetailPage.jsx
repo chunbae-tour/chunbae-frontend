@@ -259,12 +259,6 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
           </div>
           <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 2 }}>📍 {currentPlace.addr || "주소 정보 없음"}</div>
           <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 20 }}>🕐 {currentPlace.hours || "운영시간 정보 없음"}</div>
-          <div className="place-live-summary">
-            <div><span>현재 분위기</span><strong>{currentPlace.type === "전통시장" ? "먹거리 골목 인기" : "산책 코스 추천"}</strong></div>
-            <div><span>예상 체류</span><strong>{currentPlace.type === "전통시장" ? "70~90분" : "45~60분"}</strong></div>
-            <div><span>거리</span><strong>{currentPlace.dist}</strong></div>
-            <div><span>리뷰</span><strong>{currentPlace.reviews}개</strong></div>
-          </div>
           <div className="place-action-panel">
             <div className="place-action-head">
               <span>이 장소에서 바로 할 일</span>

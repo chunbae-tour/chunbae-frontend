@@ -132,7 +132,7 @@ export default function KakaoMap({
     const validMarkers = markers
       .map((place) => ({
         place,
-        coordinate: getRenderableCoordinate(place.lat, place.lng),
+        coordinate: getRenderableCoordinate(place.lat ?? place.latitude, place.lng ?? place.longitude),
       }))
       .filter((item) => item.coordinate);
 
@@ -213,7 +213,7 @@ export default function KakaoMap({
     if (status !== "ready" || !mapRef.current || selectedMarkerId == null) return;
 
     const place = markers.find((item) => item.id === selectedMarkerId || item.placeId === selectedMarkerId);
-    const coordinate = getRenderableCoordinate(place?.lat, place?.lng);
+    const coordinate = getRenderableCoordinate(place?.lat ?? place?.latitude, place?.lng ?? place?.longitude);
     if (!coordinate) return;
 
     mapRef.current.panTo(new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng));
@@ -237,7 +237,7 @@ export default function KakaoMap({
       window.clearTimeout(viewportTimerRef.current);
       viewportTimerRef.current = window.setTimeout(() => {
         onViewportChange(getMapBoundsPayload(map));
-      }, 300);
+      }, 700);
     };
 
     kakao.maps.event.addListener(map, "idle", emitViewport);

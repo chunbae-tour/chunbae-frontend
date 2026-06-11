@@ -22,6 +22,14 @@ import { createChatRealtimeClient } from "../../services/chatRealtimeService.js"
 import { REPORT_REASONS } from "../../services/reportService.js";
 import { LANG_CODE_MAP, translateText } from "../../services/translationService.js";
 
+const TRANSLATION_BATCH_SIZE = 5;
+const TRANSLATION_REQUEST_DELAY_MS = 650;
+const TRANSLATION_DEFAULT_COOLDOWN_MS = 30000;
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 function getMessageTimestamp(message = {}) {
   const raw = message.sentAt ?? message.createdAt ?? message.timestamp ?? message.time;
   const parsed = Date.parse(raw);
@@ -261,6 +269,8 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translatedMessages, setTranslatedMessages] = useState({});
   const [translationErrors, setTranslationErrors] = useState({});
+  const [translationNotice, setTranslationNotice] = useState("");
+  const [translationCooldownUntil, setTranslationCooldownUntil] = useState(0);
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const realtimeClientRef = useRef(null);
@@ -431,14 +441,19 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
 
   useEffect(() => {
     if (!translationEnabled) return undefined;
+    if (translationCooldownUntil && Date.now() < translationCooldownUntil) return undefined;
 
     let cancelled = false;
-    const targets = sortMessages(messages).filter((message) => {
-      if (isSystemMessage(message) || resolveMessageMine(message)) return false;
-      const key = getMessageKey(message);
-      const content = message.content ?? message.text ?? "";
-      return content && !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
-    });
+    const targets = sortMessages(messages)
+      .filter((message) => {
+        if (isSystemMessage(message) || resolveMessageMine(message)) return false;
+        const key = getMessageKey(message);
+        const content = message.content ?? message.text ?? "";
+        return content && !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
+      })
+      .slice(-TRANSLATION_BATCH_SIZE);
+
+    if (targets.length === 0) return undefined;
 
     const translateSequentially = async () => {
       for (const message of targets) {
@@ -452,12 +467,25 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           if (!cancelled) {
             setTranslatedMessages(prev => ({ ...prev, [key]: translated || content }));
           }
-        } catch {
+        } catch (error) {
           if (!cancelled) {
-            setTranslationErrors(prev => ({ ...prev, [key]: true }));
+            if (error?.status === 429) {
+              const retryAfterSeconds = Number(error.retryAfter);
+              const waitMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+                ? retryAfterSeconds * 1000
+                : TRANSLATION_DEFAULT_COOLDOWN_MS;
+              setTranslationCooldownUntil(Date.now() + waitMs);
+              setTranslationNotice(`번역 요청이 많아 잠시 쉬고 있어요. ${Math.ceil(waitMs / 1000)}초 후 다시 시도해주세요.`);
+              setTranslationErrors(prev => ({ ...prev, [key]: "요청이 많아 잠시 후 다시 시도해주세요." }));
+              break;
+            }
+            setTranslationErrors(prev => ({ ...prev, [key]: getApiErrorHint(error) || "번역을 불러오지 못했습니다." }));
           }
         } finally {
           translationPendingRef.current.delete(key);
+        }
+        if (!cancelled) {
+          await wait(TRANSLATION_REQUEST_DELAY_MS);
         }
       }
     };
@@ -466,7 +494,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     return () => {
       cancelled = true;
     };
-  }, [translationEnabled, messages, currentUserId, translationTargetLanguage]);
+  }, [translationEnabled, messages, translationTargetLanguage, translatedMessages, translationErrors, translationCooldownUntil]);
 
   useEffect(() => {
     let ignore = false;
@@ -724,6 +752,21 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     });
   };
 
+  const handleToggleTranslation = () => {
+    setTranslationEnabled((enabled) => {
+      const nextEnabled = !enabled;
+      if (nextEnabled) {
+        setTranslationErrors({});
+        setTranslationCooldownUntil(0);
+        setTranslationNotice("최근 상대 메시지부터 조금씩 번역합니다.");
+      } else {
+        setTranslationNotice("");
+      }
+      return nextEnabled;
+    });
+    setRoomMenuOpen(false);
+  };
+
   return (
     <div style={S.screen} className="web-chat-room-page">
       <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -748,7 +791,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           {roomMenuOpen && (
             <div className="chat-room-menu" role="menu">
               <button type="button" onClick={openParticipantPanel}>참여자 보기</button>
-              <button type="button" onClick={() => { setTranslationEnabled(value => !value); setRoomMenuOpen(false); }}>
+              <button type="button" onClick={handleToggleTranslation}>
                 {translationEnabled ? "번역 끄기" : "번역 켜기"}
               </button>
               {isCurrentUserHost && <button type="button" onClick={() => { setRoomMenuOpen(false); onRequest?.(); }}>참여 신청 관리</button>}
@@ -762,6 +805,11 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
       <div className={`chat-realtime-status ${realtimeStatus}`}>
         {realtimeStatus === "connected" ? "실시간 연결됨" : realtimeStatus === "connecting" ? "실시간 연결 중" : "실시간 연결 확인 필요"}
       </div>
+      {translationEnabled && translationNotice && (
+        <div className="chat-translation-notice">
+          {translationNotice}
+        </div>
+      )}
       {participantPanelOpen && (
         <div className="chat-participant-panel">
           <div className="chat-participant-head">
@@ -827,6 +875,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           const messageProfile = !mine ? getMessageProfile(m) : null;
           const translatedText = translatedMessages[messageKey];
           const translationFailed = translationErrors[messageKey];
+          const translationErrorText = typeof translationFailed === "string" ? translationFailed : "번역을 불러오지 못했습니다.";
           return (
           <div key={messageKey} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
             {!mine && <button type="button" onClick={() => openProfile(messageProfile)} style={{ width: 32, height: 32, borderRadius: "50%", background: COLORS.bg, border: 0, display: "flex", alignItems: "center", justifyContent: "center", marginRight: 8, fontSize: 14, flexShrink: 0, cursor: "pointer" }}>{messageProfile?.avatar ?? "👤"}</button>}
@@ -870,7 +919,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
               </div>
               {!mine && translationEnabled && (
                 <div className={`chat-message-translation ${translationFailed ? "error" : ""}`}>
-                  {translatedText ? `번역: ${translatedText}` : translationFailed ? "번역을 불러오지 못했습니다." : "번역 중..."}
+                  {translatedText ? `번역: ${translatedText}` : translationFailed ? translationErrorText : "번역 대기 중..."}
                 </div>
               )}
             </div>
