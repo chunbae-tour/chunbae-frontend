@@ -303,6 +303,15 @@ export async function requestRefund(orderId, reason = "사용자 환불 요청")
   });
 }
 
+export async function cancelChargeOrder(orderId) {
+  await apiRequest(`/payments/${orderId}/cancel`, {
+    method: "POST",
+    auth: true,
+    role: "USER",
+  });
+  return true;
+}
+
 export async function cancelRefund(refundId) {
   await apiRequest(`/payments/refund/${refundId}/cancel`, {
     method: "PATCH",
@@ -321,6 +330,15 @@ export async function fetchRefundHistory({ cursor, size = 20 } = {}) {
 
 export async function fetchQrPaymentStatus(payRequestId) {
   return apiRequest(`/payments/qr/${payRequestId}/status`, { auth: true, role: "USER" });
+}
+
+export async function cancelQrPaymentRequest(payRequestId) {
+  await apiRequest(`/payments/qr/${payRequestId}/cancel`, {
+    method: "POST",
+    auth: true,
+    role: "USER",
+  });
+  return true;
 }
 
 export async function fetchQrMerchant(shopId = 201) {
@@ -344,10 +362,15 @@ export async function requestQrPayment({ merchantId, amount, memo }) {
     throw new PaymentApiError("결제 금액을 입력해주세요.", "QR_AMOUNT_INVALID");
   }
 
-  return apiRequest("/payments/qr", {
+  const data = await apiRequest("/payments/qr", {
     method: "POST",
     auth: true,
     role: "USER",
     body: { shopId: merchantId, amount, memo },
   });
+
+  return {
+    ...data,
+    payRequestId: data.payRequestId ?? data.paymentRequestId ?? data.requestId ?? data.id,
+  };
 }
