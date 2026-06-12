@@ -5,15 +5,18 @@ import { getApiErrorHint } from "../../services/apiClient.js";
 import { uploadChatAttachments } from "../../services/attachmentService.js";
 import {
   addCompanionParticipants,
+  approveJoinRequest,
   fetchChatMessages,
   fetchChatMessagesPage,
   fetchChatParticipants,
   fetchChatRoomDetail,
+  fetchJoinRequests,
   fetchMyChatRooms,
   endCompanion,
   kickChatParticipant,
   leaveChatRoom,
   markChatRoomRead,
+  rejectJoinRequest,
   reportChatParticipant,
   startCompanion,
 } from "../../services/chatService.js";
@@ -48,8 +51,66 @@ function formatChatTime(message = {}) {
   }).format(new Date(parsed));
 }
 
+function formatChatDate(message = {}) {
+  const raw = message.sentAt ?? message.createdAt ?? message.timestamp ?? message.time;
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) return "";
+
+  const date = new Date(parsed);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) return "오늘";
+  if (date.toDateString() === yesterday.toDateString()) return "어제";
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
+function shouldShowDate(currentMessage, prevMessage) {
+  if (!prevMessage) return true;
+  
+  const currentRaw = currentMessage.sentAt ?? currentMessage.createdAt ?? currentMessage.timestamp ?? currentMessage.time;
+  const prevRaw = prevMessage.sentAt ?? prevMessage.createdAt ?? prevMessage.timestamp ?? prevMessage.time;
+  
+  const currentDate = new Date(Date.parse(currentRaw));
+  const prevDate = new Date(Date.parse(prevRaw));
+  
+  return currentDate.toDateString() !== prevDate.toDateString();
+}
+
+function shouldShowProfile(currentMessage, prevMessage, isMine) {
+  if (isMine) return false;
+  if (!prevMessage) return true;
+  
+  const prevMine = prevMessage.isMine ?? prevMessage.me ?? false;
+  if (prevMine) return true;
+  
+  const currentSender = currentMessage.senderId ?? currentMessage.senderUserId ?? currentMessage.userId ?? currentMessage.memberId;
+  const prevSender = prevMessage.senderId ?? prevMessage.senderUserId ?? prevMessage.userId ?? prevMessage.memberId;
+  
+  return currentSender !== prevSender;
+}
+
 function sortMessages(messages = []) {
   return [...messages].sort((a, b) => getMessageTimestamp(a) - getMessageTimestamp(b));
+}
+
+function isSameMessageMinute(firstMessage, secondMessage) {
+  if (!firstMessage || !secondMessage) return false;
+
+  const firstDate = new Date(getMessageTimestamp(firstMessage));
+  const secondDate = new Date(getMessageTimestamp(secondMessage));
+
+  return firstDate.getFullYear() === secondDate.getFullYear()
+    && firstDate.getMonth() === secondDate.getMonth()
+    && firstDate.getDate() === secondDate.getDate()
+    && firstDate.getHours() === secondDate.getHours()
+    && firstDate.getMinutes() === secondDate.getMinutes();
 }
 
 function getMessageKey(message = {}) {
@@ -157,7 +218,7 @@ function formatRoomLastMessage(message, currentUserId) {
   return senderName ? `${senderName}: ${text}` : text;
 }
 
-export function ChatListPage({ onChatRoom, showToast }) {
+export function ChatListPage({ onChatRoom, showToast, compact = false, selectedRoomId = null }) {
   const [rooms, setRooms] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
@@ -219,14 +280,23 @@ export function ChatListPage({ onChatRoom, showToast }) {
   }, []);
 
   return (
-    <div style={S.screen} className="web-chat-list-page">
-      <div className="web-page-hero" style={{ background: COLORS.primary, padding: "44px 20px 20px" }}>
+    <div style={compact ? undefined : S.screen} className={compact ? "web-chat-list-page is-compact" : "web-chat-list-page"}>
+      {!compact && <div className="web-page-hero" style={{ background: COLORS.primary, padding: "44px 20px 20px" }}>
         <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>💬 동행 채팅</div>
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginTop: 4 }}>같이 여행할 친구를 찾아보세요</div>
-      </div>
+      </div>}
+      {compact && (
+        <div className="chat-workspace-list-head">
+          <div>
+            <strong>동행 채팅</strong>
+            <span>참여 중인 채팅방</span>
+          </div>
+          <em>{rooms.length}</em>
+        </div>
+      )}
       <div style={S.scrollArea} className="web-detail-scroll">
         <div className="web-chat-list" style={{ padding: "12px 16px" }}>
-          <div className="chat-api-note">채팅방은 동행 게시판 모집글에서 방장이 생성합니다.</div>
+          {!compact && <div className="chat-api-note">채팅방은 동행 게시판 모집글에서 방장이 생성합니다.</div>}
           {status === "loading" && <SkeletonList count={3} />}
           {status === "error" && (
             <ErrorState
@@ -245,7 +315,12 @@ export function ChatListPage({ onChatRoom, showToast }) {
           {status !== "loading" && (
             <div className="chat-room-list">
             {rooms.map(c => (
-              <button key={c.id} type="button" className="chat-room-row" onClick={() => onChatRoom(c)}>
+              <button
+                key={c.id}
+                type="button"
+                className={String(selectedRoomId) === String(c.chatRoomId ?? c.id) ? "chat-room-row active" : "chat-room-row"}
+                onClick={() => onChatRoom(c)}
+              >
                 <div>
                   <div className="chat-room-title-line">
                     <strong>{c.title}</strong>
@@ -268,7 +343,47 @@ export function ChatListPage({ onChatRoom, showToast }) {
   );
 }
 
-export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
+export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onOpenMobileRoom, showToast }) {
+  const selectedRoomId = selectedRoom?.chatRoomId ?? selectedRoom?.id;
+
+  const handleRoomSelect = (room) => {
+    onSelectRoom?.(room);
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      onOpenMobileRoom?.(room);
+    }
+  };
+
+  return (
+    <div className="chat-workspace-page">
+      <aside className="chat-workspace-sidebar">
+        <ChatListPage
+          compact
+          selectedRoomId={selectedRoomId}
+          onChatRoom={handleRoomSelect}
+          showToast={showToast}
+        />
+      </aside>
+      <section className="chat-workspace-detail">
+        {selectedRoom ? (
+          <ChatRoomPage
+            key={selectedRoomId}
+            embedded
+            room={selectedRoom}
+            showToast={showToast}
+          />
+        ) : (
+          <div className="chat-workspace-empty">
+            <span>💬</span>
+            <strong>채팅방을 선택해주세요</strong>
+            <p>왼쪽 목록에서 대화를 선택하면 바로 이어서 채팅할 수 있어요.</p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [olderCursor, setOlderCursor] = useState(null);
@@ -281,8 +396,11 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
   const [participants, setParticipants] = useState([]);
   const [participantStatus, setParticipantStatus] = useState("idle");
   const [roomDetail, setRoomDetail] = useState(null);
-  const [participantPanelOpen, setParticipantPanelOpen] = useState(false);
-  const [roomMenuOpen, setRoomMenuOpen] = useState(false);
+  const [managementPanelOpen, setManagementPanelOpen] = useState(false);
+  const [managementTab, setManagementTab] = useState("participants");
+  const [joinRequests, setJoinRequests] = useState([]);
+  const [joinRequestStatus, setJoinRequestStatus] = useState("idle");
+  const [joinRequestActioningId, setJoinRequestActioningId] = useState(null);
   const [profileTarget, setProfileTarget] = useState(null);
   const [profileReviews, setProfileReviews] = useState([]);
   const [profileReviewStatus, setProfileReviewStatus] = useState("idle");
@@ -344,6 +462,24 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   };
 
+  const loadJoinRequests = () => {
+    if (!roomId) return Promise.resolve([]);
+    setJoinRequestStatus("loading");
+
+    return fetchJoinRequests(roomId)
+      .then((data) => {
+        setJoinRequests(data);
+        setJoinRequestStatus(data.length > 0 ? "success" : "empty");
+        return data;
+      })
+      .catch((error) => {
+        setJoinRequests([]);
+        setJoinRequestStatus("error");
+        showToast?.(getApiErrorHint(error));
+        return [];
+      });
+  };
+
   const refreshMessages = ({ silent = true, forceScroll = false } = {}) => {
     if (!roomId) return Promise.resolve([]);
 
@@ -367,7 +503,6 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     if (typeof message.me === "boolean") return message.me;
     return isSameUser(message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId, currentUserId);
   };
-
   useEffect(() => {
     setTranslatedMessages({});
     setTranslationErrors({});
@@ -377,6 +512,10 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
 
   useEffect(() => {
     let ignore = false;
+    setManagementPanelOpen(Boolean(room?.openManagementTab));
+    setManagementTab(room?.openManagementTab ?? "participants");
+    setJoinRequests([]);
+    setJoinRequestStatus("idle");
     setRoomDetail(null);
     setMessages([]);
     setOlderCursor(null);
@@ -414,7 +553,12 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
       showToast?.(getApiErrorHint(error));
     });
     return () => { ignore = true; };
-  }, [roomId]);
+  }, [roomId, room?.openManagementTab, room?.managementRequestKey]);
+
+  useEffect(() => {
+    if (!isCurrentUserHost || joinRequestStatus !== "idle") return;
+    loadJoinRequests();
+  }, [isCurrentUserHost, joinRequestStatus]);
 
   useEffect(() => {
     if (!roomId || realtimeStatus === "connected") return undefined;
@@ -803,9 +947,9 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
     }
   };
 
-  const openParticipantPanel = () => {
-    setParticipantPanelOpen(true);
-    setRoomMenuOpen(false);
+  const openManagementPanel = (tab = "participants") => {
+    setManagementTab(tab);
+    setManagementPanelOpen(true);
   };
 
   const openProfile = (target) => {
@@ -870,13 +1014,52 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
       }
       return nextEnabled;
     });
-    setRoomMenuOpen(false);
   };
 
+  const handleJoinRequest = async (requestId, action) => {
+    if (joinRequestActioningId) return;
+    setJoinRequestActioningId(requestId);
+    try {
+      if (action === "approve") {
+        await approveJoinRequest({ chatRoomId: roomId, joinRequestId: requestId });
+      } else {
+        await rejectJoinRequest({ chatRoomId: roomId, joinRequestId: requestId });
+      }
+      setJoinRequests((prev) => prev.map((request) => (
+        request.id === requestId
+          ? { ...request, status: action === "approve" ? "APPROVED" : "REJECTED" }
+          : request
+      )));
+      showToast?.(action === "approve" ? "참여 신청을 수락했습니다." : "참여 신청을 거절했습니다.");
+      if (action === "approve") {
+        fetchChatParticipants(roomId)
+          .then((data) => {
+            setParticipants(data);
+            setParticipantStatus(data.length > 0 ? "success" : "empty");
+          })
+          .catch(() => {});
+      }
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setJoinRequestActioningId(null);
+    }
+  };
+
+  const pendingJoinRequestCount = joinRequests.filter(request => request.status === "PENDING").length;
+  const realtimeLabel = realtimeStatus === "connected"
+    ? "실시간 채팅 연결됨"
+    : realtimeStatus === "connecting"
+      ? "실시간 채팅 연결 중"
+      : "실시간 채팅 연결 끊김";
+
   return (
-    <div style={S.screen} className="web-chat-room-page">
+    <div
+      style={embedded ? undefined : S.screen}
+      className={`${embedded ? "web-chat-room-page is-embedded" : "web-chat-room-page"}${managementPanelOpen ? " management-open" : ""}`}
+    >
       <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div onClick={onBack} style={{ color: "#fff", fontSize: 14, cursor: "pointer" }}>←</div>
+        {!embedded && <div onClick={onBack} style={{ color: "#fff", fontSize: 14, cursor: "pointer" }}>←</div>}
         <div style={{ flex: 1 }}>
           <div className="chat-room-title-line">
             <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{currentRoom.title}</div>
@@ -888,73 +1071,29 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
               </div>
             )}
           </div>
-          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>👥 {currentRoom.members}/{currentRoom.maxMembers}명</div>
+          <div className="chat-room-member-line">
+            <span>👥 {currentRoom.members}/{currentRoom.maxMembers}명</span>
+            <span className={`chat-realtime-indicator ${realtimeStatus}`} aria-label={realtimeLabel} title={realtimeLabel} />
+          </div>
         </div>
         <div className="chat-room-menu-wrap">
-          <button type="button" className="chat-room-menu-button" onClick={() => setRoomMenuOpen(open => !open)} aria-label="채팅방 메뉴">
+          <button
+            type="button"
+            className="chat-room-menu-button"
+            onClick={() => setManagementPanelOpen(open => !open)}
+            aria-label="채팅방 관리"
+            aria-expanded={managementPanelOpen}
+          >
             ☰
           </button>
-          {roomMenuOpen && (
-            <div className="chat-room-menu" role="menu">
-              <button type="button" onClick={openParticipantPanel}>참여자 보기</button>
-              <button type="button" onClick={handleToggleTranslation}>
-                {translationEnabled ? "번역 끄기" : "번역 켜기"}
-              </button>
-              {isCurrentUserHost && <button type="button" onClick={() => { setRoomMenuOpen(false); onRequest?.(); }}>참여 신청 관리</button>}
-              {isCurrentUserHost && <button type="button" onClick={openParticipantPanel}>상대방 내보내기</button>}
-              <button type="button" disabled={Boolean(actioning)} onClick={() => { setRoomMenuOpen(false); handleRoomReport(); }}>채팅방 신고</button>
-              <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setRoomMenuOpen(false); setLeaveConfirmOpen(true); }}>채팅방 나가기</button>
-            </div>
-          )}
         </div>
-      </div>
-      <div className={`chat-realtime-status ${realtimeStatus}`}>
-        {realtimeStatus === "connected" ? "실시간 연결됨" : realtimeStatus === "connecting" ? "실시간 연결 중" : "실시간 연결 확인 필요"}
       </div>
       {translationEnabled && translationNotice && (
         <div className="chat-translation-notice">
           {translationNotice}
         </div>
       )}
-      {participantPanelOpen && (
-        <div className="chat-participant-panel">
-          <div className="chat-participant-head">
-            <strong>참여자</strong>
-            <div>
-              <span>
-                {participantStatus === "loading" && "불러오는 중"}
-                {participantStatus === "error" && "API 확인 필요"}
-                {(participantStatus === "success" || participantStatus === "empty") && `${participants.length}명`}
-              </span>
-              <button type="button" onClick={() => setParticipantPanelOpen(false)}>닫기</button>
-            </div>
-          </div>
-          {participantStatus === "error" && (
-            <div className="chat-api-note">참여자 목록 API와 권한 응답을 확인하세요.</div>
-          )}
-          {participants.map((participant) => (
-            <div key={participant.userId} className="chat-participant-row">
-              <button type="button" className="chat-participant-profile" onClick={() => openProfile(participant)}>
-                <b>{participant.avatar}</b>
-                <div>
-                  <strong>{participant.nickname}</strong>
-                  <span>{participant.role === "HOST" ? "방장" : "참여자"} · {participant.language || "언어 미설정"} · 동행지수 {participant.score || "-"}</span>
-                </div>
-              </button>
-              <div>
-                {!isSameUser(participant.userId, currentUserId) && (
-                  <button type="button" disabled={reviewSubmitting} onClick={() => openCompanionReview(participant)}>리뷰</button>
-                )}
-                <button type="button" onClick={() => handleProfileReport(participant)}>신고</button>
-                {isCurrentUserHost && !isSameUser(participant.userId, currentUserId) && (
-                  <button type="button" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div ref={messageScrollRef} className="web-chat-room-body" style={{ ...S.scrollArea, padding: 16 }}>
+      <div ref={messageScrollRef} className="web-chat-room-body" style={{ ...S.scrollArea, padding: "20px 12px" }}>
         {displayedMessages.length === 0 && (
           <EmptyState
             icon="💬"
@@ -969,7 +1108,7 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
             </button>
           </div>
         )}
-        {displayedMessages.map(m => {
+        {displayedMessages.map((m, index) => {
           if (isSystemMessage(m)) {
             return (
               <div key={getMessageKey(m)} className="chat-system-message">
@@ -986,85 +1125,304 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           const translationFailed = translationErrors[messageKey];
           const translationSkipped = translationSkippedMessages[messageKey];
           const translationErrorText = typeof translationFailed === "string" ? translationFailed : "번역을 불러오지 못했습니다.";
+          
+          const prevMessage = index > 0 ? displayedMessages[index - 1] : null;
+          const nextMessage = displayedMessages[index + 1] ?? null;
+          const showDate = shouldShowDate(m, prevMessage);
+          const showProfile = shouldShowProfile(m, prevMessage, mine);
+          const showTime = !nextMessage
+            || resolveMessageMine(nextMessage) !== mine
+            || !isSameMessageMinute(m, nextMessage);
+          
           return (
-          <div key={messageKey} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-            {!mine && <button type="button" onClick={() => openProfile(messageProfile)} style={{ width: 32, height: 32, borderRadius: "50%", background: COLORS.bg, border: 0, display: "flex", alignItems: "center", justifyContent: "center", marginRight: 8, fontSize: 14, flexShrink: 0, cursor: "pointer" }}>{messageProfile?.avatar ?? "👤"}</button>}
-            <div className={mine ? "chat-message-stack mine" : "chat-message-stack"}>
-              {!mine && <button type="button" className="chat-message-sender" onClick={() => openProfile(messageProfile)}>{messageProfile?.nickname ?? m.user}</button>}
-              <div className={mine ? "chat-message-line mine" : "chat-message-line"}>
-                {mine && (
-                  <div className="chat-message-side-meta">
-                    {readReceiptText && <span>{readReceiptText}</span>}
-                    <span>{formatChatTime(m)}</span>
-                  </div>
-                )}
-                <div className="web-message-bubble" style={{ background: mine ? COLORS.primary : "#fff", color: mine ? "#fff" : COLORS.primary, borderRadius: mine ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "10px 14px", maxWidth: 220, fontSize: 14, border: mine ? "none" : "0.5px solid rgba(0,0,0,0.08)" }}>
-                  {m.text ?? m.content ?? ""}
-                  {m.attachments?.length > 0 && (
-                    <div className="chat-attachment-preview">
-                      {m.attachments.map(file => (
-                        <span key={file.id}>{file.type === "image" ? "사진" : "파일"} · {file.name}</span>
-                      ))}
-                    </div>
+          <div key={messageKey}>
+            {showDate && (
+              <div className="chat-date-divider">
+                <span>{formatChatDate(m)}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: showProfile || showTime ? 12 : 4, alignItems: "flex-end" }}>
+              {!mine && (
+                <div style={{ width: 32, height: 32, marginRight: 6, flexShrink: 0 }}>
+                  {showProfile && (
+                    <button 
+                      type="button" 
+                      onClick={() => openProfile(messageProfile)} 
+                      style={{ 
+                        width: 32, 
+                        height: 32, 
+                        borderRadius: "50%", 
+                        background: COLORS.bg, 
+                        border: 0, 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center", 
+                        fontSize: 15, 
+                        cursor: "pointer" 
+                      }}
+                    >
+                      {messageProfile?.avatar ?? "👤"}
+                    </button>
                   )}
                 </div>
-                {!mine && (
-                  <div className="chat-message-side-meta">
-                    <span>{formatChatTime(m)}</span>
-                  </div>
+              )}
+              <div className={mine ? "chat-message-stack mine" : "chat-message-stack"} style={{ maxWidth: "80%", minWidth: 0 }}>
+                {!mine && showProfile && (
+                  <button 
+                    type="button" 
+                    className="chat-message-sender" 
+                    onClick={() => openProfile(messageProfile)}
+                    style={{ 
+                      fontSize: 13, 
+                      fontWeight: 700, 
+                      color: COLORS.textMuted, 
+                      marginBottom: 4, 
+                      border: 0, 
+                      background: "transparent", 
+                      padding: "0 4px", 
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    {messageProfile?.nickname ?? m.user}
+                  </button>
                 )}
-                {!mine && (
-                  <div className="chat-message-action-wrap">
-                    <button type="button" className="chat-message-action-button" onClick={() => setMessageMenuId(current => current === messageId ? null : messageId)} aria-label="메시지 더보기">
-                      ⋯
-                    </button>
-                    {messageMenuId === messageId && (
-                      <div className="chat-message-menu" role="menu">
-                        <button type="button" onClick={() => { setMessageMenuId(null); openProfile(messageProfile); }}>프로필 보기</button>
-                        <button type="button" disabled={reviewSubmitting} onClick={() => { setMessageMenuId(null); openCompanionReview(messageProfile); }}>동행 리뷰</button>
-                        <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setMessageMenuId(null); handleMessageReport(m); }}>메시지 신고</button>
+                <div className="chat-message-line" style={{ display: "flex", alignItems: "flex-end", gap: 4, flexDirection: "row" }}>
+                  {mine && showTime && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 10, color: COLORS.textMuted, whiteSpace: "nowrap", minWidth: 45 }}>
+                      {readReceiptText && <span style={{ fontSize: 10 }}>{readReceiptText}</span>}
+                      <span>{formatChatTime(m)}</span>
+                    </div>
+                  )}
+                  <div 
+                    className="web-message-bubble" 
+                    style={{ 
+                      background: mine ? COLORS.primary : "#fff", 
+                      color: mine ? "#fff" : COLORS.textPrimary, 
+                      borderRadius: mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px", 
+                      padding: "11px 15px", 
+                      fontSize: 15, 
+                      lineHeight: 1.5,
+                      border: mine ? "none" : "1px solid rgba(0,0,0,0.06)",
+                      wordBreak: "break-word",
+                      maxWidth: "100%",
+                      width: "fit-content",
+                      boxShadow: mine ? "none" : "0 1px 2px rgba(0,0,0,0.04)"
+                    }}
+                  >
+                    {m.text ?? m.content ?? ""}
+                    {m.attachments?.length > 0 && (
+                      <div className="chat-attachment-preview" style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${mine ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"}` }}>
+                        {m.attachments.map(file => (
+                          <div key={file.id} style={{ fontSize: 13, opacity: 0.9 }}>
+                            {file.type === "image" ? "📷 사진" : "📎 파일"} · {file.name}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
+                  {!mine && showTime && (
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, whiteSpace: "nowrap", minWidth: 40 }}>
+                      <span>{formatChatTime(m)}</span>
+                    </div>
+                  )}
+                  {!mine && (
+                    <div className="chat-message-action-wrap">
+                      <button 
+                        type="button" 
+                        className="chat-message-action-button" 
+                        onClick={() => setMessageMenuId(current => current === messageId ? null : messageId)} 
+                        aria-label="메시지 더보기"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          border: "1px solid rgba(0,0,0,0.1)",
+                          borderRadius: "50%",
+                          background: "#fff",
+                          color: COLORS.textMuted,
+                          fontSize: 16,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}
+                      >
+                        ⋯
+                      </button>
+                      {messageMenuId === messageId && (
+                        <div className="chat-message-menu" role="menu">
+                          <button type="button" onClick={() => { setMessageMenuId(null); openProfile(messageProfile); }}>프로필 보기</button>
+                          <button type="button" disabled={reviewSubmitting} onClick={() => { setMessageMenuId(null); openCompanionReview(messageProfile); }}>동행 리뷰</button>
+                          <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setMessageMenuId(null); handleMessageReport(m); }}>메시지 신고</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {!mine && translationEnabled && !translationSkipped && (
+                  <div className={`chat-message-translation ${translationFailed ? "error" : ""}`} style={{ marginTop: 4, fontSize: 13 }}>
+                    {translatedText || (translationFailed ? translationErrorText : "번역 대기 중...")}
+                  </div>
                 )}
               </div>
-              {!mine && translationEnabled && !translationSkipped && (
-                <div className={`chat-message-translation ${translationFailed ? "error" : ""}`}>
-                  {translatedText || (translationFailed ? translationErrorText : "번역 대기 중...")}
-                </div>
-              )}
             </div>
           </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
-      <div className="web-chat-input" style={{ padding: "12px 16px 28px", background: "#fff", borderTop: "0.5px solid rgba(0,0,0,0.08)", display: "flex", gap: 10 }}>
+      <div className="web-chat-input" style={{ 
+        padding: "12px 12px 28px", 
+        background: "#f8f8f8", 
+        borderTop: "1px solid rgba(0,0,0,0.08)", 
+        display: "flex", 
+        gap: 8, 
+        alignItems: "flex-end" 
+      }}>
         <input ref={imageInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => addLocalAttachments(event, "image")} />
         <input ref={fileInputRef} type="file" multiple hidden onChange={(event) => addLocalAttachments(event, "file")} />
-        <div className="chat-attachment-wrap">
-          <button type="button" className="chat-attach-button" onClick={() => setAttachOpen(!attachOpen)}>+</button>
+        <div className="chat-attachment-wrap" style={{ position: "relative" }}>
+          <button 
+            type="button" 
+            className="chat-attach-button" 
+            onClick={() => setAttachOpen(!attachOpen)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1px solid rgba(0,0,0,0.1)",
+              background: "#fff",
+              color: COLORS.primary,
+              fontSize: 24,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              lineHeight: 1
+            }}
+          >
+            +
+          </button>
           {attachOpen && (
-            <div className="chat-attach-menu">
-              <button type="button" onClick={() => imageInputRef.current?.click()}>사진</button>
-              <button type="button" onClick={() => fileInputRef.current?.click()}>파일</button>
-              <button type="button" onClick={() => showToast("지도 공유는 추후 위치/지도 API 연결 예정입니다.")}>지도 공유 예정</button>
+            <div className="chat-attach-menu" style={{
+              position: "absolute",
+              bottom: "calc(100% + 8px)",
+              left: 0,
+              background: "#fff",
+              border: "1px solid rgba(0,0,0,0.1)",
+              borderRadius: 12,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              overflow: "hidden",
+              minWidth: 140
+            }}>
+              <button 
+                type="button" 
+                onClick={() => { imageInputRef.current?.click(); setAttachOpen(false); }}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  border: 0,
+                  background: "transparent",
+                  textAlign: "left",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                📷 사진
+              </button>
+              <button 
+                type="button" 
+                onClick={() => { fileInputRef.current?.click(); setAttachOpen(false); }}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  border: 0,
+                  borderTop: "1px solid rgba(0,0,0,0.05)",
+                  background: "transparent",
+                  textAlign: "left",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                📎 파일
+              </button>
             </div>
           )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {pendingAttachments.length > 0 && (
-            <div className="chat-pending-attachments">
+            <div className="chat-pending-attachments" style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              marginBottom: 8
+            }}>
               {pendingAttachments.map(file => (
-                <button key={file.id} type="button" onClick={() => removeAttachment(file.id)}>
-                  {file.type === "image" ? "사진" : "파일"} · {file.name} ×
+                <button 
+                  key={file.id} 
+                  type="button" 
+                  onClick={() => removeAttachment(file.id)}
+                  style={{
+                    padding: "6px 10px",
+                    background: "#fff",
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    borderRadius: 16,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6
+                  }}
+                >
+                  {file.type === "image" ? "📷" : "📎"} {file.name} ×
                 </button>
               ))}
             </div>
           )}
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="메시지를 입력하세요..." style={{ width: "100%", background: COLORS.bg, border: "none", borderRadius: 24, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+          <input 
+            value={input} 
+            onChange={e => setInput(e.target.value)} 
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()} 
+            placeholder="메시지를 입력하세요..." 
+            style={{ 
+              width: "100%", 
+              background: "#fff", 
+              border: "1px solid rgba(0,0,0,0.1)", 
+              borderRadius: 20, 
+              padding: "11px 16px", 
+              fontSize: 15, 
+              outline: "none", 
+              boxSizing: "border-box",
+              fontFamily: "inherit",
+              fontWeight: 500,
+              lineHeight: 1.4
+            }} 
+          />
         </div>
-        <button type="button" onClick={send} disabled={sending} style={{ width: 44, height: 44, background: COLORS.primary, border: 0, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: sending ? "wait" : "pointer", fontSize: 18 }}>{sending ? "..." : "➤"}</button>
+        <button 
+          type="button" 
+          onClick={send} 
+          disabled={sending || (!input.trim() && pendingAttachments.length === 0)} 
+          style={{ 
+            width: 40, 
+            height: 40, 
+            background: (sending || (!input.trim() && pendingAttachments.length === 0)) ? COLORS.bg : COLORS.primary, 
+            border: 0, 
+            borderRadius: "50%", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            cursor: (sending || (!input.trim() && pendingAttachments.length === 0)) ? "not-allowed" : "pointer", 
+            fontSize: 18,
+            color: "#fff",
+            transition: "all 0.2s"
+          }}
+        >
+          {sending ? "⋯" : "➤"}
+        </button>
       </div>
       <ConfirmDialog
         open={leaveConfirmOpen}
@@ -1115,6 +1473,108 @@ export function ChatRoomPage({ room, onBack, showToast, onRequest }) {
           </div>
         </div>
       )}
+      <aside className={`chat-management-panel${managementPanelOpen ? " open" : ""}`} aria-hidden={!managementPanelOpen}>
+        <div className="chat-management-head">
+          <strong>채팅방 관리</strong>
+          <button type="button" onClick={() => setManagementPanelOpen(false)} aria-label="채팅방 관리 닫기">×</button>
+        </div>
+        <div className={`chat-management-tabs${isCurrentUserHost ? "" : " two-tabs"}`} role="tablist">
+          <button type="button" className={managementTab === "participants" ? "active" : ""} onClick={() => openManagementPanel("participants")}>참여자</button>
+          {isCurrentUserHost && (
+            <button type="button" className={managementTab === "requests" ? "active" : ""} onClick={() => openManagementPanel("requests")}>
+              참여 신청
+              {pendingJoinRequestCount > 0 && <span>{pendingJoinRequestCount}</span>}
+            </button>
+          )}
+          <button type="button" className={managementTab === "settings" ? "active" : ""} onClick={() => openManagementPanel("settings")}>설정</button>
+        </div>
+        <div className="chat-management-content">
+          {managementTab === "participants" && (
+            <>
+              <div className="chat-management-section-head">
+                <strong>참여자</strong>
+                <span>
+                  {participantStatus === "loading" && "불러오는 중"}
+                  {participantStatus === "error" && "확인 필요"}
+                  {(participantStatus === "success" || participantStatus === "empty") && `${participants.length}명`}
+                </span>
+              </div>
+              {participantStatus === "error" && <div className="chat-api-note">참여자 목록을 불러오지 못했습니다.</div>}
+              {participants.map((participant) => (
+                <div key={participant.userId} className="chat-management-card">
+                  <button type="button" className="chat-participant-profile" onClick={() => openProfile(participant)}>
+                    <b>{participant.avatar}</b>
+                    <div>
+                      <strong>
+                        {participant.nickname}
+                        {participant.role === "HOST" && <em>호스트</em>}
+                      </strong>
+                      <span>{participant.language || "언어 미설정"} · 동행지수 {participant.score || "-"}</span>
+                    </div>
+                  </button>
+                  {!isSameUser(participant.userId, currentUserId) && (
+                    <div className="chat-management-card-actions">
+                      <button type="button" disabled={reviewSubmitting} onClick={() => openCompanionReview(participant)}>리뷰</button>
+                      {isCurrentUserHost && (
+                        <button type="button" className="danger" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+          {managementTab === "requests" && isCurrentUserHost && (
+            <>
+              <div className="chat-management-section-head">
+                <strong>참여 신청</strong>
+                <button type="button" onClick={loadJoinRequests}>새로고침</button>
+              </div>
+              {joinRequestStatus === "loading" && <SkeletonList count={2} />}
+              {joinRequestStatus === "error" && <ErrorState title="신청 목록을 불러오지 못했습니다." onRetry={loadJoinRequests} />}
+              {joinRequestStatus !== "loading" && joinRequestStatus !== "error" && joinRequests.length === 0 && (
+                <EmptyState icon="👥" title="신청 목록이 없어요" description="새로운 참여 신청이 오면 이곳에서 확인할 수 있어요." />
+              )}
+              {joinRequests.map((request) => (
+                <div key={request.id} className="chat-management-card join-request">
+                  <div className="chat-join-request-profile">
+                    <b>
+                      {request.profileImageUrl
+                        ? <img src={request.profileImageUrl} alt="" />
+                        : request.avatar}
+                    </b>
+                    <div>
+                      <strong>{request.name}</strong>
+                      <span>동행지수 {request.score || "-"} · {formatChatTime(request)}</span>
+                    </div>
+                  </div>
+                  {request.msg && <p>{request.msg}</p>}
+                  {request.status === "PENDING" ? (
+                    <div className="chat-management-card-actions">
+                      <button type="button" disabled={joinRequestActioningId === request.id} onClick={() => handleJoinRequest(request.id, "reject")}>거절</button>
+                      <button type="button" className="primary" disabled={joinRequestActioningId === request.id} onClick={() => handleJoinRequest(request.id, "approve")}>수락</button>
+                    </div>
+                  ) : (
+                    <div className={`chat-join-request-result ${request.status.toLowerCase()}`}>
+                      {request.status === "APPROVED" ? "수락 완료" : "거절됨"}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+          {managementTab === "settings" && (
+            <div className="chat-management-settings">
+              <button type="button" className="chat-setting-toggle" onClick={handleToggleTranslation} aria-pressed={translationEnabled}>
+                <span>번역 켜기</span>
+                <i className={translationEnabled ? "on" : ""} />
+              </button>
+              <button type="button" disabled={Boolean(actioning)} onClick={handleRoomReport}>채팅방 신고</button>
+              <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => setLeaveConfirmOpen(true)}>채팅방 나가기</button>
+            </div>
+          )}
+        </div>
+      </aside>
       {reviewTarget && (
         <div className="chat-profile-modal" role="dialog" aria-modal="true">
           <div className="chat-companion-review-card">
