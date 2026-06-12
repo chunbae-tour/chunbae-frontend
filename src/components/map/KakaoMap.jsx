@@ -101,12 +101,7 @@ export default function KakaoMap({
       .catch((error) => {
         if (cancelled) return;
         setStatus("error");
-        const origin = typeof window !== "undefined" ? window.location.origin : "";
-        setErrorMessage(
-          error.message === "KAKAO_MAP_KEY_MISSING"
-            ? ".env에 VITE_KAKAO_MAP_APP_KEY를 추가한 뒤 dev 서버를 재시작해주세요."
-            : `카카오맵을 불러오지 못했습니다. JavaScript 키(REST 키 아님)와 플랫폼 도메인 등록을 확인해주세요.${origin ? ` 현재 접속: ${origin}` : ""}`,
-        );
+        setErrorMessage("지도를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
       });
 
     return () => {
@@ -289,8 +284,8 @@ export default function KakaoMap({
   if (status === "no-key") {
     return (
       <div className={`kakao-map-shell kakao-map-shell--fallback ${className}`} style={style}>
-        <p>카카오맵 JavaScript 키가 필요합니다.</p>
-        <small>VITE_KAKAO_MAP_APP_KEY를 .env에 추가한 뒤 dev 서버를 재시작해주세요.</small>
+        <p>지도를 불러올 수 없습니다.</p>
+        <small>잠시 후 다시 시도해주세요.</small>
       </div>
     );
   }
@@ -303,9 +298,6 @@ export default function KakaoMap({
       {status === "error" && (
         <div className="kakao-map-overlay kakao-map-overlay--error">
           <div>{errorMessage}</div>
-          <small>
-            카카오 개발자 콘솔 → 앱 → 플랫폼(Web)에 위 접속 주소를 등록하고, 앱 키의 JavaScript 키를 사용하세요.
-          </small>
         </div>
       )}
       {showLocateButton && status === "ready" && (

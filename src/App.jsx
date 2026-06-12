@@ -14,7 +14,7 @@ import MapPage from "./pages/map/MapPage";
 import PlaceDetailPage from "./pages/map/PlaceDetailPage";
 import DirectionPage from "./pages/map/DirectionPage";
 import { CommunityListPage, CommunityPostPage, CommunityWritePage } from "./pages/community/CommunityPages";
-import { ChatListPage, ChatRoomPage } from "./pages/chat/ChatPage";
+import { ChatRoomPage, ChatWorkspacePage } from "./pages/chat/ChatPage";
 import ChatRequestPage from "./pages/chat/ChatRequestPage";
 import { PayChargePage, PayHistoryPage } from "./pages/payment/PaymentPages";
 import QRPayPage from "./pages/payment/QRPayPage";
@@ -296,9 +296,11 @@ export default function App() {
         id: roomId,
         chatRoomId: roomId,
         title: notification.title || "참여 신청",
+        openManagementTab: "requests",
+        managementRequestKey: Date.now(),
       });
       setTab("chat");
-      setScreen("chatRequest");
+      setScreen("chat");
       return;
     }
 
@@ -309,7 +311,7 @@ export default function App() {
         title: notification.title || "채팅방",
       });
       setTab("chat");
-      setScreen("chatroom");
+      setScreen("chat");
       return;
     }
 
@@ -571,9 +573,9 @@ export default function App() {
         {screen === "community"        && <CommunityListPage onPost={(p) => { setSelectedPost(p); go("communityPost"); }} onWrite={() => go("communityWrite")} onBack={() => go(tab)} />}
         {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => go("community")} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); go("chatroom"); }} />}
         {screen === "communityWrite"   && <CommunityWritePage onBack={() => go("community")} showToast={showToast} />}
-        {screen === "chat"             && <ChatListPage onChatRoom={(r) => { setSelectedRoom(r); go("chatroom"); }} showToast={showToast} />}
-        {screen === "chatroom"         && <ChatRoomPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} onRequest={() => go("chatRequest")} />}
-        {screen === "chatRequest"      && <ChatRequestPage room={selectedRoom} onBack={() => go("chatroom")} showToast={showToast} />}
+        {screen === "chat"             && <ChatWorkspacePage selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} onOpenMobileRoom={() => go("chatroom")} showToast={showToast} />}
+        {screen === "chatroom"         && <ChatRoomPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} />}
+        {screen === "chatRequest"      && <ChatRequestPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} />}
         {screen === "pay"              && <PayChargePage onBack={() => go("my")} onDone={() => go("my")} showToast={showToast} />}
         {screen === "payHistory"       && <PayHistoryPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} showToast={showToast} />}
         {screen === "qrpay"            && <QRPayPage onBack={() => go(tab)} showToast={showToast} />}
