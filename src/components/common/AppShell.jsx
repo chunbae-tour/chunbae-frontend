@@ -5,6 +5,7 @@ import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import MascotDefault from "../../assets/brand/mascot-default.png";
 
 const NAV_ITEMS = [
+  { key: "home", label: "홈", icon: "🏠" },
   { key: "map", label: "지도", icon: "🗺️" },
   { key: "search", label: "검색", icon: "🔍" },
   { key: "fest", label: "축제", icon: "🎉" },
@@ -40,7 +41,7 @@ const SCREEN_NAV_KEY = {
   merchantApply: "my",
 };
 
-export default function AppShell({ active, screen, onTab, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, children }) {
+export default function AppShell({ active, screen, onTab, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, onNotificationIntent, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const selectedKey = SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
   const hideFaqFloating = [
@@ -62,34 +63,74 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
       onLogin?.();
       return;
     }
+    if (key === "notif") {
+      onNotificationIntent?.();
+    }
+    onTab(key);
+  };
+  const goHome = () => {
+    setSidebarOpen(false);
+    (onHome || (() => onTab("home")))();
+  };
+  const goTab = (key) => {
+    setSidebarOpen(false);
     onTab(key);
   };
 
   return (
     <div className={`app-shell ${sidebarOpen ? "sidebar-expanded" : "sidebar-collapsed"}`}>
+      <aside className="desktop-nav-rail" aria-label="빠른 메뉴">
+        <button
+          type="button"
+          className="desktop-rail-menu"
+          onClick={() => setSidebarOpen(open => !open)}
+          aria-label={sidebarOpen ? "전체 메뉴 닫기" : "전체 메뉴 열기"}
+          aria-expanded={sidebarOpen}
+        >
+          ☰
+        </button>
+        <nav className="desktop-rail-nav" aria-label="주요 화면 빠른 이동">
+          {NAV_ITEMS.map((item) => {
+            const isActive = selectedKey === item.key;
+
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={isActive ? "desktop-rail-item active" : "desktop-rail-item"}
+                onClick={() => goTab(item.key)}
+                title={item.label}
+              >
+                <span className="desktop-rail-icon">{item.icon}</span>
+                <span className="desktop-rail-label">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="desktop-sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="사이드 메뉴 닫기"
+        />
+      )}
       <aside className="desktop-sidebar">
         <div className="sidebar-head">
-          <button type="button" className="sidebar-brand" onClick={onHome || (() => onTab("home"))} aria-label="춘배투어 홈으로 이동">
-            <div className="brand-mark">
-              <img src={MascotDefault} alt="" />
-            </div>
-            <div className="sidebar-brand-text">
-              <strong>춘배투어</strong>
-              <span>ChunBae Tour</span>
-            </div>
-          </button>
+          <strong>메뉴</strong>
           <button
             type="button"
-            className="sidebar-menu-toggle"
-            onClick={() => setSidebarOpen(open => !open)}
-            aria-label={sidebarOpen ? "사이드 메뉴 접기" : "사이드 메뉴 열기"}
+            className="sidebar-close-button"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="사이드 메뉴 닫기"
             aria-expanded={sidebarOpen}
           >
-            ☰
+            ×
           </button>
         </div>
 
-        <nav className="sidebar-nav" aria-label="주요 화면" aria-hidden={!sidebarOpen}>
+        <nav className="sidebar-nav" aria-label="주요 화면">
           {NAV_ITEMS.map((item) => {
             const isActive = selectedKey === item.key;
 
@@ -98,7 +139,7 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
                 key={item.key}
                 type="button"
                 className={isActive ? "sidebar-nav-item active" : "sidebar-nav-item"}
-                onClick={() => onTab(item.key)}
+                onClick={() => goTab(item.key)}
                 title={item.label}
               >
                 <span className="sidebar-nav-icon">{item.icon}</span>
@@ -111,7 +152,17 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
 
       <main className="shell-main">
         <header className="desktop-topbar">
-          <div className="topbar-spacer" aria-hidden="true" />
+          <div className="topbar-brand-row">
+            <button type="button" className="topbar-brand" onClick={goHome} aria-label="춘배투어 홈으로 이동">
+              <div className="brand-mark">
+                <img src={MascotDefault} alt="" />
+              </div>
+              <div className="sidebar-brand-text">
+                <strong>춘배투어</strong>
+                <span>ChunBae Tour</span>
+              </div>
+            </button>
+          </div>
           <div className="topbar-actions">
             {isLoggedIn && (
               <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>

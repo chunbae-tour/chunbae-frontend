@@ -6,6 +6,7 @@ import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import {
   createPaymentRequestKey,
+  cancelChargeOrder,
   fetchChargeRefundHistory,
   fetchPaymentHistory,
   fetchYeopjeonBalance,
@@ -212,6 +213,7 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
   const [chargeRefundStatus, setChargeRefundStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [chargeRefundErrorMessage, setChargeRefundErrorMessage] = useState("");
+  const [cancelingOrderId, setCancelingOrderId] = useState(null);
 
   const loadHistory = () => {
     setStatus("loading");
@@ -275,6 +277,27 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
   const findPaidPlace = (historyItem) => {
     if (!isPaymentHistoryPayment(historyItem)) return null;
     return null;
+  };
+
+  const handleCancelChargeOrder = async (item) => {
+    const orderId = item.orderUid ?? item.id;
+    if (!orderId) {
+      showToast?.("취소할 주문번호를 찾을 수 없습니다.");
+      return;
+    }
+    if (!window.confirm("아직 완료되지 않은 충전 주문을 취소할까요?")) return;
+
+    setCancelingOrderId(orderId);
+    try {
+      await cancelChargeOrder(orderId);
+      showToast?.("충전 주문을 취소했습니다.");
+      loadChargeRefundHistory();
+      loadBalance();
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setCancelingOrderId(null);
+    }
   };
 
   return (
@@ -425,6 +448,16 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
                         <span>{item.paymentMethodLabel}</span>
                         <span>주문번호 {item.orderUid || "확인 필요"}</span>
                       </div>
+                      {item.status === "PENDING" && (
+                        <button
+                          type="button"
+                          className="payment-history-place-link"
+                          disabled={cancelingOrderId === item.orderUid}
+                          onClick={() => handleCancelChargeOrder(item)}
+                        >
+                          {cancelingOrderId === item.orderUid ? "취소 중..." : "충전 주문 취소"}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>

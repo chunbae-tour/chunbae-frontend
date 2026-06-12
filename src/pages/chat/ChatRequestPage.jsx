@@ -94,7 +94,7 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{r.name}</div>
-                    <div style={{ fontSize: 14, color: COLORS.accent }}>★ 동행 점수 {r.score}</div>
+                    <div style={{ fontSize: 14, color: "#E8A020" }}>★ 동행 점수 {r.score}</div>
                   </div>
                 </div>
                 <div style={{ background: COLORS.bg, borderRadius: 10, padding: "10px 14px", fontSize: 14, color: COLORS.textSub, marginBottom: 12 }}>

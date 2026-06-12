@@ -1,101 +1,92 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SkeletonList, StarRating } from "../../components/common/index.jsx";
-import MascotEmpty from "../../assets/brand/mascot-empty.png";
-import MascotLoading from "../../assets/brand/mascot-loading.png";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
-import CertifiedMark from "../../assets/brand/chunbae-certified-mark.svg";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchFestivals } from "../../services/festivalService.js";
 import { fetchNearbyTravelSpots, getDefaultLocation } from "../../services/placeService.js";
 import { fetchCertifiedStorePromotions } from "../../services/promotionService.js";
 
 const QUICK_ACTIONS = [
-  { icon: "📍", label: "지도", desc: "근처 시장과 관광지 찾기", tab: "map" },
-  { icon: "💬", label: "동행", desc: "같이 걸을 여행자 찾기", tab: "chat" },
-  { image: YeopjeonImg, label: "엽전", desc: "충전하고 현장 QR 결제", tab: "pay" },
-  { icon: "🎉", label: "축제", desc: "야시장과 지역 일정 보기", tab: "fest" },
+  { icon: "🗺️", tone: "green", label: "지도", desc: "근처 시장·관광지 찾기", tab: "map" },
+  { icon: "👥", tone: "blue", label: "동행", desc: "같이 걸을 여행자 찾기", tab: "community" },
+  { image: YeopjeonImg, tone: "yellow", label: "엽전", desc: "충전 & QR 결제", tab: "pay" },
+  { icon: "🎉", tone: "pink", label: "축제", desc: "야시장 & 지역 일정", tab: "fest" },
 ];
 
-const COURSE_STEPS = [
-  { id: 1, title: "발견", desc: "지금 붐비는 입구와 가까운 골목을 먼저 고릅니다.", icon: "🧭" },
-  { id: 2, title: "탐험", desc: "먹자골목과 포차거리 안쪽까지 현지인 코스로 걸어요.", icon: "🥘" },
-  { id: 3, title: "기록", desc: "먹거리 포인트와 동행 후기를 남겨 다음 골목 힌트로 씁니다.", icon: "🏷️" },
+const FALLBACK_SHOPS = [
+  { id: "mock-shop-1", tag: "강추", tagTone: "green", name: "통인시장 기름떡볶이", location: "통인시장", rating: 4.8, visual: "shop-warm" },
+  { id: "mock-shop-2", tag: "전통시장", tagTone: "yellow", name: "광장시장 빈대떡 골목", location: "광장시장", rating: 4.7, visual: "shop-night" },
+  { id: "mock-shop-3", tag: "강추", tagTone: "green", name: "망원시장 로컬 간식", location: "망원시장", rating: 4.6, visual: "shop-local" },
 ];
 
-const getPlaceVisualClass = (place) => {
-  if (place.name?.includes("광장")) return "is-gwangjang";
-  if (place.name?.includes("통인") || place.name?.includes("망원")) return "is-night-market";
-  if (place.name?.includes("전주")) return "is-hanok";
-  if (place.type === "전통시장") return "is-market";
-  if (place.name?.includes("궁")) return "is-palace";
-  return "is-local";
-};
+const FALLBACK_PLACES = [
+  { id: "mock-place-1", tag: "관광지", tagTone: "blue", name: "경복궁", location: "종로구", rating: 4.9, visual: "place-palace" },
+  { id: "mock-place-2", tag: "전통시장", tagTone: "yellow", name: "통인시장", location: "서촌", rating: 4.6, visual: "place-market" },
+  { id: "mock-place-3", tag: "관광지", tagTone: "blue", name: "북촌 한옥마을", location: "종로구", rating: 4.7, visual: "place-hanok" },
+];
 
-function StatusNotice({ status, type }) {
-  if (status === "loading") {
-    return (
-      <div className="home-status neutral brand-status">
-        <img src={MascotLoading} alt="" />
-        <span>{type === "주변 장소" ? "춘배가 근처 장소를 찾는 중이에요!" : "춘배가 축제 소식을 모으고 있어요..."}</span>
-      </div>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <div className="home-status brand-status">
-        <img src={MascotEmpty} alt="" />
-        <span>{type} 데이터를 불러오지 못했습니다. 백엔드 연결 상태를 확인해 주세요.</span>
-      </div>
-    );
-  }
-
-  if (status === "empty") {
-    return (
-      <div className="home-status brand-status">
-        <img src={MascotEmpty} alt="" />
-        <span>{type} 응답이 비어 있습니다.</span>
-      </div>
-    );
-  }
-
-  return null;
+function getFestivalStatus(festival = {}) {
+  const raw = String(festival.dday || festival.progressStatus || "").trim();
+  if (!raw || raw === "ONGOING") return "진행 중";
+  return raw;
 }
 
-function CharacterEmptyState({ title, description }) {
+function getFestivalMonthDay(festival = {}) {
+  const month = String(festival.month || "").replace("월", "") || "--";
+  const day = String(festival.day || "").padStart(2, "0") || "--";
+  return { month, day };
+}
+
+function RecommendationCard({ item, onClick }) {
   return (
-    <div className="home-empty-state">
-      <img src={MascotEmpty} alt="" />
-      <strong>{title}</strong>
-      <span>{description}</span>
-    </div>
+    <button type="button" className="home-recommend-card" onClick={onClick}>
+      <div className={`home-recommend-visual ${item.visual || ""}`}>
+        {item.imageUrl && <img src={item.imageUrl} alt="" />}
+      </div>
+      <div className="home-recommend-body">
+        <span className={`home-recommend-tag ${item.tagTone || "green"}`}>{item.tag}</span>
+        <strong>{item.name}</strong>
+        <small>{item.location || "위치 확인"} · <span className="star-score">★ {item.rating || 4.7}</span></small>
+      </div>
+    </button>
   );
 }
 
-export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab, user }) {
+function RecommendationSection({ title, moreLabel, onMore, items, onItemClick }) {
+  return (
+    <section className="home-landing-section">
+      <div className="home-landing-section-head">
+        <h2>{title}</h2>
+        <button type="button" onClick={onMore}>{moreLabel}</button>
+      </div>
+      <div className="home-recommend-scroll">
+        {items.map((item) => (
+          <RecommendationCard key={item.id ?? item.name} item={item} onClick={() => onItemClick(item)} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab, onSignup, user }) {
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
   const [nearbyStatus, setNearbyStatus] = useState("loading");
   const [festivals, setFestivals] = useState([]);
   const [festivalStatus, setFestivalStatus] = useState("loading");
   const [promotions, setPromotions] = useState([]);
-  const [promotionIndex, setPromotionIndex] = useState(0);
-  const [promotionStatus, setPromotionStatus] = useState("loading");
-  const [promotionErrorMessage, setPromotionErrorMessage] = useState("");
+  const isLoggedIn = Boolean(user);
 
   useEffect(() => {
     let ignore = false;
 
     const loadNearbyPlaces = async ({ lat, lng }) => {
       setNearbyStatus("loading");
-
       try {
         const places = await fetchNearbyTravelSpots({ lat, lng, size: 10 });
         if (ignore) return;
-
-        setNearbyPlaces(places.length > 0 ? places : []);
+        setNearbyPlaces(places);
         setNearbyStatus(places.length > 0 ? "success" : "empty");
-      } catch (error) {
+      } catch {
         if (ignore) return;
         setNearbyPlaces([]);
         setNearbyStatus("error");
@@ -118,63 +109,31 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
 
   useEffect(() => {
     let ignore = false;
-    setPromotionStatus("loading");
 
     fetchCertifiedStorePromotions()
       .then((items) => {
         if (ignore) return;
         setPromotions(items);
-        setPromotionStatus(items.length > 0 ? "success" : "empty");
       })
-      .catch((error) => {
+      .catch(() => {
         if (ignore) return;
         setPromotions([]);
-        setPromotionErrorMessage(getApiErrorHint(error));
-        setPromotionStatus("error");
       });
 
     return () => { ignore = true; };
   }, []);
 
   useEffect(() => {
-    if (promotions.length <= 1) return undefined;
-
-    const timer = setInterval(() => {
-      setPromotionIndex((current) => (current + 1) % promotions.length);
-    }, 4500);
-
-    return () => clearInterval(timer);
-  }, [promotions.length]);
-
-  const activePromotion = promotions[promotionIndex] ?? promotions[0];
-  const openActivePromotion = () => {
-    if (!activePromotion) {
-      onTab("map");
-      return;
-    }
-
-    onShopClick?.({
-      ...activePromotion,
-      id: activePromotion.shopId,
-      name: activePromotion.shopName,
-      imageUrl: activePromotion.imageUrl || activePromotion.thumbnailUrl,
-      placeName: activePromotion.marketName || activePromotion.placeName,
-    });
-  };
-
-  useEffect(() => {
     let ignore = false;
 
     const loadFestivals = async () => {
       setFestivalStatus("loading");
-
       try {
         const items = await fetchFestivals();
         if (ignore) return;
-
         setFestivals(items);
         setFestivalStatus(items.length > 0 ? "success" : "empty");
-      } catch (error) {
+      } catch {
         if (ignore) return;
         setFestivals([]);
         setFestivalStatus("error");
@@ -182,193 +141,177 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
     };
 
     loadFestivals();
-
     return () => { ignore = true; };
   }, []);
 
-  return (
-    <div className="home-page">
-      <section className="home-search-strip">
-        {/* TODO: 광고 검색 API가 확정되면 광고/이벤트/장소 통합 검색 응답으로 연결합니다. */}
-        <button type="button" className="home-ad-top-search" onClick={() => onTab("search")}>
-          🔍 광고 가게, 이벤트, 골목 키워드 검색
-        </button>
-      </section>
+  const shopRecommendations = useMemo(() => {
+    if (promotions.length === 0) return FALLBACK_SHOPS;
 
-      <section className="home-hero">
-        <div className="home-hero-inner">
-          <div className="home-hero-copy">
-            <div className="home-hero-ad-area">
-              <button type="button" className="home-hero-main-ad" onClick={openActivePromotion}>
-                <span>{promotionStatus === "error" ? "광고 API 확인 필요" : "춘배인증 광고"}</span>
-                <strong>
-                  {promotionStatus === "error"
-                    ? "광고 데이터를 불러오지 못했어요"
-                    : activePromotion?.shopName ?? "등록된 인증 광고가 없습니다"}
-                </strong>
-                <p>
-                  {promotionStatus === "error"
-                    ? promotionErrorMessage
-                    : activePromotion?.headline ?? "인증 가게 광고가 등록되면 이곳에 표시됩니다."}
-                </p>
-                {activePromotion?.benefit && <em>{activePromotion.benefit}</em>}
-                <small>
-                  <img src={CertifiedMark} alt="" />
-                  {promotionStatus === "error"
-                    ? "백엔드 연결 상태 확인"
-                    : activePromotion?.marketName
-                      ? `${activePromotion.marketName} · 현장 QR 가능`
-                      : "실제 광고 응답 대기"}
-                </small>
-              </button>
-              {promotions.length > 1 && (
-              <div className="home-hero-promo-control">
-                <div className="home-hero-promo-dots" aria-label="메인 광고 넘기기">
-                  {promotions.map((promotion, index) => (
-                    <button
-                      key={promotion.id}
-                      type="button"
-                      className={index === promotionIndex ? "active" : ""}
-                      onClick={() => setPromotionIndex(index)}
-                      aria-label={`${promotion.shopName} 광고 보기`}
-                    />
-                  ))}
-                </div>
-                </div>
-              )}
-            </div>
+    return promotions.slice(0, 8).map((shop) => ({
+      ...shop,
+      tag: "강추",
+      tagTone: "green",
+      name: shop.shopName,
+      location: shop.marketName || "춘배인증 상점",
+      rating: shop.rating || 4.8,
+      visual: "shop-warm",
+    }));
+  }, [promotions]);
+
+  const placeRecommendations = useMemo(() => {
+    if (nearbyPlaces.length === 0) return FALLBACK_PLACES;
+
+    return nearbyPlaces.slice(0, 8).map((place) => ({
+      ...place,
+      tag: place.type === "전통시장" ? "전통시장" : "관광지",
+      tagTone: place.type === "전통시장" ? "yellow" : "blue",
+      name: place.name,
+      location: place.addr || place.address || place.dist,
+      rating: place.rating || 4.6,
+      imageUrl: getPlaceImageUrl(place),
+      visual: place.type === "전통시장" ? "place-market" : "place-palace",
+    }));
+  }, [nearbyPlaces]);
+
+  const stats = [
+    { label: "등록 시장 수", value: `${Math.max(nearbyPlaces.filter(place => place.type === "전통시장").length, 128)}+` },
+    { label: "동행 완료 수", value: "340+" },
+    { label: "진행 중 축제 수", value: `${Math.max(festivals.length, 12)}개` },
+  ];
+
+  const handlePrimaryCta = () => {
+    if (isLoggedIn) {
+      onTab("map");
+      return;
+    }
+    onSignup?.();
+  };
+
+  const handleShopClick = (item) => {
+    if (item.shopId) {
+      onShopClick?.({
+        ...item,
+        id: item.shopId,
+        name: item.name,
+        placeName: item.location,
+      });
+      return;
+    }
+    onTab("store");
+  };
+
+  const handlePlaceClick = (item) => {
+    if (String(item.id || "").startsWith("mock-")) {
+      onTab("map");
+      return;
+    }
+    onPlaceClick?.({ ...item, imageUrl: item.imageUrl || getPlaceImageUrl(item) });
+  };
+
+  return (
+    <div className="home-page home-landing">
+      <section className="home-landing-hero">
+        <div className="home-landing-hero-copy">
+          <span className="home-landing-badge">춘배투어 · 전통시장 여행 플랫폼</span>
+          <h1>전통시장을 <mark>춘배</mark>와 함께 여행해요</h1>
+          <p>동행 찾기, 엽전 결제, 지역 축제까지 전통시장 여행의 모든 것</p>
+          <div className="home-landing-actions">
+            <button type="button" className="primary" onClick={handlePrimaryCta}>
+              {isLoggedIn ? "내 여행 시작하기" : "지금 시작하기"}
+            </button>
+            <button type="button" className="ghost" onClick={() => onTab("map")}>둘러보기</button>
           </div>
+        </div>
+        <div className="home-landing-stats">
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <strong>{stat.value}</strong>
+              <span>{stat.label}</span>
+            </div>
+          ))}
         </div>
       </section>
 
-      <div className="home-main-grid">
-        <main className="home-column">
-          <section className="home-panel home-quick-panel home-core-panel">
-            <div className="home-section-head">
-              <h2>주요 기능</h2>
-            </div>
-            <div className="home-quick-grid">
-              {QUICK_ACTIONS.map((action) => (
-                <button key={action.tab} type="button" className="home-quick-item" onClick={() => onTab(action.tab)}>
-                  <span>{action.image ? <img src={action.image} alt="" /> : action.icon}</span>
-                  <strong>{action.label}</strong>
-                  <small>{action.desc}</small>
-                </button>
-              ))}
-            </div>
-          </section>
+      <section className="home-landing-search" aria-label="검색">
+        <button type="button" className="home-landing-search-field" onClick={() => onTab("search")}>
+          <span>🔍</span>
+          <strong>시장, 가게, 골목 키워드 검색</strong>
+        </button>
+        <button type="button" className="home-location-button" onClick={() => onTab("map")} aria-label="현재 위치 기반 검색">
+          📍
+        </button>
+      </section>
 
-          <section className="home-panel home-course-panel home-recommend-panel">
-            <div className="home-course-hero">
-              <div>
-                <span className="home-course-kicker">오늘의 추천</span>
-                <h2>오늘 걷기 좋은 로컬 코스</h2>
-                <p>장소, 먹거리, 동행으로 이어지는 오늘의 대표 코스만 먼저 보여드릴게요.</p>
-              </div>
-              <img src={MascotEmpty} alt="" />
-            </div>
-            <button type="button" className="home-feature-route-card" onClick={() => onTab("map")}>
-              <span className="home-price-tag">오늘 19:00 추천</span>
-              <div>
-                <strong>근처 골목 탐험</strong>
-                <p>시장 입구 → 먹거리 골목 → 산책 포인트 → 쉬어가는 장소</p>
-              </div>
-              <ul>
-                <li>도보 1.2km</li>
-                <li>예상 90분</li>
-                <li>리뷰 428</li>
-              </ul>
-              <span className="home-route-cta">현지인 코스 따라가기</span>
+      <section className="home-landing-section">
+        <div className="home-landing-section-head">
+          <h2>주요 기능</h2>
+          <span>춘배투어에서 바로 할 수 있어요</span>
+        </div>
+        <div className="home-feature-grid">
+          {QUICK_ACTIONS.map((action) => (
+            <button key={action.tab} type="button" className={`home-feature-card ${action.tone}`} onClick={() => onTab(action.tab)}>
+              <span>{action.image ? <img src={action.image} alt="" /> : action.icon}</span>
+              <strong>{action.label}</strong>
+              <small>{action.desc}</small>
             </button>
-            <div className="home-route-list is-featured-route">
-              {COURSE_STEPS.map((step) => (
-                <div key={step.id}>
-                  <span>{step.icon}</span>
-                  <strong>{step.title}</strong>
-                  <small>{step.desc}</small>
-                </div>
-              ))}
-            </div>
-            <div className="home-course-actions">
-              <button type="button" onClick={() => onTab("map")}>지도에서 보기</button>
-              <button type="button" onClick={() => onTab("chat")}>같이 걸을 동행</button>
-            </div>
-          </section>
+          ))}
+        </div>
+      </section>
 
-          <section className="home-panel home-nearby-panel">
-            <div className="home-section-head">
-              <h2>추천 장소</h2>
-              <button type="button" className="home-section-more" onClick={() => onTab("map")}>시장 지도 보기</button>
-            </div>
-            <StatusNotice status={nearbyStatus} type="주변 장소" />
-            {nearbyStatus === "loading" ? (
-              <div className="home-place-grid">
-                <SkeletonList count={4} variant="card" />
-              </div>
-            ) : nearbyPlaces.length === 0 ? (
-              <CharacterEmptyState title="춘배가 시장을 찾고 있어요" description="잠시 후 주변 장소를 다시 확인해 주세요." />
-            ) : (
-              <div className="home-place-grid">
-                {nearbyPlaces.slice(0, 5).map((place) => (
-                <button key={place.id} type="button" className="home-place-card" onClick={() => onPlaceClick({ ...place, imageUrl: getPlaceImageUrl(place) })}>
-                  <div className={`home-place-image ${getPlaceVisualClass(place)}`}>
-                    {getPlaceImageUrl(place) && <img src={getPlaceImageUrl(place)} alt="" />}
-                    <small>{place.type}</small>
-                  </div>
-                  <div className="home-place-body">
-                    <div className="home-place-title">{place.name}</div>
-                    <div className="home-service-meta">
-                      <span>평균 {place.dist}</span>
-                      <span>리뷰 {place.reviews}</span>
-                    </div>
-                    <div className="home-card-meta">
-                      <span>{place.dist}</span>
-                      <StarRating rating={place.rating} />
-                    </div>
-                  </div>
-                </button>
-                ))}
-              </div>
-            )}
-          </section>
-        </main>
+      <RecommendationSection
+        title="🎯 춘배 추천 가게"
+        moreLabel="더보기 >"
+        onMore={() => onTab("store")}
+        items={shopRecommendations}
+        onItemClick={handleShopClick}
+      />
 
-        <aside className="home-aside">
-          <section className="home-panel">            <div className="home-section-head">
-              <h2>🎉 밤에 더 좋은 골목 일정</h2>
-              <button type="button" className="home-section-more" onClick={() => onTab("fest")}>야시장 일정</button>
-            </div>
-            <StatusNotice status={festivalStatus} type="축제" />
-            {festivalStatus === "loading" ? (
-              <SkeletonList count={3} />
-            ) : festivals.length === 0 ? (
-              <CharacterEmptyState title="아직 축제 소식이 없어요" description="춘배가 새 일정을 찾으면 바로 알려드릴게요." />
-            ) : (
-              <div className="home-festival-list">
-                {festivals.slice(0, 3).map((festival) => (
-                <button key={festival.id} type="button" className="home-festival-card" onClick={() => onFestClick(festival)}>
-                  <div className="home-festival-image" style={{ background: festival.color }}>
-                    <span>🎏</span>
-                  </div>
-                  <div className="home-date-badge" style={{ background: festival.color }}>
-                    <small>{festival.month}</small>
-                    <strong style={{ color: festival.accentColor }}>{festival.day}</strong>
+      <RecommendationSection
+        title="춘배 추천 관광지"
+        moreLabel="더보기 >"
+        onMore={() => onTab("map")}
+        items={placeRecommendations}
+        onItemClick={handlePlaceClick}
+      />
+
+      <section className="home-landing-section">
+        <div className="home-landing-section-head">
+          <h2>진행 중인 축제 일정</h2>
+          <button type="button" onClick={() => onTab("fest")}>전체 보기 &gt;</button>
+        </div>
+        {festivalStatus === "loading" && <SkeletonList count={3} />}
+        {festivalStatus === "error" && <div className="home-landing-empty">축제 일정을 불러오지 못했습니다.</div>}
+        {festivalStatus === "empty" && <div className="home-landing-empty">진행 중인 축제 일정이 아직 없습니다.</div>}
+        {festivalStatus === "success" && (
+          <div className="home-festival-schedule">
+            {festivals.slice(0, 4).map((festival) => {
+              const { month, day } = getFestivalMonthDay(festival);
+              return (
+                <button key={festival.id} type="button" className="home-festival-schedule-card" onClick={() => onFestClick(festival)}>
+                  <div className="home-festival-date-block">
+                    <span>{month}월</span>
+                    <strong>{day}</strong>
                   </div>
                   <div>
-                    <div className="home-festival-title">{festival.name}</div>
-                    <div className="home-card-meta">
-                      <span>📍 {festival.location}</span>
-                      <span>{festival.date}</span>
-                    </div>
+                    <strong>{festival.name}</strong>
+                    <small>{festival.location || festival.address || "위치 확인"}</small>
                   </div>
-                  <span className="home-dday">{festival.dday}</span>
+                  <em>{getFestivalStatus(festival)}</em>
                 </button>
-                ))}
-              </div>
-            )}
-          </section>
-        </aside>
-      </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {!isLoggedIn && (
+        <section className="home-signup-banner">
+          <span>무료 회원가입</span>
+          <strong>엽전 500냥 받고 첫 여행 시작하기</strong>
+          <p>가입하면 바로 엽전이 지급돼요</p>
+          <button type="button" onClick={onSignup}>가입하기 →</button>
+        </section>
+      )}
     </div>
   );
 }

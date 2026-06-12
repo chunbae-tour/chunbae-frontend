@@ -293,7 +293,7 @@ export default function MapPage({ onPlaceClick }) {
             <small>{selectedPlace.addr}</small>
             <div>
               <em>📍 {selectedPlace.dist || "지도 안"}</em>
-              <em>★ {selectedPlace.rating}</em>
+              <em className="star-score">★ {selectedPlace.rating}</em>
               <em>리뷰 {selectedPlace.reviews}</em>
             </div>
             <div className="map-popover-actions">

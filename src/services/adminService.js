@@ -476,6 +476,13 @@ export async function fetchAdminAds({ cursor, size = 20 } = {}) {
   return getPageContent(data);
 }
 
+export async function fetchAdminAd(adId) {
+  return apiRequest(`/admin/ads/${adId}`, {
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
 export async function approveAd(adId) {
   return apiRequest(`/admin/ads/${adId}/approve`, {
     method: "PATCH",
@@ -530,6 +537,15 @@ export async function updateAdminShopPlace(shopId, placeId) {
     auth: true,
     role: "ADMIN",
     body: { placeId },
+  });
+}
+
+export async function updateAdminShopMarket(shopId, traditionalMarketId) {
+  return apiRequest(`/admin/shops/${shopId}/market`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { traditionalMarketId },
   });
 }
 

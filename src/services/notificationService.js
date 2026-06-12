@@ -30,16 +30,47 @@ function getNotificationIcon(type) {
   return "🔔";
 }
 
-function formatNotificationTime(value) {
+export function formatRelativeTime(value) {
   if (!value) return "";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("ko-KR", {
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const diffMs = Date.now() - parsed.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+
+  if (diffMin < 1) return "방금 전";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 2) return "어제";
+  return `${parsed.getMonth() + 1}월 ${parsed.getDate()}일`;
+}
+
+function pickText(...values) {
+  return values.find(value => typeof value === "string" && value.trim())?.trim() || "";
+}
+
+function getNotificationVisualType(type, text = "") {
+  const target = `${type || ""} ${text}`.toUpperCase();
+  if (target.includes("KICK") || text.includes("강퇴") || text.includes("내보내")) return "kicked";
+  if (target.includes("REJECT") || target.includes("DENY") || text.includes("거절") || text.includes("반려")) return "rejected";
+  if (target.includes("APPROVE") || target.includes("ACCEPT") || text.includes("승인") || text.includes("수락")) return "approved";
+  return "system";
+}
+
+function getNotificationFilterType(type, referenceType, text = "") {
+  const target = `${type || ""} ${referenceType || ""} ${text}`.toUpperCase();
+  if (
+    target.includes("JOIN")
+    || target.includes("COMPANION")
+    || target.includes("CHAT_ROOM")
+    || text.includes("참여")
+    || text.includes("동행")
+    || text.includes("채팅방")
+  ) {
+    return "participation";
+  }
+  return "system";
 }
 
 export function normalizeNotification(notification = {}) {
@@ -66,6 +97,32 @@ export function normalizeNotification(notification = {}) {
   const referenceId = notification.referenceId ?? notification.targetId ?? data.referenceId ?? data.targetId ?? null;
   const referenceType = notification.referenceType ?? notification.targetType ?? data.referenceType ?? data.targetType;
   const fallbackReferenceType = chatRoomId && String(type || "").startsWith("CHAT_") ? "CHAT_ROOM" : null;
+  const resolvedReferenceType = referenceType ?? fallbackReferenceType;
+  const targetTitle = pickText(
+    notification.targetTitle,
+    notification.targetName,
+    notification.contextTitle,
+    notification.chatRoomTitle,
+    notification.postTitle,
+    notification.companionPostTitle,
+    notification.target?.title,
+    notification.target?.name,
+    data.targetTitle,
+    data.targetName,
+    data.contextTitle,
+    data.chatRoomTitle,
+    data.postTitle,
+    data.companionPostTitle,
+    data.target?.title,
+    data.target?.name,
+    data.chatRoom?.title,
+    data.post?.title
+  );
+  const baseText = message || title;
+  const displayText = targetTitle && baseText && !baseText.includes(targetTitle)
+    ? `[${targetTitle}] ${baseText}`
+    : baseText;
+  const visualType = getNotificationVisualType(type, `${title} ${message}`);
 
   return {
     ...notification,
@@ -73,18 +130,23 @@ export function normalizeNotification(notification = {}) {
     notificationId: id,
     title,
     message,
-    text: message || title,
+    text: displayText,
+    displayMessage: displayText,
+    targetTitle,
+    targetName: targetTitle,
     time: createdAt,
-    timeText: formatNotificationTime(createdAt),
+    timeText: formatRelativeTime(createdAt),
     read: Boolean(notification.isRead ?? notification.read),
     type,
+    visualType,
+    filterType: getNotificationFilterType(type, resolvedReferenceType, `${title} ${message}`),
     chatRoomId,
     roomId: chatRoomId,
     postId,
     companionPostId: postId,
     joinRequestId,
     referenceId,
-    referenceType: referenceType ?? fallbackReferenceType,
+    referenceType: resolvedReferenceType,
     icon: notification.icon ?? getNotificationIcon(notification.type),
   };
 }

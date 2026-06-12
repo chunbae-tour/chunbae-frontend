@@ -7,6 +7,7 @@ import {
   approveMerchantPaymentRequest,
   deleteMerchantShopNotice,
   deleteMerchantMenu,
+  fetchMerchantMenus,
   fetchMerchantPaymentRequests,
   fetchMerchantSettlements,
   fetchMerchantShop,
@@ -14,6 +15,7 @@ import {
   fetchMerchantShops,
   fetchMerchantWallet,
   rejectMerchantPaymentRequest,
+  reissueShopQrCode,
   requestMerchantSettlement,
   updateMerchantMenu,
   updateMerchantShop,
@@ -78,6 +80,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const [itemUseToken, setItemUseToken] = useState("");
   const [itemUseStatus, setItemUseStatus] = useState("idle");
   const [itemUseResult, setItemUseResult] = useState(null);
+  const [qrReissuing, setQrReissuing] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -195,6 +198,25 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       showToast("가게 정보 수정에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");
     } finally {
       setIsSavingShop(false);
+    }
+  };
+
+  const handleQrReissue = async () => {
+    const targetShopId = shop?.id ?? selectedShopId;
+    if (!targetShopId) {
+      showToast("QR을 재발급할 가게를 먼저 선택해주세요.");
+      return;
+    }
+    if (!window.confirm("기존 QR은 더 이상 사용할 수 없게 됩니다. 새 QR로 재발급할까요?")) return;
+
+    setQrReissuing(true);
+    try {
+      await reissueShopQrCode(targetShopId);
+      showToast("가게 QR을 재발급했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    } finally {
+      setQrReissuing(false);
     }
   };
 
@@ -350,7 +372,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                 {shop.verified && <span style={{ fontSize: 14, background: COLORS.greenBg, color: COLORS.green, borderRadius: 6, padding: "2px 8px", marginLeft: 8 }}>✅ 인증</span>}
                 {shop.status && <span className={`merchant-shop-status ${String(shop.status).toLowerCase()}`}>{SHOP_STATUS_LABELS[shop.status] ?? shop.status}</span>}
               </div>
-              <div style={{ color: COLORS.accent, fontSize: 14 }}>★ {shop.rating} · 리뷰 {shop.reviewCount}개</div>
+              <div style={{ color: "#E8A020", fontSize: 14 }}>★ {shop.rating} · 리뷰 {shop.reviewCount}개</div>
             </div>
             <button type="button" onClick={openShopEditor}>수정</button>
           </div>
@@ -514,7 +536,12 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               <span>QR 결제 승인</span>
               <small>상인이 승인하면 사용자 결제가 완료됩니다.</small>
             </div>
-            <strong>{paymentRequests.filter(item => item.status === "PENDING_CONFIRM").length}건 대기</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button type="button" className="merchant-small-action" onClick={handleQrReissue} disabled={qrReissuing}>
+                {qrReissuing ? "재발급 중" : "QR 재발급"}
+              </button>
+              <strong>{paymentRequests.filter(item => item.status === "PENDING_CONFIRM").length}건 대기</strong>
+            </div>
           </div>
           {requestStatus === "error" && <div className="merchant-api-note">QR 승인 요청을 불러오지 못했습니다. 백엔드 연결 상태를 확인해주세요.</div>}
           {paymentRequests.length === 0 ? (
@@ -591,10 +618,9 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
   useEffect(() => {
     let ignore = false;
 
-    fetchMerchantShop(selectedShopId)
-      .then((shop) => {
+    fetchMerchantMenus(selectedShopId)
+      .then((nextMenus) => {
         if (ignore) return;
-        const nextMenus = shop.menus ?? [];
         setMenus(nextMenus);
         setStatus(nextMenus.length > 0 ? "success" : "empty");
       })
@@ -722,7 +748,7 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
           {status === "error" && (
             <ErrorState
               title="메뉴 목록을 불러오지 못했습니다."
-              description="가게 상세 응답 또는 메뉴 API 연결 상태를 확인해주세요."
+              description="상인 메뉴 목록 API 연결 상태를 확인해주세요."
             />
           )}
           {status !== "loading" && status !== "error" && menus.length === 0 && (

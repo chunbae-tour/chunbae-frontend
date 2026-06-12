@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors";
 import { SkeletonBlock } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchQrMerchant, fetchYeopjeonBalance, requestQrPayment } from "../../services/paymentService.js";
+import { cancelQrPaymentRequest, fetchQrMerchant, fetchYeopjeonBalance, requestQrPayment } from "../../services/paymentService.js";
 
 const QR_FLOW_STEPS = ["QR 스캔", "가게 확인", "결제 요청", "상인 승인"];
 
@@ -13,8 +13,10 @@ export default function QRPayPage({ onBack, showToast }) {
   const [merchant, setMerchant] = useState(null);
   const [selectedMenuId, setSelectedMenuId] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("IDLE");
+  const [payRequestId, setPayRequestId] = useState(null);
   const [balance, setBalance] = useState(null);
   const [requesting, setRequesting] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [scanning, setScanning] = useState(false);
 
   const parsed = parseInt(amount.replace(/,/g, "")) || 0;
@@ -77,13 +79,43 @@ export default function QRPayPage({ onBack, showToast }) {
 
     setRequesting(true);
     try {
-      await requestQrPayment({ merchantId: merchant?.id, amount: parsed, memo });
+      const result = await requestQrPayment({ merchantId: merchant?.id, amount: parsed, memo });
+      setPayRequestId(result.payRequestId ?? null);
       setPaymentStatus("PENDING_CONFIRM");
       setStep("waiting");
     } catch (err) {
       showToast(err.message || "결제 요청 중 문제가 발생했습니다.");
     } finally {
       setRequesting(false);
+    }
+  };
+
+  const resetQrFlow = () => {
+    setPaymentStatus("CANCELLED");
+    setPayRequestId(null);
+    setStep("scan");
+    setAmount("");
+    setMemo("");
+    setSelectedMenuId("");
+  };
+
+  const handleCancelRequest = async () => {
+    if (canceling) return;
+    if (!payRequestId) {
+      resetQrFlow();
+      showToast?.("결제 요청 ID가 없어 화면만 초기화했습니다.");
+      return;
+    }
+
+    setCanceling(true);
+    try {
+      await cancelQrPaymentRequest(payRequestId);
+      showToast?.("QR 결제 요청을 취소했습니다.");
+      resetQrFlow();
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -158,7 +190,7 @@ export default function QRPayPage({ onBack, showToast }) {
               <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{merchant?.name || "가게 정보"}</span>
               {merchant?.verified && <span style={{ fontSize: 14, background: COLORS.greenBg, color: COLORS.green, borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>✅ 인증</span>}
             </div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted }}>{merchant?.market || "시장"} · ★ {merchant?.rating ?? "-"}</div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted }}>{merchant?.market || "시장"} · <span className="star-score">★ {merchant?.rating ?? "-"}</span></div>
           </div>
         </div>
 
@@ -272,7 +304,9 @@ export default function QRPayPage({ onBack, showToast }) {
           <strong>{paymentStatus}</strong>
           <small>승인 제한 시간 5분 · 만료/거절 시 보류 금액 해제</small>
         </div>
-        <div className="qr-cancel-action" onClick={() => { setPaymentStatus("CANCELLED"); setStep("scan"); setAmount(""); setMemo(""); setSelectedMenuId(""); }} style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer" }}>결제 요청 취소하고 처음으로 돌아가기</div>
+        <div className="qr-cancel-action" onClick={handleCancelRequest} style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: canceling ? "default" : "pointer" }}>
+          {canceling ? "결제 요청 취소 중..." : "결제 요청 취소하고 처음으로 돌아가기"}
+        </div>
       </div>
     </div>
   );

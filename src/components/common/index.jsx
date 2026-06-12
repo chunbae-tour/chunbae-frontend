@@ -197,7 +197,7 @@ export function SectionHeader({ title, onMore }) {
 
 export function StarRating({ rating }) {
   return (
-    <span style={{ color: COLORS.accent, fontSize: 14, fontWeight: 700 }}>★ {rating}</span>
+    <span style={{ color: "#E8A020", fontSize: 14, fontWeight: 700 }}>★ {rating}</span>
   );
 }
 

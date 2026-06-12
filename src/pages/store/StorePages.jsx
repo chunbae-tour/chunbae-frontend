@@ -5,20 +5,40 @@ import CertifiedMark from "../../assets/brand/chunbae-certified-mark.svg";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { createShopReview, fetchShopDetail, fetchShopReviews } from "../../services/shopService.js";
-import { fetchStoreProduct, fetchStoreProducts, purchaseStoreProduct } from "../../services/storeService.js";
+import { fetchStoreOrders, fetchStoreProduct, fetchStoreProducts, purchaseStoreProduct } from "../../services/storeService.js";
+
+function formatStoreDate(value) {
+  if (!value) return "";
+  return String(value).replace("T", " ").slice(0, 16);
+}
 
 // ─── 스토어 목록 ──────────────────────────────────────────────────────
 export function StorePage({ onProduct }) {
   const [tab, setTab] = useState("전체");
   const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const categories = ["전체", "투어권", "쿠폰"];
+  const categories = ["전체", "투어권", "쿠폰", "내 주문"];
   const filtered = tab === "전체" ? products : products.filter(p => p.category === tab);
 
-  const loadProducts = () => {
+  const loadStoreContent = () => {
     setStatus("loading");
     setErrorMessage("");
+    if (tab === "내 주문") {
+      fetchStoreOrders()
+        .then((data) => {
+          setOrders(data);
+          setStatus(data.length > 0 ? "success" : "empty");
+        })
+        .catch((error) => {
+          setOrders([]);
+          setErrorMessage(getApiErrorHint(error));
+          setStatus("error");
+        });
+      return;
+    }
+
     fetchStoreProducts({ category: tab })
       .then((data) => {
         setProducts(data);
@@ -33,7 +53,7 @@ export function StorePage({ onProduct }) {
 
   useEffect(() => {
     let ignore = false;
-    if (!ignore) loadProducts();
+    if (!ignore) loadStoreContent();
     return () => { ignore = true; };
   }, [tab]);
 
@@ -56,7 +76,7 @@ export function StorePage({ onProduct }) {
               <ErrorState
                 title="스토어 상품을 불러오지 못했습니다."
                 description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
-                onRetry={loadProducts}
+                onRetry={loadStoreContent}
               />
             </div>
           )}
@@ -69,7 +89,19 @@ export function StorePage({ onProduct }) {
               />
             </div>
           )}
-          {filtered.map(p => (
+          {tab === "내 주문" && orders.map(order => (
+            <div key={order.id} style={{ gridColumn: "1 / -1", background: "#fff", borderRadius: 16, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary, fontSize: 15 }}>{order.productName}</strong>
+                <span style={{ color: COLORS.green, fontSize: 13, fontWeight: 700 }}>{order.status || "주문"}</span>
+              </div>
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                수량 {order.quantity}개 · 🪙 {order.totalPrice.toLocaleString()} 엽전
+              </div>
+              {order.orderedAt && <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 13 }}>{formatStoreDate(order.orderedAt)}</div>}
+            </div>
+          ))}
+          {tab !== "내 주문" && filtered.map(p => (
             <div key={p.id} className="web-product-card" onClick={() => p.stock > 0 && onProduct(p)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "0.5px solid rgba(0,0,0,0.06)", cursor: p.stock > 0 ? "pointer" : "default", opacity: p.stock === 0 ? 0.6 : 1, position: "relative" }}>
               {p.stock === 0 && (
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 16, zIndex: 1 }}>
