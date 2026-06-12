@@ -27,7 +27,7 @@ import { REPORT_REASONS } from "../../services/reportService.js";
 import { normalizeTranslationLanguage, translateText } from "../../services/translationService.js";
 
 const TRANSLATION_BATCH_SIZE = 5;
-const TRANSLATION_REQUEST_DELAY_MS = 650;
+const TRANSLATION_REQUEST_DELAY_MS = 1200;
 const TRANSLATION_DEFAULT_COOLDOWN_MS = 30000;
 
 function wait(ms) {
@@ -439,10 +439,23 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     maxMembers: activeRoom?.maxMembers ?? 0,
     hostId: activeRoom?.hostId ?? activeRoom?.ownerId,
   };
+  const translationTargetLanguage = getTranslationTargetLanguage(currentUserSession);
+  const resolveMessageMine = (message) => {
+    if (typeof message.isMine === "boolean") return message.isMine;
+    if (typeof message.me === "boolean") return message.me;
+    return isSameUser(message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId, currentUserId);
+  };
   const displayedMessages = sortMessages(messages);
+  const recentTranslationMessages = displayedMessages
+    .filter((message) => {
+      if (isSystemMessage(message) || resolveMessageMine(message)) return false;
+      const content = message.content ?? message.text ?? "";
+      return content && !isProbablyAlreadyTargetLanguage(content, translationTargetLanguage);
+    })
+    .slice(-TRANSLATION_BATCH_SIZE);
+  const recentTranslationKeys = new Set(recentTranslationMessages.map(getMessageKey));
   const isCurrentUserHost = isSameUser(currentRoom.hostId, currentUserId)
     || participants.some(participant => isSameUser(participant.userId, currentUserId) && String(participant.role || "").toUpperCase() === "HOST");
-  const translationTargetLanguage = getTranslationTargetLanguage(currentUserSession);
   const companionParticipantIds = participants
     .map(participant => participant.userId)
     .filter(userId => userId && !isSameUser(userId, currentUserId));
@@ -498,11 +511,6 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       });
   };
 
-  const resolveMessageMine = (message) => {
-    if (typeof message.isMine === "boolean") return message.isMine;
-    if (typeof message.me === "boolean") return message.me;
-    return isSameUser(message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId, currentUserId);
-  };
   useEffect(() => {
     setTranslatedMessages({});
     setTranslationErrors({});
@@ -627,9 +635,8 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
 
     let cancelled = false;
     const skippedKeys = [];
-    const targets = sortMessages(messages)
+    const targets = recentTranslationMessages
       .filter((message) => {
-        if (isSystemMessage(message) || resolveMessageMine(message)) return false;
         const key = getMessageKey(message);
         const content = message.content ?? message.text ?? "";
         if (!content || translationSkippedMessages[key]) return false;
@@ -638,8 +645,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
           return false;
         }
         return !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
-      })
-      .slice(-TRANSLATION_BATCH_SIZE);
+      });
 
     if (skippedKeys.length > 0) {
       setTranslationSkippedMessages((prev) => {
@@ -678,7 +684,6 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                 : TRANSLATION_DEFAULT_COOLDOWN_MS;
               setTranslationCooldownUntil(Date.now() + waitMs);
               setTranslationNotice(`번역 요청이 많아 잠시 쉬고 있어요. ${Math.ceil(waitMs / 1000)}초 후 다시 시도해주세요.`);
-              setTranslationErrors(prev => ({ ...prev, [key]: "요청이 많아 잠시 후 다시 시도해주세요." }));
               break;
             }
             setTranslationErrors(prev => ({ ...prev, [key]: getApiErrorHint(error) || "번역을 불러오지 못했습니다." }));
@@ -696,7 +701,24 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     return () => {
       cancelled = true;
     };
-  }, [translationEnabled, messages, translationTargetLanguage, translatedMessages, translationErrors, translationSkippedMessages, translationCooldownUntil]);
+  }, [translationEnabled, messages, translationTargetLanguage, translationCooldownUntil]);
+
+  useEffect(() => {
+    if (!translationEnabled || !translationCooldownUntil) return undefined;
+    const remainingMs = translationCooldownUntil - Date.now();
+    if (remainingMs <= 0) {
+      setTranslationCooldownUntil(0);
+      setTranslationNotice("");
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTranslationCooldownUntil(0);
+      setTranslationNotice("");
+    }, remainingMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [translationEnabled, translationCooldownUntil]);
 
   useEffect(() => {
     let ignore = false;
@@ -1259,7 +1281,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                     </div>
                   )}
                 </div>
-                {!mine && translationEnabled && !translationSkipped && (
+                {!mine && translationEnabled && recentTranslationKeys.has(messageKey) && !translationSkipped && (
                   <div className={`chat-message-translation ${translationFailed ? "error" : ""}`} style={{ marginTop: 4, fontSize: 13 }}>
                     {translatedText || (translationFailed ? translationErrorText : "번역 대기 중...")}
                   </div>
