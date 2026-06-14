@@ -149,7 +149,7 @@ function normalizeFreePost(post = {}) {
 export async function updateCommunityPost(postId, postType, payload) {
   const typePath = getCommunityPostTypePath(postType);
   const data = await apiRequest(`/community/posts/${typePath}/${postId}`, {
-    method: "PATCH",
+    method: typePath === "companions" ? "PUT" : "PATCH",
     auth: true,
     role: "USER",
     body: payload,
