@@ -5,12 +5,23 @@ import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchDailyFestivals, fetchFestivalCalendar } from "../../services/festivalService.js";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
-const DOT_COLORS = ["#E24B4A", "#1D9E75", "#378ADD"];
 const PROGRESS_LABELS = {
   UPCOMING: "예정",
   IN_PROGRESS: "진행 중",
   ENDED: "종료",
 };
+
+function getFestivalStatus(festival = {}) {
+  return festival.progressStatus ?? festival.dday ?? "";
+}
+
+function getFestivalDotColor(festival = {}) {
+  const categoryText = `${festival.category ?? ""} ${festival.name ?? ""}`.toLowerCase();
+  if (categoryText.includes("museum") || categoryText.includes("exhibition") || categoryText.includes("박물관") || categoryText.includes("전시")) {
+    return "#E8A020";
+  }
+  return getFestivalStatus(festival) === "UPCOMING" ? "#185FA5" : "#2C6E49";
+}
 
 function toDateParam(year, month, day) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -94,19 +105,25 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
   };
 
   return (
-    <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span onClick={prevMonth} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>‹</span>
-          <span style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{year}년 {month}월</span>
-          <span onClick={nextMonth} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>›</span>
+    <div style={S.screen} className="festival-page">
+      <div className="festival-page-header festival-calendar-header" style={{ background: COLORS.primary, padding: "44px 16px 0" }}>
+        <div className="festival-calendar-month-nav">
+          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+          <div>
+            <button type="button" onClick={prevMonth} aria-label="이전 달">‹</button>
+            <strong>{year}년 {month}월</strong>
+            <button type="button" onClick={nextMonth} aria-label="다음 달">›</button>
+          </div>
+          <span />
         </div>
-        <div style={{ width: 20 }} />
+        <div className="festival-view-tabs">
+          <button type="button" onClick={onBack}>목록</button>
+          <button type="button" className="active">캘린더</button>
+        </div>
       </div>
 
       <div style={S.scrollArea}>
-        <div style={{ background: "#fff", padding: "12px 16px 0" }}>
+        <div className="festival-calendar-grid">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
             {DAYS.map((day, index) => (
               <div key={day} style={{ textAlign: "center", fontSize: 14, fontWeight: 700, color: index === 0 ? "#E24B4A" : index === 6 ? "#378ADD" : COLORS.textMuted, padding: "4px 0" }}>{day}</div>
@@ -124,26 +141,26 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
               const defaultColor = weekday === 0 ? "#E24B4A" : weekday === 6 ? "#378ADD" : COLORS.primary;
 
               return (
-                <div key={day} onClick={() => setSelectedDay(day)} style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 2px", cursor: "pointer" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: isSelected ? COLORS.primary : isToday ? COLORS.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 14, fontWeight: isSelected || isToday ? 700 : 400, color: isSelected ? "#fff" : isToday ? COLORS.primary : defaultColor }}>{day}</span>
-                  </div>
+                <button type="button" key={day} onClick={() => setSelectedDay(day)} className={`festival-calendar-day${isSelected ? " selected" : ""}${isToday ? " today" : ""}`}>
+                  <span className="festival-calendar-day-number" style={{ color: !isSelected && !isToday ? defaultColor : undefined }}>{day}</span>
                   {hasFest && (
-                    <div style={{ display: "flex", gap: 2, marginTop: 2 }}>
-                      {festByDay[day].slice(0, 3).map((event, eventIndex) => (
-                        <div key={`${event.festivalId}-${eventIndex}`} style={{ width: 5, height: 5, borderRadius: "50%", background: DOT_COLORS[eventIndex % DOT_COLORS.length] }} />
+                    <div className="festival-calendar-dots">
+                      {festByDay[day].slice(0, 4).map((event, eventIndex) => (
+                        <i key={`${event.festivalId ?? event.id ?? day}-${eventIndex}`} style={{ background: getFestivalDotColor(event) }} />
                       ))}
+                      {festByDay[day].length > 4 && <small>+{festByDay[day].length - 4}</small>}
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
 
-        <div style={{ padding: "12px 16px 16px" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>
-            {month}월 {selectedDay}일 행사 {festivals.length > 0 ? `(${festivals.length}건)` : ""}
+        <div className="festival-daily-panel">
+          <div className="festival-daily-title">
+            <strong>{month}월 {selectedDay}일 행사</strong>
+            <span>{festivals.length}건</span>
           </div>
           {status === "error" && (
             <div style={{ background: "#FFF3D0", color: "#B87800", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 14 }}>
@@ -161,23 +178,26 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
           ) : festivals.length === 0 ? (
             <EmptyState
               icon="📅"
-              title="이 날은 행사가 없어요."
+              title="이 날 예정된 행사가 없어요."
               description="다른 날짜를 눌러 진행 예정인 축제와 이벤트를 확인해보세요."
             />
           ) : (
-            festivals.map(festival => (
-              <button type="button" onClick={() => onFestival?.(festival)} key={festival.id} style={{ width: "100%", background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                <div style={{ background: festival.color, borderRadius: 12, padding: "10px 14px", textAlign: "center", minWidth: 52 }}>
-                  <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>{festival.month}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: festival.accentColor, lineHeight: 1 }}>{festival.day}</div>
+            festivals.map(festival => {
+              const progressStatus = getFestivalStatus(festival);
+              return (
+              <button type="button" onClick={() => onFestival?.(festival)} key={festival.id} className="festival-list-card">
+                <div className="festival-date-block">
+                  <span>{festival.month}</span>
+                  <strong>{festival.day}</strong>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>{festival.name}</div>
-                  <div style={{ fontSize: 14, color: COLORS.textMuted }}>📍 {festival.location || "장소 미정"} · {festival.date}</div>
+                <div className="festival-card-copy">
+                  <strong>{festival.name}</strong>
+                  <span>📍 {festival.location || "장소 미정"} · {festival.date}</span>
                 </div>
-                <span style={{ background: "#FFF3D0", color: "#B87800", fontSize: 14, fontWeight: 700, borderRadius: 8, padding: "4px 10px", whiteSpace: "nowrap" }}>{PROGRESS_LABELS[festival.dday] ?? festival.dday}</span>
+                <span className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}>{PROGRESS_LABELS[progressStatus] ?? progressStatus}</span>
+                <span className="festival-card-chevron" aria-hidden="true">›</span>
               </button>
-            ))
+            )})
           )}
         </div>
       </div>

@@ -65,6 +65,7 @@ export async function searchFestivals({
   region = "",
   cursor = "",
   size = 100,
+  source = "",
 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (q) params.set("q", q);
@@ -72,13 +73,15 @@ export async function searchFestivals({
   if (endDate) params.set("endDate", endDate);
   if (region) params.set("region", region);
   if (cursor) params.set("cursor", cursor);
+  if (source) params.set("source", source);
 
-  const data = await apiRequest(`/api/v2/search/festivals?${params.toString()}`);
+  const data = await apiRequest(`/api/v1/search/festivals?${params.toString()}`);
   return {
     content: getPageContent(data).map(normalizeFestival),
     nextCursor: data?.nextCursor ?? null,
     hasNext: Boolean(data?.hasNext),
     size: data?.size ?? getPageContent(data).length,
+    didYouMean: data?.didYouMean ?? "",
   };
 }
 
