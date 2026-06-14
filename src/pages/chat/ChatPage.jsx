@@ -218,10 +218,11 @@ function formatRoomLastMessage(message, currentUserId) {
   return senderName ? `${senderName}: ${text}` : text;
 }
 
-export function ChatListPage({ onChatRoom, showToast, compact = false, selectedRoomId = null }) {
+export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, selectedRoomId = null }) {
   const [rooms, setRooms] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [loginRequired, setLoginRequired] = useState(false);
   const currentUserId = getStoredAuthSession("USER")?.userId;
 
   const enrichRooms = async (baseRooms) => {
@@ -251,20 +252,29 @@ export function ChatListPage({ onChatRoom, showToast, compact = false, selectedR
   const loadRooms = ({ silent = false } = {}) => {
     if (!silent) {
       setStatus("loading");
+      setErrorMessage("");
+      setLoginRequired(false);
     }
-    setErrorMessage("");
     fetchMyChatRooms({ size: 10 })
       .then(async (data) => {
         const enrichedRooms = await enrichRooms(data);
         setRooms(enrichedRooms);
+        setErrorMessage("");
+        setLoginRequired(false);
         setStatus(enrichedRooms.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
+        const requiresLogin = error?.status === 401;
         if (!silent) {
           setRooms([]);
           setStatus("error");
         }
-        setErrorMessage(getApiErrorHint(error));
+        setLoginRequired(requiresLogin);
+        setErrorMessage(
+          requiresLogin
+            ? "로그인 후에 채팅을 이용하실 수 있습니다."
+            : getApiErrorHint(error),
+        );
       });
   };
 
@@ -300,9 +310,10 @@ export function ChatListPage({ onChatRoom, showToast, compact = false, selectedR
           {status === "loading" && <SkeletonList count={3} />}
           {status === "error" && (
             <ErrorState
-              title="채팅방을 불러오지 못했습니다."
+              title={loginRequired ? "로그인이 필요합니다." : "채팅방을 불러오지 못했습니다."}
               description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
-              onRetry={loadRooms}
+              actionLabel={loginRequired ? "로그인" : "다시 시도"}
+              onRetry={loginRequired ? onLogin : loadRooms}
             />
           )}
           {status === "empty" && (
@@ -343,7 +354,7 @@ export function ChatListPage({ onChatRoom, showToast, compact = false, selectedR
   );
 }
 
-export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onOpenMobileRoom, showToast }) {
+export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onOpenMobileRoom, onLogin, showToast }) {
   const selectedRoomId = selectedRoom?.chatRoomId ?? selectedRoom?.id;
 
   const handleRoomSelect = (room) => {
@@ -360,6 +371,7 @@ export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onOpenMobileRoom
           compact
           selectedRoomId={selectedRoomId}
           onChatRoom={handleRoomSelect}
+          onLogin={onLogin}
           showToast={showToast}
         />
       </aside>
@@ -1098,16 +1110,26 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
             <span className={`chat-realtime-indicator ${realtimeStatus}`} aria-label={realtimeLabel} title={realtimeLabel} />
           </div>
         </div>
-        <div className="chat-room-menu-wrap">
+        <div className="chat-room-header-actions">
           <button
             type="button"
-            className="chat-room-menu-button"
-            onClick={() => setManagementPanelOpen(open => !open)}
-            aria-label="채팅방 관리"
-            aria-expanded={managementPanelOpen}
+            className={`chat-translation-button${translationEnabled ? " active" : ""}`}
+            onClick={handleToggleTranslation}
+            aria-pressed={translationEnabled}
           >
-            ☰
+            번역 {translationEnabled ? "ON" : "OFF"}
           </button>
+          <div className="chat-room-menu-wrap">
+            <button
+              type="button"
+              className="chat-room-menu-button"
+              onClick={() => setManagementPanelOpen(open => !open)}
+              aria-label="채팅방 관리"
+              aria-expanded={managementPanelOpen}
+            >
+              ☰
+            </button>
+          </div>
         </div>
       </div>
       {translationEnabled && translationNotice && (
@@ -1587,10 +1609,6 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
           )}
           {managementTab === "settings" && (
             <div className="chat-management-settings">
-              <button type="button" className="chat-setting-toggle" onClick={handleToggleTranslation} aria-pressed={translationEnabled}>
-                <span>번역 켜기</span>
-                <i className={translationEnabled ? "on" : ""} />
-              </button>
               <button type="button" disabled={Boolean(actioning)} onClick={handleRoomReport}>채팅방 신고</button>
               <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => setLeaveConfirmOpen(true)}>채팅방 나가기</button>
             </div>

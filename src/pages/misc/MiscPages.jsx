@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog, EmptyState, ErrorState, SkeletonBlock, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchFestivals } from "../../services/festivalService.js";
+import { fetchFestivals, searchFestivals } from "../../services/festivalService.js";
 import { fetchFaqs, fetchFaqTranslation } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
@@ -657,11 +657,83 @@ function festivalOverlapsMonth(festival, year, month, today) {
   return startDate <= end && endDate >= effectiveStart;
 }
 
+const FESTIVAL_PROGRESS_LABELS = {
+  IN_PROGRESS: "진행 중",
+  UPCOMING: "예정",
+  ENDED: "종료",
+};
+
+const FESTIVAL_REGIONS = [
+  "서울특별시",
+  "부산광역시",
+  "대구광역시",
+  "인천광역시",
+  "광주광역시",
+  "대전광역시",
+  "울산광역시",
+  "세종특별자치시",
+  "경기도",
+  "강원특별자치도",
+  "충청북도",
+  "충청남도",
+  "전북특별자치도",
+  "전라남도",
+  "경상북도",
+  "경상남도",
+  "제주특별자치도",
+];
+
+const FESTIVAL_REGION_ALIASES = {
+  서울: "서울특별시",
+  부산: "부산광역시",
+  대구: "대구광역시",
+  인천: "인천광역시",
+  광주: "광주광역시",
+  대전: "대전광역시",
+  울산: "울산광역시",
+  세종: "세종특별자치시",
+  경기: "경기도",
+  강원: "강원특별자치도",
+  강원도: "강원특별자치도",
+  충북: "충청북도",
+  충남: "충청남도",
+  전북: "전북특별자치도",
+  전라북도: "전북특별자치도",
+  전남: "전라남도",
+  경북: "경상북도",
+  경남: "경상남도",
+  제주: "제주특별자치도",
+  제주도: "제주특별자치도",
+};
+
+function resolveFestivalRegion(value = "") {
+  return FESTIVAL_REGIONS.includes(value) ? value : FESTIVAL_REGION_ALIASES[value] ?? "";
+}
+
+function getFestivalProgressStatus(festival = {}) {
+  return festival.progressStatus ?? festival.dday ?? "";
+}
+
+function isFestivalEnded(festival = {}, today = new Date()) {
+  if (getFestivalProgressStatus(festival) === "ENDED") return true;
+
+  const endDate = parseFestivalDate(festival.endDate);
+  if (!endDate) return false;
+
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return endDate < todayStart;
+}
+
 export function FestivalPage({ onBack, onCalendar, onFestival }) {
   const [filter, setFilter] = useState("전체");
   const [festivals, setFestivals] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearchQuery, setActiveSearchQuery] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [activeRegion, setActiveRegion] = useState("");
+  const [didYouMean, setDidYouMean] = useState("");
   const today = new Date();
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth() + 1;
@@ -669,6 +741,7 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
   const loadFestivals = () => {
     setStatus("loading");
     setErrorMessage("");
+    setDidYouMean("");
     fetchFestivals()
       .then((data) => {
         setFestivals(data);
@@ -681,6 +754,48 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
       });
   };
 
+  const runFestivalSearch = (query = searchQuery, region = selectedRegion) => {
+    const normalizedQuery = query.trim();
+    const exactRegionQuery = resolveFestivalRegion(normalizedQuery);
+    const normalizedRegion = region || exactRegionQuery;
+    const keyword = exactRegionQuery ? "" : normalizedQuery;
+
+    if (!keyword && !normalizedRegion) {
+      setActiveSearchQuery("");
+      setActiveRegion("");
+      loadFestivals();
+      return;
+    }
+
+    setSearchQuery(normalizedQuery);
+    setSelectedRegion(normalizedRegion);
+    setActiveSearchQuery(keyword);
+    setActiveRegion(normalizedRegion);
+    setFilter("전체");
+    setStatus("loading");
+    setErrorMessage("");
+    setDidYouMean("");
+    searchFestivals({ q: keyword, region: normalizedRegion, size: 100, source: "festival-list" })
+      .then((data) => {
+        setFestivals(data.content);
+        setDidYouMean(data.didYouMean || "");
+        setStatus(data.content.length > 0 ? "success" : "empty");
+      })
+      .catch((error) => {
+        setFestivals([]);
+        setErrorMessage(getApiErrorHint(error));
+        setStatus("error");
+      });
+  };
+
+  const clearFestivalSearch = () => {
+    setSearchQuery("");
+    setActiveSearchQuery("");
+    setSelectedRegion("");
+    setActiveRegion("");
+    loadFestivals();
+  };
+
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadFestivals();
@@ -688,34 +803,80 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
   }, []);
 
   const selectedMonth = Number.parseInt(filter, 10);
+  const activeFestivals = festivals.filter(festival => !isFestivalEnded(festival, today));
   const filteredFestivals = filter === "전체"
-    ? festivals
-    : festivals.filter(festival => festivalOverlapsMonth(festival, currentYear, selectedMonth, today));
+    ? activeFestivals
+    : activeFestivals.filter(festival => festivalOverlapsMonth(festival, currentYear, selectedMonth, today));
   const monthFilters = [
     "전체",
     ...Array.from({ length: 12 - currentMonth + 1 }, (_, index) => `${currentMonth + index}월`),
   ];
 
   return (
-    <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 20px 20px" }}>
+    <div style={S.screen} className="festival-page">
+      <div className="festival-page-header" style={{ background: COLORS.primary, padding: "44px 20px 0" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
             <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>🎉 축제 & 이벤트</div>
           </div>
-          <div onClick={onCalendar} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 14, fontWeight: 600, borderRadius: 20, padding: "6px 14px", cursor: "pointer" }}>📅 캘린더</div>
+        </div>
+        <div className="festival-view-tabs">
+          <button type="button" className="active">목록</button>
+          <button type="button" onClick={onCalendar}>캘린더</button>
         </div>
       </div>
       <div style={S.scrollArea}>
-        <div style={{ padding: 16 }}>
+        <div className="festival-list-content">
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.primary }}>올해 남은 축제 일정</div>
             <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>오늘부터 12월 31일까지 열리는 축제를 월별로 확인해보세요.</div>
           </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <form className="festival-search-form" onSubmit={(event) => { event.preventDefault(); runFestivalSearch(); }}>
+            <span aria-hidden="true">⌕</span>
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="축제명이나 지역을 검색하세요"
+              aria-label="축제 검색"
+            />
+            {searchQuery && <button type="button" className="festival-search-clear" onClick={clearFestivalSearch} aria-label="축제 검색어 지우기">×</button>}
+            <button type="submit" className="festival-search-submit">검색</button>
+          </form>
+          <div className="festival-region-filter">
+            <label htmlFor="festival-region">지역</label>
+            <select
+              id="festival-region"
+              value={selectedRegion}
+              onChange={(event) => {
+                const nextRegion = event.target.value;
+                setSelectedRegion(nextRegion);
+                runFestivalSearch(searchQuery, nextRegion);
+              }}
+            >
+              <option value="">전체 지역</option>
+              {FESTIVAL_REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
+            </select>
+          </div>
+          {didYouMean && didYouMean !== activeSearchQuery && (
+            <button type="button" className="festival-search-suggestion" onClick={() => runFestivalSearch(didYouMean)}>
+              혹시 <strong>{didYouMean}</strong>을 찾으셨나요?
+            </button>
+          )}
+          {(activeSearchQuery || activeRegion) && (
+            <div className="festival-search-summary">
+              <span>
+                {activeSearchQuery && <strong>{activeSearchQuery}</strong>}
+                {activeSearchQuery && activeRegion && " · "}
+                {activeRegion && <strong>{activeRegion}</strong>}
+                {" "}검색 결과
+              </span>
+              <button type="button" onClick={clearFestivalSearch}>전체 일정 보기</button>
+            </div>
+          )}
+          <div className="festival-month-filters">
             {monthFilters.map(f => (
-              <div key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: filter === f ? COLORS.primary : COLORS.bg, color: filter === f ? "#fff" : COLORS.textMuted }}>{f}</div>
+              <button type="button" key={f} onClick={() => setFilter(f)} className={filter === f ? "active" : ""}>{f}</button>
             ))}
           </div>
           {status === "loading" && <SkeletonList count={3} />}
@@ -728,27 +889,32 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
           )}
           {status !== "loading" && status !== "error" && filteredFestivals.length === 0 && (
             <EmptyState
-              icon="🎉"
-              title="표시할 축제가 없습니다."
-              description="올해 남은 축제 일정이 없거나 선택한 월에 표시할 축제가 없습니다."
+              icon={activeSearchQuery || activeRegion ? "⌕" : "🎉"}
+              title={activeSearchQuery || activeRegion ? "검색 결과가 없습니다." : "표시할 축제가 없습니다."}
+              description={activeSearchQuery || activeRegion ? "다른 축제명이나 지역으로 검색해보세요." : "올해 남은 축제 일정이 없거나 선택한 월에 표시할 축제가 없습니다."}
               actionLabel="캘린더 보기"
               onAction={onCalendar}
             />
           )}
-          {filteredFestivals.map(f => (
-            <button type="button" onClick={() => onFestival?.(f)} key={f.id} style={{ width: "100%", background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-              <div style={{ background: f.color, borderRadius: 12, padding: "10px 14px", textAlign: "center", minWidth: 52 }}>
-                <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>{f.month}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: f.accentColor, lineHeight: 1 }}>{f.day}</div>
+          {filteredFestivals.map(f => {
+            const progressStatus = getFestivalProgressStatus(f);
+            return (
+            <button type="button" onClick={() => onFestival?.(f)} key={f.id} className="festival-list-card">
+              <div className="festival-date-block">
+                <span>{f.month}</span>
+                <strong>{f.day}</strong>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>{f.name}</div>
-                <div style={{ fontSize: 14, color: COLORS.textMuted }}>📍 {f.location}</div>
-                <div style={{ fontSize: 14, color: COLORS.textMuted }}>📅 {f.date}</div>
+              <div className="festival-card-copy">
+                <strong>{f.name}</strong>
+                <span>📍 {f.location}</span>
+                <span>📅 {f.date}</span>
               </div>
-              <span style={{ background: "#FFF3D0", color: "#B87800", fontSize: 14, fontWeight: 700, borderRadius: 8, padding: "4px 10px" }}>{f.dday}</span>
+              <span className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}>
+                {FESTIVAL_PROGRESS_LABELS[progressStatus] ?? progressStatus}
+              </span>
+              <span className="festival-card-chevron" aria-hidden="true">›</span>
             </button>
-          ))}
+          )})}
         </div>
       </div>
     </div>

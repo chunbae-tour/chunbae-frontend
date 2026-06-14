@@ -48,7 +48,7 @@ export function getApiErrorHint(error) {
   if (!error) return "";
   if (error.code === "NETWORK_ERROR") return "백엔드 서버 실행 상태, CORS 허용 origin, VITE_API_BASE_URL을 확인하세요.";
   if (error.code === "INVALID_JSON") return "백엔드 응답이 JSON 형식인지 확인하세요.";
-  if (error.status === 401) return "AccessToken 저장 여부와 Authorization 헤더를 확인하세요.";
+  if (error.status === 401) return "로그인이 필요한 기능입니다. 로그인 후 다시 이용해주세요.";
   if (error.status === 403) return "현재 로그인 역할이 해당 API 권한과 맞는지 확인하세요.";
   if (error.status === 404) return "프론트 endpoint와 백엔드 Controller 경로가 일치하는지 확인하세요.";
   if (error.status === 429) return error.retryAfter ? `${error.retryAfter}초 후 다시 시도하세요.` : "요청이 너무 많습니다. 잠시 후 다시 시도하세요.";

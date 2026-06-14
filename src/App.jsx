@@ -571,9 +571,9 @@ export default function App() {
         {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
         {screen === "festDetail"       && <FestivalDetailPage festival={selectedFestival} onBack={() => go("fest")} />}
         {screen === "community"        && <CommunityListPage onPost={(p) => { setSelectedPost(p); go("communityPost"); }} onWrite={() => go("communityWrite")} onBack={() => go(tab)} />}
-        {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => go("community")} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); go("chatroom"); }} />}
+        {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => go("community")} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); go("chatroom"); }} onPlaceClick={handlePlaceClick} />}
         {screen === "communityWrite"   && <CommunityWritePage onBack={() => go("community")} showToast={showToast} />}
-        {screen === "chat"             && <ChatWorkspacePage selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} onOpenMobileRoom={() => go("chatroom")} showToast={showToast} />}
+        {screen === "chat"             && <ChatWorkspacePage selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} onOpenMobileRoom={() => go("chatroom")} onLogin={() => setAppState("login")} showToast={showToast} />}
         {screen === "chatroom"         && <ChatRoomPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} />}
         {screen === "chatRequest"      && <ChatRequestPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} />}
         {screen === "pay"              && <PayChargePage onBack={() => go("my")} onDone={() => go("my")} showToast={showToast} />}

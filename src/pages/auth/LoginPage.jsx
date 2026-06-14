@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { COLORS, S } from "../../constants/colors.js";
 import ChunbaeImg from "../../assets/hwangchunbae.png";
+import DogMascot from "../../components/auth/DogMascot.jsx";
 import { getSocialLoginUrl, login } from "../../services/authService.js";
 
 const ROLE_LOGIN_CONFIG = {
@@ -70,8 +71,8 @@ export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role =
   };
 
   return (
-    <div className="auth-screen" style={{ ...S.screen, background: loginConfig.background }}>
-      <div style={{ flex: 1, width: "100%", maxWidth: 460, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+    <div className="auth-screen" style={{ ...S.screen, overflow: "auto", "--auth-background": loginConfig.background }}>
+      <div className="auth-login-panel">
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <img
             src={ChunbaeImg}
@@ -123,7 +124,8 @@ export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role =
           </>
         )}
       </div>
-      <div style={{ width: "100%", maxWidth: 460, margin: "0 auto", padding: "0 24px 40px", textAlign: "center" }}>
+      {normalizedRole === "USER" && <DogMascot />}
+      <div className="auth-login-footer">
         {loginConfig.showSignup ? (
           <>
             <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>아직 계정이 없으신가요? </span>
