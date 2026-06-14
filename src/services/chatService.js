@@ -118,12 +118,17 @@ export function normalizeChatMessage(message = {}) {
 
 export function normalizeChatParticipant(participant = {}) {
   const userId = participant.userId ?? participant.memberId ?? participant.id;
+  const memberState = participant.memberState ?? participant.state ?? "";
+  const role = memberState === "OWNER_ACTIVE"
+    ? "HOST"
+    : participant.role ?? participant.participantRole ?? "MEMBER";
 
   return {
     ...participant,
     userId,
     nickname: participant.nickname ?? participant.name ?? "여행자",
-    role: participant.role ?? participant.participantRole ?? "MEMBER",
+    role,
+    memberState,
     score: participant.companionScore ?? participant.score ?? 0,
     language: participant.language ?? participant.preferredLanguage ?? "",
     joinedAt: participant.joinedAt ?? participant.createdAt ?? "",
@@ -207,6 +212,19 @@ export async function leaveChatRoom(chatRoomId) {
   return true;
 }
 
+export async function transferChatRoomOwner({ chatRoomId, newOwnerId }) {
+  if (!chatRoomId || !newOwnerId) {
+    throw new ChatApiError("채팅방 또는 새 방장 ID가 없습니다.", "MISSING_OWNER_TRANSFER_TARGET", 400);
+  }
+  await apiRequest(`/chat/rooms/${chatRoomId}/owner`, {
+    method: "PATCH",
+    auth: true,
+    role: "USER",
+    body: { newOwnerId },
+  });
+  return true;
+}
+
 export async function closeChatRoom(chatRoomId) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
   await apiRequest(`/chat/rooms/${chatRoomId}/close`, {
@@ -217,14 +235,27 @@ export async function closeChatRoom(chatRoomId) {
   return true;
 }
 
-export async function startCompanion(chatRoomId, participantUserIds = []) {
+export async function createCompanion(chatRoomId, { participantUserIds = [], tripStartDate, tripEndDate } = {}) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  if (!tripStartDate || !tripEndDate) {
+    throw new ChatApiError("동행 여행 기간을 입력해주세요.", "MISSING_COMPANION_TRIP_DATES", 400);
+  }
   return apiRequest(`/chat/rooms/${chatRoomId}/companion`, {
     method: "POST",
     auth: true,
     role: "USER",
-    body: { participantUserIds },
+    body: { participantUserIds, tripStartDate, tripEndDate },
   });
+}
+
+export async function cancelCompanion(chatRoomId) {
+  if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  await apiRequest(`/chat/rooms/${chatRoomId}/companion`, {
+    method: "DELETE",
+    auth: true,
+    role: "USER",
+  });
+  return true;
 }
 
 export async function addCompanionParticipants(chatRoomId, userIds = []) {

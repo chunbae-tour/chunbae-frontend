@@ -6,6 +6,8 @@ import { uploadChatAttachments } from "../../services/attachmentService.js";
 import {
   addCompanionParticipants,
   approveJoinRequest,
+  cancelCompanion,
+  createCompanion,
   fetchChatMessages,
   fetchChatMessagesPage,
   fetchChatParticipants,
@@ -18,7 +20,7 @@ import {
   markChatRoomRead,
   rejectJoinRequest,
   reportChatParticipant,
-  startCompanion,
+  transferChatRoomOwner,
 } from "../../services/chatService.js";
 import { getStoredAuthSession } from "../../services/authService.js";
 import { createCompanionReview, fetchUserCompanionReviews } from "../../services/companionReviewService.js";
@@ -419,7 +421,11 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const [messageMenuId, setMessageMenuId] = useState(null);
   const [realtimeStatus, setRealtimeStatus] = useState("idle");
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [companionCancelConfirmOpen, setCompanionCancelConfirmOpen] = useState(false);
   const [kickConfirmTarget, setKickConfirmTarget] = useState(null);
+  const [ownerTransferTarget, setOwnerTransferTarget] = useState(null);
+  const [tripStartDate, setTripStartDate] = useState("");
+  const [tripEndDate, setTripEndDate] = useState("");
   const [reportTarget, setReportTarget] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reviewTarget, setReviewTarget] = useState(null);
@@ -471,6 +477,10 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const companionParticipantIds = participants
     .map(participant => participant.userId)
     .filter(userId => userId && !isSameUser(userId, currentUserId));
+  const hasOtherActiveParticipants = participants.some(participant => (
+    !isSameUser(participant.userId, currentUserId)
+    && !["MEMBER_LEFT", "MEMBER_KICKED"].includes(participant.memberState)
+  ));
 
   const isMessageListNearBottom = () => {
     const node = messageScrollRef.current;
@@ -856,23 +866,33 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     afterSuccess: onBack,
   });
 
-  const requireCompanionParticipants = () => {
-    if (companionParticipantIds.length > 0) return true;
-    showToast?.("동행을 시작하려면 본인을 제외한 참여자가 필요합니다.");
-    return false;
-  };
-
-  const handleStartCompanion = () => {
-    if (!requireCompanionParticipants()) return;
+  const handleCreateCompanion = () => {
+    if (!tripStartDate || !tripEndDate) {
+      setManagementPanelOpen(true);
+      setManagementTab("settings");
+      showToast?.("설정에서 동행 여행 시작일과 종료일을 입력해주세요.");
+      return;
+    }
+    if (tripEndDate < tripStartDate) {
+      showToast?.("동행 종료일은 시작일보다 빠를 수 없습니다.");
+      return;
+    }
     runRoomAction({
-      key: "companion-start",
-      action: () => startCompanion(roomId, companionParticipantIds),
-      successMessage: "동행을 시작했습니다.",
+      key: "companion-create",
+      action: () => createCompanion(roomId, {
+        participantUserIds: companionParticipantIds,
+        tripStartDate,
+        tripEndDate,
+      }),
+      successMessage: "동행을 생성했습니다.",
     });
   };
 
   const handleAddCompanion = () => {
-    if (!requireCompanionParticipants()) return;
+    if (companionParticipantIds.length === 0) {
+      showToast?.("추가할 참여자가 없습니다.");
+      return;
+    }
     runRoomAction({
       key: "companion-add",
       action: () => addCompanionParticipants(roomId, companionParticipantIds),
@@ -885,6 +905,32 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     action: () => endCompanion(roomId),
     successMessage: "동행을 종료했습니다. 참여자 리뷰를 남길 수 있습니다.",
   });
+
+  const handleCancelCompanion = () => runRoomAction({
+    key: "companion-cancel",
+    action: () => cancelCompanion(roomId),
+    successMessage: "진행 중인 동행을 취소했습니다.",
+    afterSuccess: () => setCompanionCancelConfirmOpen(false),
+  });
+
+  const handleTransferOwner = (participant) => {
+    if (!participant?.userId) return;
+    runRoomAction({
+      key: `owner-transfer-${participant.userId}`,
+      action: () => transferChatRoomOwner({ chatRoomId: roomId, newOwnerId: participant.userId }),
+      successMessage: `${participant.nickname} 님에게 방장을 위임했습니다.`,
+      afterSuccess: () => {
+        setOwnerTransferTarget(null);
+        Promise.all([fetchChatRoomDetail(roomId), fetchChatParticipants(roomId)])
+          .then(([detail, nextParticipants]) => {
+            setRoomDetail(detail);
+            setParticipants(nextParticipants);
+            setParticipantStatus(nextParticipants.length > 0 ? "success" : "empty");
+          })
+          .catch(() => {});
+      },
+    });
+  };
 
   const confirmLeaveRoom = () => {
     setLeaveConfirmOpen(false);
@@ -1099,7 +1145,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
             <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{currentRoom.title}</div>
             {isCurrentUserHost && (
               <div className="chat-companion-actions" aria-label="동행 관리">
-                <button type="button" disabled={Boolean(actioning)} onClick={handleStartCompanion}>동행 시작</button>
+                <button type="button" disabled={Boolean(actioning)} onClick={handleCreateCompanion}>동행 생성</button>
                 <button type="button" disabled={Boolean(actioning)} onClick={handleAddCompanion}>동행 추가</button>
                 <button type="button" disabled={Boolean(actioning)} onClick={handleEndCompanion}>동행 종료</button>
               </div>
@@ -1488,6 +1534,25 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         onConfirm={() => handleKick(kickConfirmTarget)}
         onCancel={() => setKickConfirmTarget(null)}
       />
+      <ConfirmDialog
+        open={Boolean(ownerTransferTarget)}
+        title="방장을 위임할까요?"
+        description={`${ownerTransferTarget?.nickname || "선택한 참여자"} 님이 새 방장이 됩니다. 위임 후에는 일반 참여자로 전환됩니다.`}
+        confirmLabel="방장 위임"
+        cancelLabel="취소"
+        onConfirm={() => handleTransferOwner(ownerTransferTarget)}
+        onCancel={() => setOwnerTransferTarget(null)}
+      />
+      <ConfirmDialog
+        open={companionCancelConfirmOpen}
+        danger
+        title="진행 중인 동행을 취소할까요?"
+        description="동행과 참여자 정보가 삭제되며 되돌릴 수 없습니다. 취소 후 같은 채팅방에서 새 동행을 생성할 수 있습니다."
+        confirmLabel="동행 취소"
+        cancelLabel="계속 유지"
+        onConfirm={handleCancelCompanion}
+        onCancel={() => setCompanionCancelConfirmOpen(false)}
+      />
       {profileTarget && (
         <div className="chat-profile-modal" role="dialog" aria-modal="true">
           <div className="chat-profile-card">
@@ -1560,7 +1625,10 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                     <div className="chat-management-card-actions">
                       <button type="button" disabled={reviewSubmitting} onClick={() => openCompanionReview(participant)}>리뷰</button>
                       {isCurrentUserHost && (
-                        <button type="button" className="danger" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
+                        <>
+                          <button type="button" className="primary" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setOwnerTransferTarget(participant)}>방장 위임</button>
+                          <button type="button" className="danger" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
+                        </>
                       )}
                     </div>
                   )}
@@ -1609,8 +1677,31 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
           )}
           {managementTab === "settings" && (
             <div className="chat-management-settings">
+              {isCurrentUserHost && (
+                <div className="chat-companion-settings">
+                  <strong>동행 여행 기간</strong>
+                  <label>
+                    시작일
+                    <input type="date" value={tripStartDate} onChange={(event) => setTripStartDate(event.target.value)} />
+                  </label>
+                  <label>
+                    종료일
+                    <input type="date" min={tripStartDate || undefined} value={tripEndDate} onChange={(event) => setTripEndDate(event.target.value)} />
+                  </label>
+                  <button type="button" disabled={Boolean(actioning)} onClick={handleCreateCompanion}>동행 생성</button>
+                  <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => setCompanionCancelConfirmOpen(true)}>진행 중인 동행 취소</button>
+                </div>
+              )}
               <button type="button" disabled={Boolean(actioning)} onClick={handleRoomReport}>채팅방 신고</button>
-              <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => setLeaveConfirmOpen(true)}>채팅방 나가기</button>
+              <button
+                type="button"
+                className="danger"
+                disabled={Boolean(actioning) || (isCurrentUserHost && hasOtherActiveParticipants)}
+                onClick={() => setLeaveConfirmOpen(true)}
+                title={isCurrentUserHost && hasOtherActiveParticipants ? "다른 참여자에게 방장을 위임한 후 나갈 수 있습니다." : undefined}
+              >
+                {isCurrentUserHost && hasOtherActiveParticipants ? "방장 위임 후 나가기" : "채팅방 나가기"}
+              </button>
             </div>
           )}
         </div>
