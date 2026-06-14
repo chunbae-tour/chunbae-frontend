@@ -17,6 +17,15 @@ const NAV_ITEMS = [
 
 const NAV_KEYS = new Set(NAV_ITEMS.map((item) => item.key));
 
+function AdminShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3 19 6v5c0 4.7-2.7 8-7 10-4.3-2-7-5.3-7-10V6l7-3Z" />
+      <path d="m12 7 1.2 2.4 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4L12 7Z" />
+    </svg>
+  );
+}
+
 const SCREEN_NAV_KEY = {
   place: "map",
   direction: "map",
@@ -43,7 +52,7 @@ const SCREEN_NAV_KEY = {
 
 export default function AppShell({ active, screen, onTab, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, onNotificationIntent, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const selectedKey = SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
+  const selectedKey = String(screen || "").startsWith("admin") ? "adminDashboard" : SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
   const hideFaqFloating = [
     "chatroom",
     "qrpay",
@@ -57,6 +66,7 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
     "signup",
   ].includes(screen);
   const isLoggedIn = Boolean(user);
+  const isAdmin = String(user?.role || "").toUpperCase() === "ADMIN";
   const notificationBadgeText = unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
   const openAuthOrTab = (key) => {
     if (!isLoggedIn && ["my", "pay", "notif"].includes(key)) {
@@ -106,6 +116,20 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
               </button>
             );
           })}
+          {isAdmin && (
+            <>
+              <div className="desktop-rail-divider" />
+              <button
+                type="button"
+                className={selectedKey === "adminDashboard" ? "desktop-rail-item admin active" : "desktop-rail-item admin"}
+                onClick={() => goTab("adminDashboard")}
+                title="관리자"
+              >
+                <span className="desktop-rail-icon admin-shield-icon"><AdminShieldIcon /></span>
+                <span className="desktop-rail-label">관리자</span>
+              </button>
+            </>
+          )}
         </nav>
       </aside>
       {sidebarOpen && (
@@ -147,6 +171,20 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
               </button>
             );
           })}
+          {isAdmin && (
+            <>
+              <div className="sidebar-admin-divider" />
+              <button
+                type="button"
+                className={selectedKey === "adminDashboard" ? "sidebar-nav-item admin active" : "sidebar-nav-item admin"}
+                onClick={() => goTab("adminDashboard")}
+                title="관리자"
+              >
+                <span className="sidebar-nav-icon admin-shield-icon"><AdminShieldIcon /></span>
+                <span className="sidebar-nav-label">관리자</span>
+              </button>
+            </>
+          )}
         </nav>
       </aside>
 
