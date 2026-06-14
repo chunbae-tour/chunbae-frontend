@@ -1,4 +1,4 @@
-import { apiFormRequest, apiRequest, getPageContent } from "./apiClient.js";
+import { apiRequest, getPageContent } from "./apiClient.js";
 import { getStoredAuthSession } from "./authService.js";
 
 function getStoredMerchantShopId() {
@@ -130,19 +130,6 @@ export async function updateMerchantShop(shopId, payload) {
       operatingHours: payload.operatingHours,
       closedDays: payload.holiday,
     },
-  });
-  return normalizeShop(data);
-}
-
-export async function uploadMerchantShopImage(shopId, file) {
-  const resolvedShopId = await resolveMerchantShopId(shopId);
-  const formData = new FormData();
-  formData.append("file", file);
-  const data = await apiFormRequest(`/merchants/me/shops/${resolvedShopId}/images`, {
-    method: "POST",
-    auth: true,
-    role: "MERCHANT",
-    formData,
   });
   return normalizeShop(data);
 }

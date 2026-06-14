@@ -7,6 +7,7 @@ import {
   approveMerchantPaymentRequest,
   deleteMerchantShopNotice,
   deleteMerchantMenu,
+  fetchMerchantHome,
   fetchMerchantMenus,
   fetchMerchantPaymentRequests,
   fetchMerchantSettlements,
@@ -21,7 +22,6 @@ import {
   updateMerchantShop,
   updateMerchantShopStatus,
   useCustomerItemByToken,
-  uploadMerchantShopImage,
 } from "../../services/merchantService.js";
 
 const MIN_SETTLEMENT_AMOUNT = 5000;
@@ -46,6 +46,11 @@ const EMPTY_WALLET = {
   pendingSettlement: 0,
   totalEarned: 0,
 };
+const EMPTY_MERCHANT_HOME = {
+  todaySalesAmount: 0,
+  todaySalesDate: "",
+  recentPayments: [],
+};
 const SHOP_STATUS_LABELS = {
   ACTIVE: "영업중",
   CLOSED: "영업종료",
@@ -57,6 +62,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const [shop, setShop] = useState(EMPTY_SHOP);
   const [shops, setShops] = useState([]);
   const [wallet, setWallet] = useState(EMPTY_WALLET);
+  const [merchantHome, setMerchantHome] = useState(EMPTY_MERCHANT_HOME);
   const [paymentRequests, setPaymentRequests] = useState([]);
   const [notices, setNotices] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -74,7 +80,6 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   });
   const [isSavingShop, setIsSavingShop] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "" });
   const [isSavingNotice, setIsSavingNotice] = useState(false);
   const [itemUseToken, setItemUseToken] = useState("");
@@ -97,6 +102,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         setShops([]);
         setShop(EMPTY_SHOP);
         setWallet(EMPTY_WALLET);
+        setMerchantHome(EMPTY_MERCHANT_HOME);
         setPaymentRequests([]);
         setNotices([]);
         setStatus("empty");
@@ -112,10 +118,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         onShopChange?.(effectiveShopId);
       }
 
-      const [shopResult, walletResult, requestResult] = await Promise.allSettled([
+      const [shopResult, walletResult, requestResult, homeResult] = await Promise.allSettled([
         fetchMerchantShop(effectiveShopId),
         fetchMerchantWallet(effectiveShopId),
         fetchMerchantPaymentRequests(effectiveShopId),
+        fetchMerchantHome(),
       ]);
       const noticeResult = await fetchMerchantShopNotices(effectiveShopId)
         .then(value => ({ status: "fulfilled", value }))
@@ -124,6 +131,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       if (ignore) return;
       setShop(shopResult.status === "fulfilled" ? shopResult.value : (nextShops.find(item => String(item.id) === String(effectiveShopId)) ?? EMPTY_SHOP));
       setWallet(walletResult.status === "fulfilled" ? walletResult.value : EMPTY_WALLET);
+      setMerchantHome(homeResult.status === "fulfilled" ? homeResult.value : EMPTY_MERCHANT_HOME);
       setPaymentRequests(requestResult.status === "fulfilled" ? requestResult.value : []);
       setNotices(noticeResult.status === "fulfilled" ? noticeResult.value : []);
       setStatus(shopResult.status === "fulfilled" ? "success" : "error");
@@ -137,6 +145,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         setShops([]);
         setShop(EMPTY_SHOP);
         setWallet(EMPTY_WALLET);
+        setMerchantHome(EMPTY_MERCHANT_HOME);
         setPaymentRequests([]);
         setNotices([]);
         setStatus("error");
@@ -233,23 +242,6 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       showToast("가게 상태 변경에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");
     } finally {
       setIsUpdatingStatus(false);
-    }
-  };
-
-  const handleImageUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setIsUploadingImage(true);
-    try {
-      const updatedShop = await uploadMerchantShopImage(currentShopId, file);
-      setShop(updatedShop);
-      setShops(prev => prev.map(item => String(item.id) === String(updatedShop.id) ? { ...item, ...updatedShop } : item));
-      showToast("가게 사진을 업로드했습니다.");
-    } catch {
-      showToast("가게 사진 업로드에 실패했습니다. 파일 형식과 백엔드 상태를 확인해주세요.");
-    } finally {
-      setIsUploadingImage(false);
-      event.target.value = "";
     }
   };
 
@@ -352,6 +344,10 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         )}
         <div className="merchant-dashboard-summary">
           <div>
+            <span>오늘 매출</span>
+            <strong>{merchantHome.todaySalesAmount.toLocaleString()}원</strong>
+          </div>
+          <div>
             <span>대기 승인</span>
             <strong>{paymentRequests.filter(item => item.status === "PENDING_CONFIRM").length}건</strong>
           </div>
@@ -422,17 +418,6 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                   ))}
                 </div>
               )}
-            </div>
-            <div className="merchant-image-card">
-              <strong>가게 사진</strong>
-              <small>대표 이미지나 매장 사진을 업로드합니다.</small>
-              {(shop.thumbnailUrl || shop.imageUrls?.[0]) && (
-                <img src={shop.thumbnailUrl || shop.imageUrls[0]} alt={`${shop.name} 사진`} />
-              )}
-              <label>
-                <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploadingImage} />
-                {isUploadingImage ? "업로드 중" : "사진 업로드"}
-              </label>
             </div>
           </div>
         </div>
