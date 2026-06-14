@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { COLORS, S } from "../../constants/colors";
+import { S } from "../../constants/colors";
 import { completeOauthSignup, getPendingOauthSignup } from "../../services/authService.js";
 
 export default function OauthSignupPage({ onBack, onDone, onPrivacy }) {
@@ -10,11 +10,17 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy }) {
     birthdate: "",
     nickname: pending?.nickname ?? "",
   });
+  const [consents, setConsents] = useState({ privacy: false, marketing: false });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+  const set = (key, value) => {
+    setForm(current => ({ ...current, [key]: value }));
+    if (errors[key]) {
+      setErrors(current => ({ ...current, [key]: undefined }));
+    }
+  };
 
   const validate = () => {
     const nextErrors = {};
@@ -23,6 +29,7 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy }) {
     if (!/^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/.test(form.phone.trim())) nextErrors.phone = "휴대폰 번호 형식을 확인해주세요.";
     if (!form.birthdate) nextErrors.birthdate = "생년월일을 선택해주세요.";
     if (!form.nickname.trim()) nextErrors.nickname = "닉네임을 입력해주세요.";
+    if (!consents.privacy) nextErrors.privacy = "개인정보 수집·이용 동의가 필요합니다.";
     return nextErrors;
   };
 
@@ -64,41 +71,69 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy }) {
   ];
 
   return (
-    <div style={{ ...S.screen, background: COLORS.primary }}>
-      <div style={{ padding: "52px 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
-        <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>소셜 회원가입</span>
-      </div>
-      <div style={{ ...S.scrollArea, padding: "20px 32px" }}>
+    <div className="auth-screen auth-signup-screen" style={{ ...S.screen, overflow: "auto", "--auth-background": "#2d8a5e" }}>
+      <main className="auth-signup-panel">
+        <div className="auth-signup-heading">
+          <button type="button" className="auth-back-button" onClick={onBack} aria-label="로그인으로 돌아가기">←</button>
+          <div>
+            <strong>소셜 회원가입</strong>
+            <span>추가 정보를 입력하면 바로 여행을 시작할 수 있어요.</span>
+          </div>
+        </div>
+
         <div className="oauth-signup-card">
-          <strong>추가 정보를 입력해주세요.</strong>
-          <p>처음 로그인한 소셜 계정은 회원 정보를 한 번 더 등록해야 춘배투어를 이용할 수 있습니다.</p>
+          <strong>연결된 계정을 확인했어요.</strong>
+          <p>처음 로그인한 소셜 계정은 회원 정보를 한 번 더 등록해야 합니다.</p>
           {pending?.email && <small>연결 계정 {pending.email}</small>}
           {errors.ticket && <em>{errors.ticket}</em>}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+        <div className="auth-signup-form">
           {fields.map(field => (
-            <div key={field.key}>
-              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginBottom: 6, fontWeight: 600 }}>{field.label}</div>
+            <label key={field.key} className="auth-field">
+              <span>{field.label}</span>
               <input
                 value={form[field.key]}
                 onChange={event => set(field.key, event.target.value)}
                 type={field.type}
                 placeholder={field.placeholder}
-                style={{ width: "100%", background: "rgba(255,255,255,0.08)", border: `1px solid ${errors[field.key] ? "#FF6B6B" : "rgba(255,255,255,0.12)"}`, borderRadius: 14, padding: "13px 16px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                aria-invalid={Boolean(errors[field.key])}
+                aria-describedby={errors[field.key] ? `${field.key}-error` : undefined}
               />
-              {errors[field.key] && <div style={{ color: "#FF6B6B", fontSize: 14, marginTop: 4 }}>{errors[field.key]}</div>}
-            </div>
+              {errors[field.key] && <em id={`${field.key}-error`}>{errors[field.key]}</em>}
+            </label>
           ))}
-          {submitError && <div style={{ color: "#FF6B6B", fontSize: 14 }}>{submitError}</div>}
-          <button type="button" disabled={loading || !pending?.signupTicket} onClick={handleSubmit} style={{ width: "100%", background: COLORS.accent, color: COLORS.primary, border: "none", borderRadius: 14, padding: "14px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: loading ? "default" : "pointer", marginTop: 8, opacity: loading || !pending?.signupTicket ? 0.7 : 1 }}>
+
+          <div className="auth-consent-box">
+            <label className={errors.privacy ? "auth-consent-row error" : "auth-consent-row"}>
+              <input
+                type="checkbox"
+                checked={consents.privacy}
+                onChange={event => {
+                  setConsents(current => ({ ...current, privacy: event.target.checked }));
+                  setErrors(current => ({ ...current, privacy: undefined }));
+                }}
+              />
+              <span><b>필수</b> 개인정보 수집·이용에 동의합니다.</span>
+              <button type="button" onClick={onPrivacy}>내용 보기</button>
+            </label>
+            {errors.privacy && <em>{errors.privacy}</em>}
+            <label className="auth-consent-row">
+              <input
+                type="checkbox"
+                checked={consents.marketing}
+                onChange={event => setConsents(current => ({ ...current, marketing: event.target.checked }))}
+              />
+              <span><i>선택</i> 여행 소식 및 혜택 안내에 동의합니다.</span>
+            </label>
+          </div>
+
+          {submitError && <div className="auth-submit-error" role="alert">{submitError}</div>}
+          <button type="button" className="auth-primary-button" disabled={loading || !pending?.signupTicket} onClick={handleSubmit}>
             {loading ? "가입 완료 중..." : "가입 완료하기"}
           </button>
-          <p className="auth-consent-copy">
-            가입을 완료하면 춘배투어의 <button type="button" onClick={onPrivacy}>개인정보처리방침</button>을 확인하고 동의한 것으로 간주됩니다.
-          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

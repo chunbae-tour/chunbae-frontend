@@ -1,28 +1,39 @@
-﻿import { useState } from "react";
-import { COLORS, S } from "../../constants/colors";
-import { signupAndLogin } from "../../services/authService.js";
+import { useState } from "react";
+import { S } from "../../constants/colors";
+import { getSocialLoginUrl, signupAndLogin } from "../../services/authService.js";
 
 export default function SignupPage({ onBack, onDone, onPrivacy }) {
   const [form, setForm] = useState({ email: "", pw: "", pwConfirm: "", nickname: "" });
+  const [consents, setConsents] = useState({ privacy: false, marketing: false });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (key, value) => {
+    setForm(current => ({ ...current, [key]: value }));
+    if (errors[key]) {
+      setErrors(current => ({ ...current, [key]: undefined }));
+    }
+  };
 
   const validate = () => {
-    const e = {};
-    if (!form.email.includes("@")) e.email = "올바른 이메일 형식이 아닙니다.";
-    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(form.pw)) e.pw = "비밀번호는 영문, 숫자, 특수문자를 포함해 8자 이상이어야 합니다.";
-    if (form.pw !== form.pwConfirm) e.pwConfirm = "비밀번호가 일치하지 않습니다.";
-    if (form.nickname.length < 2) e.nickname = "닉네임은 2자 이상이어야 합니다.";
-    return e;
+    const nextErrors = {};
+    if (!form.email.includes("@")) nextErrors.email = "올바른 이메일 형식이 아닙니다.";
+    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(form.pw)) nextErrors.pw = "비밀번호는 영문, 숫자, 특수문자를 포함해 8자 이상이어야 합니다.";
+    if (form.pw !== form.pwConfirm) nextErrors.pwConfirm = "비밀번호가 일치하지 않습니다.";
+    if (form.nickname.length < 2) nextErrors.nickname = "닉네임은 2자 이상이어야 합니다.";
+    if (!consents.privacy) nextErrors.privacy = "개인정보 수집·이용 동의가 필요합니다.";
+    return nextErrors;
   };
 
   const handleSignup = async () => {
     if (loading) return;
-    const e = validate();
-    if (Object.keys(e).length > 0) { setErrors(e); setSubmitError(""); return; }
+    const nextErrors = validate();
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      setSubmitError("");
+      return;
+    }
     setErrors({});
     setSubmitError("");
     setLoading(true);
@@ -41,6 +52,18 @@ export default function SignupPage({ onBack, onDone, onPrivacy }) {
     }
   };
 
+  const handleSocialSignup = (provider) => {
+    if (!consents.privacy) {
+      setErrors(current => ({ ...current, privacy: "개인정보 수집·이용 동의가 필요합니다." }));
+      return;
+    }
+    try {
+      window.location.href = getSocialLoginUrl(provider);
+    } catch (err) {
+      setSubmitError(err.message || "소셜 회원가입 URL 설정이 필요합니다.");
+    }
+  };
+
   const fields = [
     { key: "email", label: "이메일", type: "email", placeholder: "example@email.com" },
     { key: "pw", label: "비밀번호", type: "password", placeholder: "영문/숫자/특수문자 포함 8자 이상" },
@@ -49,33 +72,75 @@ export default function SignupPage({ onBack, onDone, onPrivacy }) {
   ];
 
   return (
-    <div style={{ ...S.screen, background: COLORS.primary }}>
-      <div style={{ padding: "52px 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
-        <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>회원가입</span>
-      </div>
-      <div style={{ ...S.scrollArea, padding: "20px 32px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {fields.map(f => (
-            <div key={f.key}>
-              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginBottom: 6, fontWeight: 600 }}>{f.label}</div>
+    <div className="auth-screen auth-signup-screen" style={{ ...S.screen, overflow: "auto", "--auth-background": "#2d8a5e" }}>
+      <main className="auth-signup-panel">
+        <div className="auth-signup-heading">
+          <button type="button" className="auth-back-button" onClick={onBack} aria-label="로그인으로 돌아가기">←</button>
+          <div>
+            <strong>회원가입</strong>
+            <span>춘배투어와 함께 로컬 여행을 시작해보세요.</span>
+          </div>
+        </div>
+
+        <div className="auth-signup-form">
+          {fields.map(field => (
+            <label key={field.key} className="auth-field">
+              <span>{field.label}</span>
               <input
-                value={form[f.key]} onChange={e => set(f.key, e.target.value)}
-                type={f.type} placeholder={f.placeholder}
-                style={{ width: "100%", background: "rgba(255,255,255,0.08)", border: `1px solid ${errors[f.key] ? "#FF6B6B" : "rgba(255,255,255,0.12)"}`, borderRadius: 14, padding: "13px 16px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                value={form[field.key]}
+                onChange={event => set(field.key, event.target.value)}
+                type={field.type}
+                placeholder={field.placeholder}
+                aria-invalid={Boolean(errors[field.key])}
+                aria-describedby={errors[field.key] ? `${field.key}-error` : undefined}
               />
-              {errors[f.key] && <div style={{ color: "#FF6B6B", fontSize: 14, marginTop: 4 }}>{errors[f.key]}</div>}
-            </div>
+              {errors[field.key] && <em id={`${field.key}-error`}>{errors[field.key]}</em>}
+            </label>
           ))}
-          {submitError && <div style={{ color: "#FF6B6B", fontSize: 14 }}>{submitError}</div>}
-          <button type="button" disabled={loading} onClick={handleSignup} style={{ width: "100%", background: COLORS.accent, color: COLORS.primary, border: "none", borderRadius: 14, padding: "14px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: loading ? "default" : "pointer", marginTop: 8, opacity: loading ? 0.7 : 1 }}>
+
+          <div className="auth-consent-box">
+            <label className={errors.privacy ? "auth-consent-row error" : "auth-consent-row"}>
+              <input
+                type="checkbox"
+                checked={consents.privacy}
+                onChange={event => {
+                  setConsents(current => ({ ...current, privacy: event.target.checked }));
+                  setErrors(current => ({ ...current, privacy: undefined }));
+                }}
+              />
+              <span><b>필수</b> 개인정보 수집·이용에 동의합니다.</span>
+              <button type="button" onClick={onPrivacy}>내용 보기</button>
+            </label>
+            {errors.privacy && <em>{errors.privacy}</em>}
+            <label className="auth-consent-row">
+              <input
+                type="checkbox"
+                checked={consents.marketing}
+                onChange={event => setConsents(current => ({ ...current, marketing: event.target.checked }))}
+              />
+              <span><i>선택</i> 여행 소식 및 혜택 안내에 동의합니다.</span>
+            </label>
+          </div>
+
+          {submitError && <div className="auth-submit-error" role="alert">{submitError}</div>}
+          <button type="button" className="auth-primary-button" disabled={loading} onClick={handleSignup}>
             {loading ? "가입 및 로그인 중..." : "가입하기"}
           </button>
-          <p className="auth-consent-copy">
-            가입하면 춘배투어의 <button type="button" onClick={onPrivacy}>개인정보처리방침</button>을 확인하고 동의한 것으로 간주됩니다.
-          </p>
+
+          <div className="auth-divider"><span>또는</span></div>
+          <div className="social-login-stack auth-signup-social">
+            {[
+              { icon: "talk", label: "Kakao로 시작하기", provider: "KAKAO", className: "kakao" },
+              { icon: "N", label: "Naver로 시작하기", provider: "NAVER", className: "naver" },
+            ].map(social => (
+              <button key={social.label} type="button" onClick={() => handleSocialSignup(social.provider)} className={`social-login-button ${social.className}`}>
+                <span className={`social-login-icon ${social.className}`} aria-hidden="true">{social.icon}</span>
+                <span>{social.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
