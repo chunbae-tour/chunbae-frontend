@@ -144,6 +144,39 @@ function formatNumber(value) {
   return Number(value || 0).toLocaleString();
 }
 
+function AdminIcon({ name, size = 20 }) {
+  const paths = {
+    usersGroup: <><path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M16 9a3 3 0 1 0 0-6" /><path d="M2 21v-2a6 6 0 0 1 12 0v2" /><path d="M15 15a5 5 0 0 1 5 5v1" /></>,
+    store: <><path d="M4 10v10h16V10" /><path d="M3 10 5 4h14l2 6" /><path d="M8 20v-6h8v6" /><path d="M3 10a3 3 0 0 0 5 2 3 3 0 0 0 4 0 3 3 0 0 0 4 0 3 3 0 0 0 5-2" /></>,
+    shield: <><path d="M12 3 19 6v5c0 4.7-2.7 8-7 10-4.3-2-7-5.3-7-10V6l7-3Z" /><path d="m9 12 2 2 4-4" /></>,
+    clipboard: <><path d="M9 5H6a2 2 0 0 0-2 2v12h16V7a2 2 0 0 0-2-2h-3" /><path d="M9 3h6v4H9zM8 12h8M8 16h5" /></>,
+    users: <><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM17 9a3 3 0 1 0 0-6" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 15a5 5 0 0 1 5 5v1" /></>,
+    mapPin: <><path d="M12 21s7-5 7-11a7 7 0 1 0-14 0c0 6 7 11 7 11Z" /><circle cx="12" cy="10" r="2" /></>,
+    alert: <><path d="m12 3 10 18H2L12 3Z" /><path d="M12 9v4M12 17h.01" /></>,
+    coin: <><circle cx="12" cy="12" r="9" /><path d="M15 8.5a4 4 0 1 0 0 7M12 6v12" /></>,
+    userCog: <><circle cx="9" cy="8" r="4" /><path d="M3 21v-2a6 6 0 0 1 9-5.2M17 15l1-1 2 1v2l1 1-1 2h-2l-1 1-2-1v-2l-1-1 1-2h2Z" /></>,
+    certificate: <><circle cx="12" cy="9" r="6" /><path d="m9 14-1 7 4-2 4 2-1-7M9.5 9l1.5 1.5L14.5 7" /></>,
+    list: <><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></>,
+    confetti: <><path d="m4 20 4-12 8 8-12 4ZM8 8l8 8M14 4h.01M20 10h.01M18 3l-2 3M21 6l-3 1" /></>,
+    photo: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m3 17 5-5 4 4 2-2 7 6" /></>,
+    flag: <><path d="M5 21V4M5 5h11l-2 4 2 4H5" /></>,
+    message: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" /><path d="M8 10h.01M12 10h.01M16 10h.01" /></>,
+    help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-1 .5-1 1-1 2.2M12 17h.01" /></>,
+    receipt: <><path d="M5 3h14v18l-2-1-2 1-3-1-3 1-2-1-2 1V3Z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
+    coins: <><ellipse cx="8" cy="8" rx="5" ry="3" /><path d="M3 8v4c0 1.7 2.2 3 5 3s5-1.3 5-3V8M13 10c4.7 0 8 1.3 8 3s-3.3 3-8 3M8 15v2c0 1.7 2.2 3 5 3s5-1.3 5-3v-3" /></>,
+    speaker: <><path d="M4 10v4h4l8 5V5l-8 5H4ZM8 14l2 6h3" /><path d="M19 9a4 4 0 0 1 0 6" /></>,
+    gift: <><rect x="3" y="9" width="18" height="12" rx="1" /><path d="M3 13h18M12 9v12M12 9H7.5A2.5 2.5 0 1 1 10 6.5L12 9Zm0 0h4.5A2.5 2.5 0 1 0 14 6.5L12 9Z" /></>,
+    chevron: <path d="m9 18 6-6-6-6" />,
+    crown: <><path d="m3 6 4 4 5-7 5 7 4-4-2 13H5L3 6Z" /><path d="M5 19h14" /></>,
+  };
+
+  return (
+    <svg className="admin-icon" viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      {paths[name] ?? paths.list}
+    </svg>
+  );
+}
+
 function promptReason(message, fallback) {
   const value = window.prompt(message, fallback);
   if (value === null) return null;
@@ -239,10 +272,10 @@ export function AdminDashboardPage({ onBack, onNav }) {
 
   const dashboardData = dashboard ?? {};
   const stats = [
-    { label: "전체 회원", value: Number(dashboardData.totalUsers || 0).toLocaleString(), icon: "👥" },
-    { label: "전체 가게", value: Number(dashboardData.totalShops || 0).toLocaleString(), icon: "🏪" },
-    { label: "인증 대기", value: Number(dashboardData.pendingCertifications || 0).toLocaleString(), icon: "✅", alert: Number(dashboardData.pendingCertifications || 0) > 0 },
-    { label: "상인 신청 대기", value: Number(dashboardData.pendingMerchantApplications || 0).toLocaleString(), icon: "📋", alert: Number(dashboardData.pendingMerchantApplications || 0) > 0 },
+    { label: "전체 회원", value: Number(dashboardData.totalUsers || 0).toLocaleString(), icon: "usersGroup", color: "#2C6E49" },
+    { label: "전체 가게", value: Number(dashboardData.totalShops || 0).toLocaleString(), icon: "store", color: "#2C6E49" },
+    { label: "인증 대기", value: Number(dashboardData.pendingCertifications || 0).toLocaleString(), icon: "shield", color: "#0F6E56", alert: Number(dashboardData.pendingCertifications || 0) > 0 },
+    { label: "상인 신청 대기", value: Number(dashboardData.pendingMerchantApplications || 0).toLocaleString(), icon: "clipboard", color: "#854F0B", alert: Number(dashboardData.pendingMerchantApplications || 0) > 0 },
   ];
   const summaryRows = [
     ["👤 오늘 신규 가입", `${Number(dashboardData.newUsersToday || 0).toLocaleString()}명`],
@@ -250,31 +283,58 @@ export function AdminDashboardPage({ onBack, onNav }) {
     ["📍 등록 관광지", `${Number(dashboardData.totalPlaces || 0).toLocaleString()}개`],
     ["🖼️ 활성 배너", `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개`],
   ];
-  const quickMenus = [
-    { icon: "👥", label: "유저 관리", key: "adminUsers" },
-    { icon: "🏪", label: "상인 신청", key: "adminMerchant", badge: dashboardData.pendingMerchantApplications },
-    { icon: "🚨", label: "신고 관리", key: "adminReports" },
-    { icon: "📍", label: "콘텐츠 관리", key: "adminContent" },
-    { icon: "🎉", label: "축제 관리", key: "adminFestivals" },
-    { icon: "💸", label: "환불 관리", key: "adminRefunds" },
-    { icon: "💰", label: "정산 관리", key: "adminSettlements" },
-    { icon: "📣", label: "광고 신청", key: "adminAds" },
-    { icon: "✅", label: "가게 인증", key: "adminCertifications", badge: dashboardData.pendingCertifications },
-    { icon: "💬", label: "상담 관리", key: "adminSupport" },
-    { icon: "🖼️", label: "배너 관리", key: "adminBanners" },
-    { icon: "❔", label: "FAQ 관리", key: "adminFaqs" },
-    { icon: "🎁", label: "상품 관리", key: "adminProducts" },
-    { icon: "🏬", label: "가게 도구", key: "adminShops" },
+  const quickMenuGroups = [
+    {
+      title: "회원·가게 관리",
+      icon: "users",
+      tone: "green",
+      items: [
+        { icon: "userCog", label: "유저 관리", key: "adminUsers" },
+        { icon: "store", label: "상인 신청", key: "adminMerchant", badge: dashboardData.pendingMerchantApplications },
+        { icon: "certificate", label: "가게 인증", key: "adminCertifications", badge: dashboardData.pendingCertifications },
+      ],
+    },
+    {
+      title: "콘텐츠 관리",
+      icon: "mapPin",
+      tone: "green",
+      items: [
+        { icon: "list", label: "콘텐츠 관리", key: "adminContent" },
+        { icon: "confetti", label: "축제 관리", key: "adminFestivals" },
+        { icon: "photo", label: "배너 관리", key: "adminBanners", badge: `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개` },
+      ],
+    },
+    {
+      title: "신고·상담",
+      icon: "alert",
+      tone: "amber",
+      items: [
+        { icon: "flag", label: "신고 관리", key: "adminReports", urgent: true },
+        { icon: "message", label: "상담 관리", key: "adminSupport" },
+        { icon: "help", label: "FAQ 관리", key: "adminFaqs" },
+      ],
+    },
+    {
+      title: "정산·마케팅",
+      icon: "coin",
+      tone: "amber",
+      items: [
+        { icon: "receipt", label: "환불 관리", key: "adminRefunds" },
+        { icon: "coins", label: "정산 관리", key: "adminSettlements" },
+        { icon: "speaker", label: "광고 신청", key: "adminAds" },
+        { icon: "gift", label: "상품 관리", key: "adminProducts" },
+      ],
+    },
   ];
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="admin-dashboard-header">
         <div>
-          <div style={{ color: COLORS.accent, fontSize: 14, fontWeight: 700, marginBottom: 4 }}>👑 관리자</div>
-          <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>춘배투어 대시보드</div>
+          <div className="admin-dashboard-kicker"><AdminIcon name="crown" size={14} /> 관리자</div>
+          <div className="admin-dashboard-title">춘배투어 대시보드</div>
         </div>
-        <div onClick={onBack} style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, cursor: "pointer" }}>← 나가기</div>
+        <button type="button" className="admin-dashboard-exit" onClick={onBack}>← 나가기</button>
       </div>
       <div style={S.scrollArea}>
         {/* 통계 카드 */}
@@ -295,7 +355,7 @@ export function AdminDashboardPage({ onBack, onNav }) {
           )}
           {status === "success" && stats.map(s => (
             <div key={s.label} style={{ background: "#fff", borderRadius: 16, padding: 16, border: s.alert ? `2px solid #E24B4A` : "0.5px solid rgba(0,0,0,0.06)" }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>{s.icon}</div>
+              <div className="admin-stat-icon" style={{ color: s.color }}><AdminIcon name={s.icon} size={24} /></div>
               <div style={{ fontSize: 24, fontWeight: 700, color: s.alert ? "#E24B4A" : COLORS.primary }}>{s.value}</div>
               <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>{s.label}</div>
             </div>
@@ -315,17 +375,29 @@ export function AdminDashboardPage({ onBack, onNav }) {
         )}
 
         {/* 빠른 메뉴 */}
-        <div style={{ background: "#fff", margin: "0 16px 16px", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>빠른 메뉴</div>
-          {quickMenus.map((m, i) => (
-            <div key={m.key} onClick={() => onNav(m.key)} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: i < quickMenus.length - 1 ? "0.5px solid rgba(0,0,0,0.05)" : "none" }}>
-              <span style={{ fontSize: 14 }}>{m.icon} {m.label}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {m.badge && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 20, padding: "2px 8px" }}>🔴{m.badge}</span>}
-                <span style={{ color: COLORS.textMuted }}>›</span>
-              </div>
-            </div>
-          ))}
+        <div className="admin-quick-menu-section">
+          <div className="admin-quick-menu-heading">빠른 메뉴</div>
+          <div className="admin-quick-menu-grid">
+            {quickMenuGroups.map((group) => (
+              <section key={group.title} className={`admin-quick-menu-card ${group.tone}`}>
+                <h3><AdminIcon name={group.icon} size={18} /> {group.title}</h3>
+                <div>
+                  {group.items.map((item) => (
+                    <button key={item.key} type="button" className="admin-quick-menu-item" onClick={() => onNav(item.key)}>
+                      <span><AdminIcon name={item.icon} size={17} /> {item.label}</span>
+                      {item.badge !== undefined ? (
+                        <em>{item.badge}</em>
+                      ) : item.urgent ? (
+                        <em className="urgent">확인</em>
+                      ) : (
+                        <AdminIcon name="chevron" size={16} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         </div>
       </div>
     </div>
