@@ -2,7 +2,7 @@
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { createChatRoom, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
+import { createChatRoom, fetchMyChatRooms, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts } from "../../services/communityService.js";
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { searchPlaces } from "../../services/searchService.js";
@@ -80,14 +80,130 @@ function formatRelativeTime(value) {
   return formatCompactDate(value);
 }
 
+function isClosedCompanionPost(post) {
+  const status = String(post?.status ?? "").toUpperCase();
+  return ["CLOSED", "HIDDEN", "DELETED"].includes(status)
+    || (Number(post?.max) > 0 && Number(post?.current) >= Number(post?.max));
+}
+
+function getMeetingDateParts(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) return { month: "--", day: "--" };
+  return {
+    month: `${parsed.getMonth() + 1}월`,
+    day: String(parsed.getDate()).padStart(2, "0"),
+  };
+}
+
+function isPostAuthor(post, user) {
+  if (!post || !user) return false;
+  if (post.writerId && user.userId) return String(post.writerId) === String(user.userId);
+  return Boolean(post.author && user.nickname && post.author === user.nickname);
+}
+
+function CommunityStatIcon({ type }) {
+  if (type === "comments") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12a8 8 0 0 1-8 8H6l-4 2 1.4-4.2A8.5 8.5 0 1 1 21 12Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+function LocationIcon({ type = "pin" }) {
+  if (type === "map") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m3 6 5-2 8 3 5-2v13l-5 2-8-3-5 2V6Z" />
+        <path d="M8 4v13M16 7v13" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
+function DetailIcon({ type }) {
+  if (type === "route") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="6" cy="19" r="2" />
+        <circle cx="18" cy="5" r="2" />
+        <path d="M6 17v-3a4 4 0 0 1 4-4h4a4 4 0 0 0 4-4" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v6M12 7.5v.5" />
+    </svg>
+  );
+}
+
+function ParticipantAvatarStack({ current = 1, max = 4, hostLabel = "방장", detailed = false }) {
+  const safeCurrent = Math.max(1, Number(current) || 1);
+  const safeMax = Math.max(safeCurrent, Number(max) || 4);
+  const visibleSlots = Math.min(safeMax, detailed ? 8 : 4);
+
+  return (
+    <div className={`community-participant-stack ${detailed ? "detailed" : ""}`} aria-label={`${safeCurrent}/${safeMax}명 참여 중`}>
+      {Array.from({ length: visibleSlots }, (_, index) => {
+        const occupied = index < safeCurrent;
+        const isHost = index === 0;
+        return (
+          <span
+            key={`${occupied ? "participant" : "empty"}-${index}`}
+            className={`${occupied ? "occupied" : "empty"} ${isHost ? "host" : ""}`}
+            title={isHost ? hostLabel : occupied ? `참여자 ${index + 1}` : "빈 자리"}
+          >
+            {occupied ? (isHost ? "방" : "여") : "+"}
+          </span>
+        );
+      })}
+      {safeMax > visibleSlots && detailed && <small>+{safeMax - visibleSlots}</small>}
+    </div>
+  );
+}
+
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
 export function CommunityListPage({ onPost, onWrite, onBack }) {
   const [tab, setTab] = useState("동행");
   const [scope, setScope] = useState("전체");
+  const [sort, setSort] = useState("latest");
   const [posts, setPosts] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const filtered = posts.filter(p => p.type === tab && (scope === "전체" || p.place?.includes(scope)));
+  const filtered = posts
+    .filter((post) => {
+      if (post.type !== tab) return false;
+      if (tab !== "동행" || scope === "전체") return true;
+      const closed = isClosedCompanionPost(post);
+      return scope === "마감" ? closed : !closed;
+    })
+    .sort((a, b) => {
+      if (sort === "popular") {
+        return (Number(b.views) + Number(b.comments)) - (Number(a.views) + Number(a.comments));
+      }
+      if (sort === "deadline") {
+        const closedOrder = Number(isClosedCompanionPost(a)) - Number(isClosedCompanionPost(b));
+        if (closedOrder !== 0) return closedOrder;
+        return (parseDateValue(a.meetingDate)?.getTime() ?? Number.MAX_SAFE_INTEGER)
+          - (parseDateValue(b.meetingDate)?.getTime() ?? Number.MAX_SAFE_INTEGER);
+      }
+      return (parseDateValue(b.createdAt)?.getTime() ?? 0) - (parseDateValue(a.createdAt)?.getTime() ?? 0);
+    });
   const companionCount = posts.filter(p => p.type === "동행").length;
   const freeCount = posts.filter(p => p.type === "자유").length;
 
@@ -116,16 +232,16 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
     <div style={S.screen} className="community-list-screen">
       <div className="community-list-hero">
         <div>
-          <button type="button" onClick={onBack}>←</button>
+          <button type="button" onClick={onBack} aria-label="뒤로 가기">←</button>
           <span>LOCAL COMPANION</span>
-          <h1>오늘 같이 걸을 골목 친구를 찾아보세요.</h1>
-          <p>동행 모집, 여행 후기, 장소 팁을 한 곳에서 보고 바로 채팅으로 이어갈 수 있게 정리했습니다.</p>
+          <h1>같이 걸을 골목 친구를 찾아보세요.</h1>
+          <p>동행 모집과 여행 이야기를 한 곳에서 나눠보세요.</p>
         </div>
         <button type="button" onClick={onWrite}>글쓰기</button>
       </div>
       <div className="community-list-tabs">
         {["동행", "자유"].map(t => (
-          <button key={t} type="button" onClick={() => setTab(t)} className={tab === t ? "active" : ""}>
+          <button key={t} type="button" onClick={() => { setTab(t); setScope("전체"); setSort("latest"); }} className={tab === t ? "active" : ""}>
             {t === "동행" ? "동행 게시판" : "자유 게시판"}
             <span>{t === "동행" ? companionCount : freeCount}</span>
           </button>
@@ -133,12 +249,19 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
       </div>
       <div style={S.scrollArea}>
         <div className="community-list-shell">
-          <div className="community-scope-row">
-            {["전체"].map(item => (
-              <button key={item} type="button" className={scope === item ? "active" : ""} onClick={() => setScope(item)}>
-                {item}
-              </button>
-            ))}
+          <div className="community-filter-bar">
+            <div className="community-scope-row">
+              {(tab === "동행" ? ["전체", "모집중", "마감"] : ["전체"]).map(item => (
+                <button key={item} type="button" className={scope === item ? "active" : ""} onClick={() => setScope(item)}>
+                  {item}
+                </button>
+              ))}
+            </div>
+            <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="게시글 정렬">
+              <option value="latest">최신순</option>
+              {tab === "동행" && <option value="deadline">마감임박순</option>}
+              <option value="popular">인기순</option>
+            </select>
           </div>
           {status === "loading" && <SkeletonList count={4} />}
           {status === "empty" && (
@@ -167,29 +290,40 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
           <div className="community-card-grid">
           {filtered.map(p => {
             const isCompanionPost = p.type === "동행";
-            const meetingDateText = formatCompactDate(p.meetingDate ?? p.date) || "일정 미정";
+            const closed = isCompanionPost && isClosedCompanionPost(p);
+            const dateParts = getMeetingDateParts(p.meetingDate ?? p.date);
             const createdRelative = formatRelativeTime(p.createdAt ?? p.date);
-            const primaryMeta = isCompanionPost
-              ? `모임일 ${meetingDateText} · ${p.place || "장소 미정"} · ${p.current}/${p.max}명`
-              : `작성 ${createdRelative || "작성일 미정"} · ${p.place || "자유게시판"}`;
 
             return (
-            <article key={p.id} onClick={() => onPost(p)} className="community-list-card">
-              <div className="community-list-card-head">
-                <div>
-                  <span className={p.type === "동행" ? "blue" : "green"}>{p.type === "동행" ? p.status ?? "모집중" : "자유"}</span>
-                  <small>📍 {p.place}</small>
-                </div>
-                {p.type === "동행" && <strong>{p.current}/{p.max}명</strong>}
+            <article key={p.id} onClick={() => onPost(p)} className={`community-list-card ${closed ? "closed" : ""}`}>
+              <div className={`community-date-block ${closed ? "closed" : ""}`}>
+                <small>{dateParts.month}</small>
+                <strong>{dateParts.day}</strong>
               </div>
-              <h2>{p.title}</h2>
-              <p>{p.content}</p>
-              <div className="community-list-card-foot">
-                <span className="community-list-meta-stack">
-                  <b>{primaryMeta}</b>
-                  {isCompanionPost && createdRelative && <small>작성 {createdRelative}</small>}
-                </span>
-                <span>💬 {p.comments} · 👁 {p.views}</span>
+              <div className="community-list-card-body">
+                <div className="community-list-card-head">
+                  <div>
+                    <span className={isCompanionPost ? (closed ? "closed" : "open") : "free"}>
+                      {isCompanionPost ? (closed ? "마감" : "모집중") : "자유"}
+                    </span>
+                    <small className="community-location-label"><LocationIcon />{p.place}</small>
+                  </div>
+                  {isCompanionPost && (
+                    <div className="community-card-participants">
+                      <ParticipantAvatarStack current={p.current} max={p.max} />
+                      <strong>{p.current}/{p.max}명</strong>
+                    </div>
+                  )}
+                </div>
+                <h2>{p.title}</h2>
+                <p className="card-preview">{p.content}</p>
+                <div className="community-list-card-foot">
+                  <span>{createdRelative ? `작성 ${createdRelative}` : "작성일 미정"}</span>
+                  <span className="community-card-stats">
+                    <span><CommunityStatIcon type="comments" />{p.comments}</span>
+                    <span><CommunityStatIcon type="views" />{p.views}</span>
+                  </span>
+                </div>
               </div>
             </article>
             );
@@ -202,12 +336,13 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
 }
 
 // ─── 게시글 상세 ──────────────────────────────────────────────────────
-export function CommunityPostPage({ post: initialPost, onBack, showToast, user, onChatRoom }) {
+export function CommunityPostPage({ post: initialPost, onBack, showToast, user, onChatRoom, onPlaceClick }) {
   const [post, setPost] = useState(initialPost);
   const [comments, setComments] = useState([]);
   const [input, setInput] = useState("");
   const [joinState, setJoinState] = useState("idle");
   const [creatingRoom, setCreatingRoom] = useState(false);
+  const [existingRoom, setExistingRoom] = useState(null);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
@@ -271,6 +406,36 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
     }
     setJoinState(getCompanionJoinState({ postId: post.id, user }));
   }, [post?.id, post?.type, user?.userId, user?.email, user?.nickname]);
+
+  useEffect(() => {
+    if (!post?.id || post?.type !== "동행" || !isPostAuthor(post, user)) {
+      setExistingRoom(null);
+      return;
+    }
+
+    let ignore = false;
+    const linkedRoomId = post.chatRoomId ?? post.roomId ?? post.chatRoom?.chatRoomId;
+    if (linkedRoomId) {
+      setExistingRoom(registerCompanionChatRoom({
+        post,
+        room: { chatRoomId: linkedRoomId, id: linkedRoomId },
+        user,
+      }));
+      return () => { ignore = true; };
+    }
+
+    fetchMyChatRooms({ size: 100 })
+      .then((rooms) => {
+        if (ignore) return;
+        const room = rooms.find((item) => String(item.postId) === String(post.id));
+        setExistingRoom(room ? registerCompanionChatRoom({ post, room, user }) : null);
+      })
+      .catch(() => {
+        if (!ignore) setExistingRoom(null);
+      });
+
+    return () => { ignore = true; };
+  }, [post?.id, post?.type, post?.chatRoomId, post?.roomId, post?.writerId, post?.author, user?.userId, user?.nickname]);
 
   const sendComment = async () => {
     if (!input.trim()) return;
@@ -351,17 +516,8 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
   }
 
   const isCompanion = post.type === "동행";
-  const isAuthor = isCompanion && (() => {
-    // 1순위: writerId와 userId 직접 비교
-    if (post.writerId && user?.userId) {
-      return String(post.writerId) === String(user.userId);
-    }
-    // 2순위: 닉네임 비교 (백엔드 응답에 writerId 없을 때 fallback)
-    if (post.author && user?.nickname) {
-      return post.author === user.nickname;
-    }
-    return false;
-  })();
+  const isClosed = isCompanion && isClosedCompanionPost(post);
+  const isAuthor = isPostAuthor(post, user);
   const routeItems = post.route ?? [post.place, "주변 명소 둘러보기", "시장 먹거리 탐방"];
   const goodPoints = post.goodPoints ?? ["동선을 공유했어요", "여행 팁을 남겼어요", "주변 상권과 함께 보기 좋아요"];
   const meetingDateText = formatKoreanDate(post.meetingDate ?? post.date) || "일정 미정";
@@ -369,7 +525,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
   const createdDateTimeText = formatKoreanDateTime(post.createdAt ?? post.date) || "작성일 미정";
   const createdRelativeText = formatRelativeTime(post.createdAt ?? post.date);
   const companionAction = {
-    idle: { label: "채팅방 참여 신청", helper: "방장이 수락하면 채팅방에 입장할 수 있어요." },
+    idle: { label: "참여 신청하기", helper: "방장이 신청을 수락하면 채팅방에 참여할 수 있어요." },
     pending: { label: "승인 대기 중", helper: "참여 신청을 보냈습니다. 수락 알림을 기다려주세요." },
     approved: { label: "채팅방 입장", helper: "참여가 승인되었습니다. 번역 채팅으로 일정을 조율하세요." },
     rejected: { label: "다른 모집 보기", helper: "이번 모집은 어렵지만 다른 골목 동행을 찾아볼 수 있어요." },
@@ -386,6 +542,7 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
         maxMembers: post.max,
       });
       const registeredRoom = registerCompanionChatRoom({ post, room, user });
+      setExistingRoom(registeredRoom);
       showToast("동행 채팅방이 생성되었습니다.");
       onChatRoom?.({
         ...registeredRoom,
@@ -408,7 +565,15 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
       return;
     }
     if (isAuthor) {
+      if (existingRoom) {
+        onChatRoom?.(existingRoom);
+        return;
+      }
       handleCreateChatRoom();
+      return;
+    }
+    if (isClosed) {
+      showToast("모집이 마감된 동행입니다.");
       return;
     }
     if (joinState === "idle") {
@@ -442,11 +607,38 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
     setJoinState("idle");
   };
 
+  const handlePlaceMap = async () => {
+    const placeId = post?.placeId ?? post?.place?.placeId;
+    if (!placeId) {
+      showToast?.("연결된 관광지 정보를 찾지 못했습니다.");
+      return;
+    }
+    const basePlace = {
+      placeId,
+      id: placeId,
+      name: post.placeName ?? post.place,
+    };
+
+    try {
+      const results = await searchPlaces({
+        query: basePlace.name,
+        size: 8,
+        track: false,
+        source: "community-place-link",
+      });
+      const matchedPlace = results.find((item) => String(item.placeId ?? item.id) === String(placeId))
+        ?? results.find((item) => item.name === basePlace.name);
+      onPlaceClick?.({ ...matchedPlace, ...basePlace });
+    } catch {
+      onPlaceClick?.(basePlace);
+    }
+  };
+
   return (
     <div style={S.screen} className="community-detail-screen">
       <div className="community-detail-topbar">
         <button type="button" onClick={onBack}>← 목록으로</button>
-        <button type="button" onClick={openPostReport}>신고</button>
+        {!isAuthor && <button type="button" onClick={openPostReport}>신고</button>}
       </div>
 
       <div style={S.scrollArea} className="community-detail-scroll">
@@ -455,16 +647,23 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
             <section className="community-detail-card community-detail-article">
               <div className="community-detail-meta">
                 <span className={isCompanion ? "type-blue" : "type-green"}>{isCompanion ? "동행" : "자유"}</span>
-                <span>📍 {post.place}</span>
-                {isCompanion && <span className="type-yellow">{post.status ?? "모집중"}</span>}
+                <span className="community-location-label"><LocationIcon />{post.place}</span>
+                {isCompanion && <span className={`type-status ${isClosed ? "closed" : "open"}`}>{isClosed ? "마감" : "모집중"}</span>}
               </div>
               <h1>{post.title}</h1>
               <div className="community-detail-author">
-                <div>👤</div>
-                <span>{post.author}</span>
-                {isCompanion && <span>모임일 {compactMeetingDateText}</span>}
-                <span>작성 {createdRelativeText || createdDateTimeText}</span>
-                <span>조회 {post.views}</span>
+                <div className="community-author-avatar">{String(post.author || "여").slice(0, 1)}</div>
+                <div className="community-author-copy">
+                  <strong>{post.author}</strong>
+                  <span>
+                    {isCompanion && <>모임일 {compactMeetingDateText} · </>}
+                    작성 {createdRelativeText || createdDateTimeText}
+                  </span>
+                </div>
+                <div className="community-author-stats">
+                  <span><CommunityStatIcon type="views" />{post.views}</span>
+                  <span><CommunityStatIcon type="comments" />{comments.length}</span>
+                </div>
               </div>
               <p className="community-detail-content">{post.content}</p>
               {!isCompanion && <div className="community-review-write-note">관광지/가게 리뷰 작성은 각 상세 페이지에서만 가능합니다.</div>}
@@ -472,7 +671,10 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
 
             {isCompanion ? (
               <section className="community-detail-card">
-                <div className="community-section-title">예상 코스</div>
+                <div className="community-section-title community-section-title-with-icon">
+                  <DetailIcon type="route" />
+                  예상 코스
+                </div>
                 <div className="community-route-web">
                   {routeItems.map((item, index) => (
                     <div key={`${item}-${index}`}>
@@ -528,15 +730,40 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
           </article>
 
           <aside className="community-detail-aside">
+            {isCompanion && (
+              <section className="community-detail-card community-participant-card">
+                <div className="community-section-title-row">
+                  <div className="community-section-title">참여자</div>
+                  <strong>{post.current} / {post.max}명</strong>
+                </div>
+                <ParticipantAvatarStack current={post.current} max={post.max} hostLabel={post.author || "방장"} detailed />
+                <button
+                  type="button"
+                  onClick={handleCompanionAction}
+                  disabled={!isAuthor && (isClosed || joinState === "pending")}
+                >
+                  {isAuthor
+                    ? existingRoom
+                      ? "채팅방으로 이동"
+                      : (creatingRoom ? "채팅방 생성 중..." : "채팅방 생성")
+                    : isClosed ? "모집 마감" : companionAction.label}
+                </button>
+                <p>{isAuthor
+                  ? existingRoom
+                    ? "채팅방에서 참여 신청과 동행 일정을 관리할 수 있어요."
+                    : "채팅방을 생성하면 참여 신청을 관리할 수 있어요."
+                  : companionAction.helper}</p>
+              </section>
+            )}
+
             <section className="community-detail-card community-summary-card">
               <div className="community-section-title">{isCompanion ? "모집 정보" : "게시글 요약"}</div>
               {isCompanion ? (
                 <div className="community-info-grid">
                   <div><span>모임일</span><strong>{meetingDateText}</strong></div>
-                  <div><span>작성일</span><strong>{createdDateTimeText}</strong></div>
                   <div><span>시간</span><strong>{post.meetingTime ?? "시간 협의"}</strong></div>
-                  <div><span>인원</span><strong>{post.current}/{post.max}명</strong></div>
                   <div><span>언어</span><strong>{post.language ?? "한국어"}</strong></div>
+                  <div><span>작성일</span><strong>{createdDateTimeText}</strong></div>
                 </div>
               ) : (
                 <div className="community-info-grid">
@@ -550,24 +777,25 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
 
             <section className="community-detail-card community-meeting-card">
               <div className="community-section-title">{isCompanion ? "만나는 곳" : "게시글 안내"}</div>
-              <p>{isCompanion ? `📍 ${post.meetingPoint ?? `${post.place} 입구`}` : "장소 리뷰는 관광지/가게 상세 페이지에서 작성하고 확인하는 흐름으로 분리합니다."}</p>
-              {/* TODO: 동행 모집글 상세 API와 참여 신청 API가 확정되면 postId 기반 실제 요청으로 교체합니다. */}
-              {isCompanion && (
-                <div className={`community-join-status ${joinState}`}>
-                  <strong>{isAuthor ? "방장 권한" : companionAction.label}</strong>
-                  <span>{isAuthor ? "게시글 작성자는 직접 채팅방을 생성한 뒤 참여 신청을 관리합니다." : companionAction.helper}</span>
+              {isCompanion ? (
+                <div className="community-meeting-place-row">
+                  <p className="community-meeting-point"><LocationIcon />{post.meetingPoint ?? `${post.place} 입구`}</p>
+                  <button type="button" className="community-map-action" onClick={handlePlaceMap}>
+                    <LocationIcon type="map" />
+                    지도에서 보기
+                  </button>
                 </div>
+              ) : (
+                <p>장소 리뷰는 관광지/가게 상세 페이지에서 작성하고 확인하는 흐름으로 분리합니다.</p>
               )}
-              <button type="button" onClick={handleCompanionAction}>
-                {isCompanion ? (isAuthor ? (creatingRoom ? "채팅방 생성 중..." : "채팅방 생성") : companionAction.label) : "관련 장소 보기"}
-              </button>
-              <button type="button" className="community-sub-action" onClick={openPostReport}>
-                신고하기
-              </button>
+              {!isCompanion && <button type="button" onClick={handleCompanionAction}>관련 장소 보기</button>}
             </section>
 
-            <section className="community-detail-card community-side-panel">
-              <div className="community-section-title">{isCompanion ? "참여 전 확인" : "자유 게시판 안내"}</div>
+            <section className={`community-detail-card community-side-panel ${isCompanion ? "companion-confirmation" : ""}`}>
+              <div className="community-section-title community-section-title-with-icon">
+                {isCompanion && <DetailIcon type="info" />}
+                {isCompanion ? "참여 전 확인" : "자유 게시판 안내"}
+              </div>
               {isCompanion ? (
                 <div className="community-check-list">
                   <div><span>1</span><p>만나는 시간과 장소를 채팅방에서 한 번 더 확인하세요.</p></div>
@@ -581,12 +809,6 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
                   <div><span>3</span><p>동행이 필요하면 동행 게시판에서 모집글을 작성하세요.</p></div>
                 </div>
               )}
-            </section>
-
-            <section className="community-detail-card community-stats-card">
-              <div><strong>{comments.length}</strong><span>댓글</span></div>
-              <div><strong>{post.views}</strong><span>조회</span></div>
-              <div><strong>{isCompanion ? `${post.current}/${post.max}` : post.rating ?? 5}</strong><span>{isCompanion ? "참여" : "평점"}</span></div>
             </section>
           </aside>
         </div>
