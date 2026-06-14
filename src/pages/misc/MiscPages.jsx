@@ -5,7 +5,7 @@ import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchFestivals, searchFestivals } from "../../services/festivalService.js";
 import { fetchFaqs, fetchFaqTranslation } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
-import { deleteAllNotifications, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
+import { deleteAllNotifications, deleteNotification, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
 import { updateCurrentUserProfile } from "../../services/authService.js";
 import YeopjeonImg from "../../assets/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
@@ -61,7 +61,6 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
   ];
   const serviceMenus = [
     { icon: "🔔", label: "알림 설정", tab: "notificationSettings" },
-    { icon: "🌐", label: "언어 설정", tab: null },
     { icon: "💬", label: "고객센터 문의", tab: "support" },
     { icon: "❓", label: "FAQ", tab: "faq" },
   ];
@@ -970,7 +969,7 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
     return () => { ignore = true; };
   }, []);
 
-  const markOne = async (notification) => {
+  const markOnly = async (notification) => {
     if (!notification) return;
     if (notification.id) {
       await markNotificationRead(notification.id).catch(() => {});
@@ -980,7 +979,22 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
       const isTarget = notification.id ? x.id === notification.id : x === notification;
       return isTarget ? nextNotification : x;
     }));
+    return nextNotification;
+  };
+
+  const openNotification = async (notification) => {
+    const nextNotification = notification.read ? notification : await markOnly(notification);
     onNotificationClick?.(nextNotification);
+  };
+
+  const removeOne = async (notification) => {
+    if (!notification?.id) return;
+    try {
+      await deleteNotification(notification.id);
+      syncNotifications(notifications.filter(item => item.id !== notification.id));
+    } catch {
+      // 서버에서 삭제된 경우에만 현재 목록을 갱신합니다.
+    }
   };
 
   const markAll = async () => {
@@ -1068,15 +1082,21 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
           const visualType = NOTIFICATION_TYPE_META[n.visualType] ? n.visualType : "system";
           const meta = NOTIFICATION_TYPE_META[visualType];
           return (
-          <button key={n.id ?? `${n.type || "notification"}-${n.time || index}`} type="button" onClick={() => markOne(n)} className={`notification-row ${n.read ? "read" : "unread"} ${visualType}`}>
-            <span className={`notification-type-icon ${visualType}`} aria-label={meta.label}>{meta.icon}</span>
-            <div className="notification-row-content">
-              {n.title && <div className="notification-title">{n.title}</div>}
-              <div className="notification-message">{n.displayMessage || n.text}</div>
-              <div className="notification-time">{n.timeText || n.time}</div>
-            </div>
-            {!n.read && <span className="notification-unread-dot" />}
-          </button>
+          <div key={n.id ?? `${n.type || "notification"}-${n.time || index}`} className={`notification-row ${n.read ? "read" : "unread"} ${visualType}`}>
+            <button type="button" className="notification-row-main" onClick={() => openNotification(n)}>
+              <span className={`notification-type-icon ${visualType}`} aria-label={meta.label}>{meta.icon}</span>
+              <span className="notification-row-content">
+                {n.title && <span className="notification-title">{n.title}</span>}
+                <span className="notification-message">{n.displayMessage || n.text}</span>
+                <span className="notification-time">{n.timeText || n.time}</span>
+              </span>
+              {!n.read && <span className="notification-unread-dot" />}
+            </button>
+            <span className="notification-row-actions">
+              {!n.read && <button type="button" onClick={() => markOnly(n)}>읽음</button>}
+              <button type="button" className="delete" onClick={() => removeOne(n)}>삭제</button>
+            </span>
+          </div>
         );})}
       </div>
       <ConfirmDialog

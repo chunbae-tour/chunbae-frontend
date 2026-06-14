@@ -8189,20 +8189,34 @@ button:disabled,
 
 .notification-row {
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  gap: 10px;
+  align-items: center;
   border-bottom: 0.5px solid rgba(26, 26, 46, 0.06);
   border-left: 3px solid transparent;
   border-right: 0;
   border-top: 0;
   background: #ffffff;
   color: inherit;
-  cursor: pointer;
   font-family: inherit;
-  padding: 16px 20px;
+  padding: 0 14px 0 0;
   position: relative;
   text-align: left;
   width: 100%;
+}
+
+.notification-row-main {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 16px 6px 16px 20px;
+  text-align: left;
 }
 
 .notification-row:hover {
@@ -8237,11 +8251,13 @@ button:disabled,
 }
 
 .notification-row-content {
+  display: block;
   flex: 1;
   min-width: 0;
 }
 
 .notification-title {
+  display: block;
   color: #1a1a2e;
   font-size: 13px;
   font-weight: 900;
@@ -8249,6 +8265,7 @@ button:disabled,
 }
 
 .notification-message {
+  display: block;
   color: #0f6a46;
   font-size: 14px;
   line-height: 1.5;
@@ -8256,6 +8273,7 @@ button:disabled,
 }
 
 .notification-time {
+  display: block;
   color: #9b978f;
   font-size: 13px;
 }
@@ -8318,6 +8336,55 @@ button:disabled,
   margin: 0 auto;
   padding: 24px 0 48px !important;
   display: block;
+}
+
+.notification-row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.notification-row-actions button {
+  border: 0.5px solid rgba(44, 110, 73, 0.24);
+  border-radius: 6px;
+  background: #fff;
+  color: #2c6e49;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.notification-row-actions button:hover {
+  background: #e1f5ee;
+}
+
+.notification-row-actions button.delete {
+  border-color: rgba(163, 45, 45, 0.18);
+  color: #a32d2d;
+}
+
+.notification-row-actions button.delete:hover {
+  background: #fcebeb;
+}
+
+@media (max-width: 640px) {
+  .notification-row {
+    align-items: stretch;
+    flex-direction: column;
+    padding-right: 10px;
+  }
+
+  .notification-row-main {
+    padding-bottom: 6px;
+  }
+
+  .notification-row-actions {
+    justify-content: flex-end;
+    padding: 0 0 10px 20px;
+  }
 }
 
 .chat-workspace-page {
@@ -14804,6 +14871,12 @@ body {
   display: grid;
   gap: 3px;
   min-width: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  align-items: initial;
+  justify-content: initial;
 }
 
 .community-author-copy strong {
@@ -14824,6 +14897,11 @@ body {
 
 .community-author-stats {
   gap: 12px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  background: #f7f5f0;
+  padding: 7px 10px;
   color: #888;
 }
 
@@ -14831,6 +14909,10 @@ body {
   gap: 4px;
   font-size: 11px;
   font-weight: 800;
+}
+
+.community-detail-aside {
+  top: 12px;
 }
 
 .community-author-stats svg {
