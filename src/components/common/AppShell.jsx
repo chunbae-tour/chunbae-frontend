@@ -201,22 +201,24 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
               </div>
             </button>
           </div>
-          <div className="topbar-actions">
-            {isLoggedIn && (
-              <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
-                <span>내 엽전 잔액</span>
-                <strong><img src={YeopjeonImg} alt="" /> 잔액 확인</strong>
+          {!isAdmin && (
+            <div className="topbar-actions">
+              {isLoggedIn && (
+                <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
+                  <span>내 엽전 잔액</span>
+                  <strong><img src={YeopjeonImg} alt="" /> 잔액 확인</strong>
+                </button>
+              )}
+              <button type="button" className="topbar-notification" onClick={() => openAuthOrTab("notif")} aria-label="알림">
+                🔔
+                {isLoggedIn && unreadNotificationCount > 0 && <span>{notificationBadgeText}</span>}
               </button>
-            )}
-            <button type="button" className="topbar-notification" onClick={() => openAuthOrTab("notif")} aria-label="알림">
-              🔔
-              {isLoggedIn && unreadNotificationCount > 0 && <span>{notificationBadgeText}</span>}
-            </button>
-            <button type="button" className="topbar-user" onClick={() => openAuthOrTab("my")}>
-              <span>{user?.nickname || "로그인"}</span>
-              <b style={{ background: COLORS.accent }}>👤</b>
-            </button>
-          </div>
+              <button type="button" className="topbar-user" onClick={() => openAuthOrTab("my")}>
+                <span>{user?.nickname || "로그인"}</span>
+                <b style={{ background: COLORS.accent }}>👤</b>
+              </button>
+            </div>
+          )}
         </header>
 
         <div className="shell-content">{children}</div>
