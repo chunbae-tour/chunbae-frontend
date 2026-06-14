@@ -424,9 +424,11 @@ export async function deleteAdminProduct(productId) {
   });
 }
 
-export async function fetchAdminProducts({ size = 100 } = {}) {
+export async function fetchAdminProducts({ category, cursor, size = 100 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
-  // OpenAPI에는 관리자 상품 "목록" 전용 API가 없어서 공개 목록으로 현재 노출 상품만 확인합니다.
+  if (category) params.set("category", category);
+  if (cursor) params.set("cursor", cursor);
+  // 관리자 전용 목록 API는 현재 OpenAPI에 없으므로 공개 상품 목록을 사용합니다.
   const data = await apiRequest(`/store/products?${params.toString()}`);
   return getPageContent(data);
 }

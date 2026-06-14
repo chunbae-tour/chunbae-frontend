@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
+import { PRODUCT_CATEGORIES, getProductCategoryLabel } from "../../constants/productCategories.js";
 import {
   approveAd,
   approveCertification,
@@ -1580,16 +1581,32 @@ export function AdminFaqsPage({ onBack, showToast }) {
 const EMPTY_PRODUCT_FORM = {
   name: "",
   description: "",
-  category: "COUPON",
+  category: "DISCOUNT_COUPON",
   price: "",
   originalPrice: "",
-  stock: "",
+  stock: "0",
   imageUrls: "",
   merchantName: "",
   validityDays: "",
   maxPerPerson: "1",
   status: "ON_SALE",
 };
+
+const PRODUCT_STATUS_LABELS = {
+  ON_SALE: "판매 중",
+  SOLD_OUT: "품절",
+  HIDDEN: "숨김",
+};
+
+function ProductFormField({ label, required = false, hint, wide = false, children }) {
+  return (
+    <label className={wide ? "admin-product-field wide" : "admin-product-field"}>
+      <span>{label}{required && <b>필수</b>}</span>
+      {children}
+      {hint && <small>{hint}</small>}
+    </label>
+  );
+}
 
 function parseImageUrlsInput(value) {
   const trimmed = String(value || "").trim();
@@ -1602,7 +1619,11 @@ function parseImageUrlsInput(value) {
 }
 
 export function AdminProductsPage({ onBack, showToast }) {
-  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminProducts({ size: 100 }));
+  const [filterCategory, setFilterCategory] = useState("");
+  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminProducts({
+    category: filterCategory,
+    size: 100,
+  }));
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_PRODUCT_FORM);
   const isEditing = editingId != null;
@@ -1618,11 +1639,11 @@ export function AdminProductsPage({ onBack, showToast }) {
     setForm({
       name: product.name ?? "",
       description: product.description ?? "",
-      category: product.category ?? "COUPON",
+      category: product.category ?? "DISCOUNT_COUPON",
       price: String(product.price ?? ""),
       originalPrice: String(product.originalPrice ?? ""),
       stock: String(product.stock ?? ""),
-      imageUrls: Array.isArray(product.imageUrls) ? JSON.stringify(product.imageUrls) : product.imageUrls ?? "",
+      imageUrls: Array.isArray(product.imageUrls) ? product.imageUrls.join("\n") : product.imageUrls ?? "",
       merchantName: product.merchantName ?? "",
       validityDays: String(product.validityDays ?? ""),
       maxPerPerson: String(product.maxPerPerson ?? "1"),
@@ -1639,7 +1660,15 @@ export function AdminProductsPage({ onBack, showToast }) {
     try {
       imageUrls = parseImageUrlsInput(form.imageUrls);
     } catch {
-      showToast("이미지 URL은 JSON 배열 또는 쉼표/줄바꿈 목록으로 입력해주세요.");
+      showToast("이미지 URL 형식을 확인해주세요.");
+      return;
+    }
+    if (imageUrls?.length > 10) {
+      showToast("이미지는 최대 10개까지 등록할 수 있습니다.");
+      return;
+    }
+    if (form.originalPrice && Number(form.originalPrice) < Number(form.price)) {
+      showToast("정가는 판매가보다 크거나 같아야 합니다.");
       return;
     }
     const payload = {
@@ -1680,30 +1709,103 @@ export function AdminProductsPage({ onBack, showToast }) {
     <AdminShell title="상품 관리" onBack={onBack}>
       <AdminCard style={{ background: "#FFF7D7" }}>
         <div style={{ fontSize: 14, color: "#8A4B00", fontWeight: 700 }}>
-          관리자 상품 목록 전용 API가 없어 현재 공개 상품 목록 기준으로 표시합니다. 숨김 처리된 상품까지 보려면 백엔드 관리자 목록 API가 필요합니다.
+          관리자 상품 목록 API가 아직 공개되지 않아 판매 중인 공개 상품만 표시합니다. 숨김 상품 조회와 상태 필터는 백엔드 API 공개 후 지원됩니다.
         </div>
       </AdminCard>
       <AdminCard>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <input placeholder="상품명" value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="카테고리" value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="가격" type="number" value={form.price} onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="원가" type="number" value={form.originalPrice} onChange={(e) => setForm(prev => ({ ...prev, originalPrice: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="재고" type="number" value={form.stock} onChange={(e) => setForm(prev => ({ ...prev, stock: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="1인 제한 수량" type="number" value={form.maxPerPerson} onChange={(e) => setForm(prev => ({ ...prev, maxPerPerson: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="유효일수" type="number" value={form.validityDays} onChange={(e) => setForm(prev => ({ ...prev, validityDays: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="상인명" value={form.merchantName} onChange={(e) => setForm(prev => ({ ...prev, merchantName: e.target.value }))} style={adminInputStyle} />
-          {isEditing && (
-            <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
-              <option value="ON_SALE">ON_SALE</option>
-              <option value="HIDDEN">HIDDEN</option>
-              <option value="SOLD_OUT">SOLD_OUT</option>
+        <div className="admin-product-filter-row">
+          <label>
+            <span>카테고리</span>
+            <select value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)} style={adminInputStyle}>
+              <option value="">전체 카테고리</option>
+              {PRODUCT_CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
-          )}
-          <input placeholder="이미지 URL JSON 또는 문자열" value={form.imageUrls} onChange={(e) => setForm(prev => ({ ...prev, imageUrls: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
-          <textarea placeholder="상품 설명" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 80, resize: "vertical" }} />
+          </label>
+          <AdminButton onClick={reload}>목록 조회</AdminButton>
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+      </AdminCard>
+      <AdminCard style={{ padding: 0, overflow: "hidden" }}>
+        <div className="admin-product-form-head">
+          <div>
+            <strong>{isEditing ? "상품 수정" : "새 상품 등록"}</strong>
+            <span>필수 항목만 입력해도 바로 등록할 수 있습니다.</span>
+          </div>
+          {isEditing && <AdminStatusBadge status={PRODUCT_STATUS_LABELS[form.status] ?? form.status} />}
+        </div>
+
+        <div className="admin-product-form-section">
+          <h3>기본 정보</h3>
+          <div className="admin-product-form-grid">
+            <ProductFormField label="상품명" required>
+              <input maxLength={100} placeholder="예: 경복궁 입장권" value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} style={adminInputStyle} />
+            </ProductFormField>
+            <ProductFormField label="카테고리" required>
+              <select value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} style={adminInputStyle}>
+                {PRODUCT_CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </ProductFormField>
+            <ProductFormField label="상품 설명" hint={`${form.description.length} / 2,000자`} wide>
+              <textarea maxLength={2000} placeholder="사용 방법, 포함 사항, 주의사항 등을 입력하세요." value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, minHeight: 90, resize: "vertical" }} />
+            </ProductFormField>
+          </div>
+        </div>
+
+        <div className="admin-product-form-section">
+          <h3>판매 설정</h3>
+          <div className="admin-product-form-grid">
+            <ProductFormField label="판매가" required hint="사용자에게 실제로 차감되는 엽전">
+              <div className="admin-product-unit-input">
+                <input type="number" min="1" placeholder="0" value={form.price} onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value }))} />
+                <span>엽전</span>
+              </div>
+            </ProductFormField>
+            <ProductFormField label="정가" hint="할인 전 가격, 선택 사항">
+              <div className="admin-product-unit-input">
+                <input type="number" min="0" placeholder="선택" value={form.originalPrice} onChange={(e) => setForm(prev => ({ ...prev, originalPrice: e.target.value }))} />
+                <span>엽전</span>
+              </div>
+            </ProductFormField>
+            <ProductFormField label="재고" required>
+              <div className="admin-product-unit-input">
+                <input type="number" min="0" value={form.stock} onChange={(e) => setForm(prev => ({ ...prev, stock: e.target.value }))} />
+                <span>개</span>
+              </div>
+            </ProductFormField>
+            <ProductFormField label="1인 구매 제한" required>
+              <div className="admin-product-unit-input">
+                <input type="number" min="1" value={form.maxPerPerson} onChange={(e) => setForm(prev => ({ ...prev, maxPerPerson: e.target.value }))} />
+                <span>개</span>
+              </div>
+            </ProductFormField>
+            <ProductFormField label="유효 기간" hint="미입력 시 별도 만료일 없음">
+              <div className="admin-product-unit-input">
+                <input type="number" min="1" placeholder="선택" value={form.validityDays} onChange={(e) => setForm(prev => ({ ...prev, validityDays: e.target.value }))} />
+                <span>일</span>
+              </div>
+            </ProductFormField>
+            {isEditing && (
+              <ProductFormField label="판매 상태">
+                <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
+                  {Object.entries(PRODUCT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </ProductFormField>
+            )}
+          </div>
+        </div>
+
+        <div className="admin-product-form-section">
+          <h3>선택 정보</h3>
+          <div className="admin-product-form-grid">
+            <ProductFormField label="판매처 이름" hint="목록과 상세 화면에 노출할 상인·기관명">
+              <input maxLength={100} placeholder="예: 경복궁 관리소" value={form.merchantName} onChange={(e) => setForm(prev => ({ ...prev, merchantName: e.target.value }))} style={adminInputStyle} />
+            </ProductFormField>
+            <ProductFormField label="이미지 URL" hint="한 줄에 하나씩, 최대 10개" wide>
+              <textarea placeholder={"https://example.com/image-1.jpg\nhttps://example.com/image-2.jpg"} value={form.imageUrls} onChange={(e) => setForm(prev => ({ ...prev, imageUrls: e.target.value }))} style={{ ...adminInputStyle, minHeight: 76, resize: "vertical" }} />
+            </ProductFormField>
+          </div>
+        </div>
+
+        <div className="admin-product-form-actions">
           {isEditing && <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
           <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "상품 등록"}</AdminButton>
         </div>
@@ -1717,7 +1819,7 @@ export function AdminProductsPage({ onBack, showToast }) {
               <strong style={{ color: COLORS.primary }}>{product.name}</strong>
               <AdminStatusBadge status={product.status ?? "ACTIVE"} />
             </div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{product.category} · 재고 {formatNumber(product.stock)} · 판매 {formatNumber(product.soldCount)}</div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{getProductCategoryLabel(product.category)} · 재고 {formatNumber(product.stock)} · 판매 {formatNumber(product.soldCount)}</div>
             <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(product.price)} 엽전</div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <AdminButton tone="subtle" onClick={() => edit(product)} style={{ flex: 1 }}>수정</AdminButton>

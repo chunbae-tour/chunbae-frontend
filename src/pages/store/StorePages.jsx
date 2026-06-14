@@ -6,6 +6,7 @@ import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { createShopReview, fetchShopDetail, fetchShopReviews } from "../../services/shopService.js";
 import { fetchStoreOrders, fetchStoreProduct, fetchStoreProducts, purchaseStoreProduct } from "../../services/storeService.js";
+import { PRODUCT_CATEGORIES } from "../../constants/productCategories.js";
 
 function formatStoreDate(value) {
   if (!value) return "";
@@ -14,18 +15,21 @@ function formatStoreDate(value) {
 
 // ─── 스토어 목록 ──────────────────────────────────────────────────────
 export function StorePage({ onProduct }) {
-  const [tab, setTab] = useState("전체");
+  const [tab, setTab] = useState("");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const categories = ["전체", "투어권", "쿠폰", "내 주문"];
-  const filtered = tab === "전체" ? products : products.filter(p => p.category === tab);
+  const categories = [
+    { value: "", label: "전체" },
+    ...PRODUCT_CATEGORIES,
+    { value: "MY_ORDERS", label: "내 주문" },
+  ];
 
   const loadStoreContent = () => {
     setStatus("loading");
     setErrorMessage("");
-    if (tab === "내 주문") {
+    if (tab === "MY_ORDERS") {
       fetchStoreOrders()
         .then((data) => {
           setOrders(data);
@@ -64,8 +68,8 @@ export function StorePage({ onProduct }) {
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginTop: 4 }}>엽전으로 투어권과 쿠폰을 구매하세요</div>
       </div>
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-        {categories.map(c => (
-          <div key={c} onClick={() => setTab(c)} style={{ padding: "6px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: tab === c ? COLORS.primary : COLORS.bg, color: tab === c ? "#fff" : COLORS.textMuted }}>{c}</div>
+        {categories.map(category => (
+          <div key={category.value || "ALL"} onClick={() => setTab(category.value)} style={{ padding: "6px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: tab === category.value ? COLORS.primary : COLORS.bg, color: tab === category.value ? "#fff" : COLORS.textMuted }}>{category.label}</div>
         ))}
       </div>
       <div style={S.scrollArea} className="web-detail-scroll">
@@ -89,7 +93,7 @@ export function StorePage({ onProduct }) {
               />
             </div>
           )}
-          {tab === "내 주문" && orders.map(order => (
+          {tab === "MY_ORDERS" && orders.map(order => (
             <div key={order.id} style={{ gridColumn: "1 / -1", background: "#fff", borderRadius: 16, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                 <strong style={{ color: COLORS.primary, fontSize: 15 }}>{order.productName}</strong>
@@ -101,7 +105,7 @@ export function StorePage({ onProduct }) {
               {order.orderedAt && <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 13 }}>{formatStoreDate(order.orderedAt)}</div>}
             </div>
           ))}
-          {tab !== "내 주문" && filtered.map(p => (
+          {tab !== "MY_ORDERS" && products.map(p => (
             <div key={p.id} className="web-product-card" onClick={() => p.stock > 0 && onProduct(p)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "0.5px solid rgba(0,0,0,0.06)", cursor: p.stock > 0 ? "pointer" : "default", opacity: p.stock === 0 ? 0.6 : 1, position: "relative" }}>
               {p.stock === 0 && (
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 16, zIndex: 1 }}>

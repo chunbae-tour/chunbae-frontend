@@ -1,4 +1,5 @@
 import { apiRequest, getPageContent } from "./apiClient.js";
+import { getProductCategoryLabel } from "../constants/productCategories.js";
 
 function normalizeProduct(product = {}) {
   const id = product.productId ?? product.id;
@@ -10,7 +11,8 @@ function normalizeProduct(product = {}) {
     emoji: product.emoji ?? "🎟️",
     price: product.price ?? product.yeopjeonPrice ?? 0,
     stock: product.stock ?? product.remainingStock ?? 0,
-    category: product.categoryName ?? product.category ?? "쿠폰",
+    category: product.category ?? "",
+    categoryLabel: product.categoryName ?? getProductCategoryLabel(product.category),
     desc: product.description ?? product.desc ?? "",
     validDays: product.validDays ?? product.expireDays ?? 30,
   };
@@ -38,7 +40,7 @@ function normalizeStoreOrder(order = {}) {
 
 export async function fetchStoreProducts({ category, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
-  if (category && category !== "전체") params.set("category", category);
+  if (category) params.set("category", category);
   const data = await apiRequest(`/store/products?${params.toString()}`);
   return getPageContent(data).map(normalizeProduct);
 }
