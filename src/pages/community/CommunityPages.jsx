@@ -337,8 +337,8 @@ function ParticipantAvatarStack({ current = 1, max = 4, hostLabel = "방장", de
 }
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
-export function CommunityListPage({ onPost, onWrite, onBack }) {
-  const [tab, setTab] = useState("동행");
+export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동행", onTabChange }) {
+  const [tab, setTab] = useState(initialTab);
   const [scope, setScope] = useState("전체");
   const [sort, setSort] = useState("latest");
   const [posts, setPosts] = useState([]);
@@ -387,6 +387,19 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
     return () => { ignore = true; };
   }, []);
 
+  useEffect(() => {
+    setTab(initialTab);
+    setScope("전체");
+    setSort("latest");
+  }, [initialTab]);
+
+  const handleTabChange = (nextTab) => {
+    setTab(nextTab);
+    setScope("전체");
+    setSort("latest");
+    onTabChange?.(nextTab);
+  };
+
   return (
     <div style={S.screen} className="community-list-screen">
       <div className="community-list-hero">
@@ -396,11 +409,11 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
           <h1>같이 걸을 골목 친구를 찾아보세요.</h1>
           <p>동행 모집과 여행 이야기를 한 곳에서 나눠보세요.</p>
         </div>
-        <button type="button" onClick={onWrite}>글쓰기</button>
+        <button type="button" onClick={() => onWrite?.(tab)}>글쓰기</button>
       </div>
       <div className="community-list-tabs">
         {["동행", "자유"].map(t => (
-          <button key={t} type="button" onClick={() => { setTab(t); setScope("전체"); setSort("latest"); }} className={tab === t ? "active" : ""}>
+          <button key={t} type="button" onClick={() => handleTabChange(t)} className={tab === t ? "active" : ""}>
             {t === "동행" ? "동행 게시판" : "자유 게시판"}
             <span>{t === "동행" ? companionCount : freeCount}</span>
           </button>
@@ -429,7 +442,7 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
               title="게시글이 없습니다."
               description="동행 게시판이나 자유 게시판에 첫 글을 남겨보세요."
               actionLabel="글쓰기"
-              onAction={onWrite}
+              onAction={() => onWrite?.(tab)}
             />
           )}
           {status === "error" && (
@@ -454,18 +467,22 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
             const createdRelative = formatRelativeTime(p.createdAt ?? p.date);
 
             return (
-            <article key={p.id} onClick={() => onPost(p)} className={`community-list-card ${closed ? "closed" : ""}`}>
-              <div className={`community-date-block ${closed ? "closed" : ""}`}>
-                <small>{dateParts.month}</small>
-                <strong>{dateParts.day}</strong>
-              </div>
+            <article key={p.id} onClick={() => onPost(p)} className={`community-list-card ${isCompanionPost ? "" : "free-post"} ${closed ? "closed" : ""}`}>
+              {isCompanionPost && (
+                <div className={`community-date-block ${closed ? "closed" : ""}`}>
+                  <small>{dateParts.month}</small>
+                  <strong>{dateParts.day}</strong>
+                </div>
+              )}
               <div className="community-list-card-body">
                 <div className="community-list-card-head">
                   <div>
-                    <span className={isCompanionPost ? (closed ? "closed" : "open") : "free"}>
-                      {isCompanionPost ? (closed ? "마감" : "모집중") : "자유"}
-                    </span>
-                    <small className="community-location-label"><LocationIcon />{p.place}</small>
+                    {isCompanionPost && (
+                      <span className={closed ? "closed" : "open"}>
+                        {closed ? "마감" : "모집중"}
+                      </span>
+                    )}
+                    {isCompanionPost && <small className="community-location-label"><LocationIcon />{p.place}</small>}
                   </div>
                   {isCompanionPost && (
                     <div className="community-card-participants">
@@ -477,7 +494,7 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
                 <h2>{p.title}</h2>
                 <p className="card-preview">{p.content}</p>
                 <div className="community-list-card-foot">
-                  <span>{createdRelative ? `작성 ${createdRelative}` : "작성일 미정"}</span>
+                  {isCompanionPost && <span>{createdRelative ? `작성 ${createdRelative}` : "작성일 미정"}</span>}
                   <span className="community-card-stats">
                     <span><CommunityStatIcon type="comments" />{p.comments}</span>
                     <span><CommunityStatIcon type="views" />{p.views}</span>
@@ -996,7 +1013,6 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                 </div>
               </div>
               <p className="community-detail-content">{post.content}</p>
-              {!isCompanion && <div className="community-review-write-note">관광지/가게 리뷰 작성은 각 상세 페이지에서만 가능합니다.</div>}
             </section>
 
             {isCompanion ? (
@@ -1180,14 +1196,10 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                 <div className="community-info-grid">
                   <div><span>모임일</span><strong>{meetingDateText}</strong></div>
                   <div><span>시간</span><strong>{post.meetingTime ?? "시간 협의"}</strong></div>
-                  <div><span>언어</span><strong>{post.language ?? "한국어"}</strong></div>
-                  <div><span>작성일</span><strong>{createdDateTimeText}</strong></div>
                 </div>
               ) : (
                 <div className="community-info-grid">
                   <div><span>댓글</span><strong>{comments.length}</strong></div>
-                  <div><span>작성일</span><strong>{createdDateTimeText}</strong></div>
-                  <div><span>분류</span><strong>자유 게시판</strong></div>
                   <div><span>장소</span><strong>{post.place}</strong></div>
                 </div>
               )}
@@ -1245,11 +1257,11 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
 }
 
 // ─── 게시글 작성 ──────────────────────────────────────────────────────
-export function CommunityWritePage({ post: initialPost, onBack, onSaved, showToast }) {
+export function CommunityWritePage({ post: initialPost, initialType = "동행", onBack, onSaved, showToast }) {
   const isEditing = Boolean(initialPost?.id);
   const todayValue = toLocalDateValue(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [type, setType] = useState(initialPost?.type ?? "동행");
+  const [type, setType] = useState(initialPost?.type ?? initialType);
   const [form, setForm] = useState(() => ({
     title: initialPost?.title ?? "",
     content: initialPost?.content ?? "",
@@ -1374,7 +1386,6 @@ export function CommunityWritePage({ post: initialPost, onBack, onSaved, showToa
               </div>
             ))}
           </div>
-          <div className="community-write-policy">관광지/가게 리뷰는 각 상세 페이지에서만 작성할 수 있습니다.</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

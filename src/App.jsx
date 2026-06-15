@@ -153,6 +153,8 @@ export default function App() {
   const [selectedPlace, setSelectedPlace] = useState(storedNavigation?.selectedPlace || null);
   const [selectedRoom, setSelectedRoom] = useState(storedNavigation?.selectedRoom || null);
   const [selectedPost, setSelectedPost] = useState(storedNavigation?.selectedPost || null);
+  const [communityTab, setCommunityTab] = useState(storedNavigation?.communityTab || "동행");
+  const [communityWriteType, setCommunityWriteType] = useState(storedNavigation?.communityWriteType || "동행");
   const [selectedProduct, setSelectedProduct] = useState(storedNavigation?.selectedProduct || null);
   const [selectedShop, setSelectedShop] = useState(storedNavigation?.selectedShop || null);
   const [selectedFestival, setSelectedFestival] = useState(storedNavigation?.selectedFestival || null);
@@ -174,6 +176,8 @@ export default function App() {
     selectedPlace,
     selectedRoom,
     selectedPost,
+    communityTab,
+    communityWriteType,
     selectedProduct,
     selectedShop,
     selectedFestival,
@@ -187,6 +191,8 @@ export default function App() {
     setSelectedPlace(state.selectedPlace || null);
     setSelectedRoom(state.selectedRoom || null);
     setSelectedPost(state.selectedPost || null);
+    setCommunityTab(state.communityTab || "동행");
+    setCommunityWriteType(state.communityWriteType || "동행");
     setSelectedProduct(state.selectedProduct || null);
     setSelectedShop(state.selectedShop || null);
     setSelectedFestival(state.selectedFestival || null);
@@ -438,7 +444,7 @@ export default function App() {
     }
 
     window.history.pushState(state, "", window.location.href);
-  }, [appState, screen, tab, selectedPlace, selectedRoom, selectedPost, selectedProduct, selectedShop, selectedFestival, selectedMerchantShopId]);
+  }, [appState, screen, tab, selectedPlace, selectedRoom, selectedPost, communityTab, communityWriteType, selectedProduct, selectedShop, selectedFestival, selectedMerchantShopId]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("comfortable-view", comfortableView);
@@ -564,15 +570,15 @@ export default function App() {
       <AppShell active={tab} screen={screen} onTab={handleTab} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount} onNotificationIntent={requestSystemNotificationPermission}>
         {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={(festival) => { setSelectedFestival(festival); go("festDetail"); }} onTab={handleTab} onSignup={() => setAppState("signup")} showToast={showToast} user={user} />}
         {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
-        {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} onCompanionMore={() => go("community")} onCompanionWrite={() => { setSelectedPost(null); go("communityWrite"); }} />}
+        {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} onCompanionMore={() => { setCommunityTab("동행"); go("community"); }} onCompanionWrite={() => { setSelectedPost(null); setCommunityWriteType("동행"); go("communityWrite"); }} />}
         {screen === "direction"        && <DirectionPage place={selectedPlace} onBack={() => go("place")} />}
         {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} />}
         {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
         {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
         {screen === "festDetail"       && <FestivalDetailPage festival={selectedFestival} onBack={() => go("fest")} />}
-        {screen === "community"        && <CommunityListPage onPost={(p) => { setSelectedPost(p); go("communityPost"); }} onWrite={() => { setSelectedPost(null); go("communityWrite"); }} onBack={() => go(tab)} />}
-        {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => go("community")} onEdit={(post) => { setSelectedPost(post); go("communityWrite"); }} onDeleted={() => { setSelectedPost(null); go("community"); }} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); setTab("chat"); go("chat"); }} onPlaceClick={handlePlaceClick} />}
-        {screen === "communityWrite"   && <CommunityWritePage post={selectedPost} onBack={() => go(selectedPost ? "communityPost" : "community")} onSaved={(post) => { setSelectedPost(post); go("communityPost"); }} showToast={showToast} />}
+        {screen === "community"        && <CommunityListPage initialTab={communityTab} onTabChange={setCommunityTab} onPost={(p) => { setSelectedPost(p); setCommunityTab(p.type || communityTab); go("communityPost"); }} onWrite={(type) => { const nextType = type || communityTab; setSelectedPost(null); setCommunityWriteType(nextType); setCommunityTab(nextType); go("communityWrite"); }} onBack={() => go(tab)} />}
+        {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => { setCommunityTab(selectedPost?.type || communityTab); go("community"); }} onEdit={(post) => { setSelectedPost(post); setCommunityWriteType(post.type || communityTab); go("communityWrite"); }} onDeleted={() => { const nextType = selectedPost?.type || communityTab; setSelectedPost(null); setCommunityTab(nextType); go("community"); }} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); setTab("chat"); go("chat"); }} onPlaceClick={handlePlaceClick} />}
+        {screen === "communityWrite"   && <CommunityWritePage post={selectedPost} initialType={communityWriteType} onBack={() => { if (selectedPost) { go("communityPost"); return; } setCommunityTab(communityWriteType); go("community"); }} onSaved={(post) => { const nextType = post?.type || communityWriteType; setCommunityTab(nextType); setSelectedPost(post); go("communityPost"); }} showToast={showToast} />}
         {screen === "chat"             && <ChatWorkspacePage selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} onLogin={() => setAppState("login")} showToast={showToast} />}
         {screen === "chatRequest"      && <ChatRequestPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} />}
         {screen === "pay"              && <PayChargePage onBack={() => go("my")} onDone={() => go("my")} showToast={showToast} />}

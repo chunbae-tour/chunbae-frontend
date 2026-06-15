@@ -22,7 +22,7 @@ function normalizeComment(comment = {}) {
 export async function fetchCommunityPosts() {
   const [companions, freePosts] = await Promise.allSettled([
     apiRequest("/community/posts/companions?size=20"),
-    apiRequest("/community/posts/free?size=20"),
+    apiRequest("/community/posts/free?size=10"),
   ]);
 
   const companionPosts = companions.status === "fulfilled" ? getPageContent(companions.value).map(normalizeCompanionPost) : [];

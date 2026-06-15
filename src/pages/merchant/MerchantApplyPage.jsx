@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
@@ -6,6 +6,7 @@ import { applyMerchant } from "../../services/merchantService.js";
 import { geocodeAddress } from "../../services/placeService.js";
 
 export function MerchantApplyPage({ onBack, showToast, onLogin }) {
+  const scrollAreaRef = useRef(null);
   const [form, setForm] = useState({
     shopName: "",
     category: "",
@@ -20,6 +21,11 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
   const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+    scrollAreaRef.current?.scrollTo({ top: 0, left: 0 });
+  }, []);
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -87,7 +93,7 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
         <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>🏪 상인 신청</span>
       </div>
-      <div style={S.scrollArea}>
+      <div style={S.scrollArea} ref={scrollAreaRef}>
         <div style={{ padding: 16 }}>
           <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "12px 14px", color: "#B87800", fontSize: 14, marginBottom: 16 }}>
             상인 신청 후 관리자 심사를 거쳐 승인되면 상인 기능을 이용할 수 있습니다.
