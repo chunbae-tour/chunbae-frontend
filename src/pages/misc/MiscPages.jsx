@@ -723,6 +723,15 @@ function isFestivalEnded(festival = {}, today = new Date()) {
   return endDate < todayStart;
 }
 
+function FestivalLocationIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
 export function FestivalPage({ onBack, onCalendar, onFestival }) {
   const [filter, setFilter] = useState("전체");
   const [festivals, setFestivals] = useState([]);
@@ -899,13 +908,9 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
             const progressStatus = getFestivalProgressStatus(f);
             return (
             <button type="button" onClick={() => onFestival?.(f)} key={f.id} className="festival-list-card">
-              <div className="festival-date-block">
-                <span>{f.month}</span>
-                <strong>{f.day}</strong>
-              </div>
               <div className="festival-card-copy">
                 <strong>{f.name}</strong>
-                <span>📍 {f.location}</span>
+                <span className="festival-location-line"><FestivalLocationIcon />{f.location}</span>
                 <span>📅 {f.date}</span>
               </div>
               <span className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}>

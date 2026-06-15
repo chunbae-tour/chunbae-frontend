@@ -27,6 +27,15 @@ function toDateParam(year, month, day) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function LocationIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
 export default function FestivalCalendarPage({ onBack, onFestival }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -80,11 +89,42 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
 
   const firstDay = new Date(year, month - 1, 1).getDay();
   const lastDate = new Date(year, month, 0).getDate();
+  const prevLastDate = new Date(year, month - 1, 0).getDate();
   const festByDay = {};
 
   Object.entries(calendarEvents).forEach(([date, events]) => {
     festByDay[Number(date.slice(-2))] = Array.isArray(events) ? events : [];
   });
+
+  const calendarCells = Array.from({ length: 42 }, (_, index) => {
+    const currentDay = index - firstDay + 1;
+    if (currentDay < 1) {
+      const date = new Date(year, month - 2, 1);
+      return {
+        day: prevLastDate + currentDay,
+        month: date.getMonth() + 1,
+        year: date.getFullYear(),
+        monthOffset: -1,
+      };
+    }
+    if (currentDay > lastDate) {
+      const date = new Date(year, month, 1);
+      return {
+        day: currentDay - lastDate,
+        month: date.getMonth() + 1,
+        year: date.getFullYear(),
+        monthOffset: 1,
+      };
+    }
+    return { day: currentDay, month, year, monthOffset: 0 };
+  });
+
+  const selectCalendarDay = (cell) => {
+    setSelectedDay(cell.day);
+    if (cell.monthOffset === 0) return;
+    setYear(cell.year);
+    setMonth(cell.month);
+  };
 
   const prevMonth = () => {
     if (month === 1) {
@@ -123,41 +163,54 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
       </div>
 
       <div style={S.scrollArea}>
-        <div className="festival-calendar-grid">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
-            {DAYS.map((day, index) => (
-              <div key={day} style={{ textAlign: "center", fontSize: 14, fontWeight: 700, color: index === 0 ? "#E24B4A" : index === 6 ? "#378ADD" : COLORS.textMuted, padding: "4px 0" }}>{day}</div>
-            ))}
-          </div>
+        <div className="festival-calendar-layout">
+          <section className="festival-hanok-calendar">
+            <div className="festival-hanok-roof" aria-hidden="true">
+              <span />
+              <div>{Array.from({ length: 14 }).map((_, index) => <i key={index} />)}</div>
+            </div>
+            <div className="festival-hanok-body">
+              <div className="festival-calendar-grid">
+                <div className="festival-calendar-weekdays">
+                  {DAYS.map((day, index) => (
+                    <div key={day} className={index === 0 ? "sunday" : index === 6 ? "saturday" : ""}>{day}</div>
+                  ))}
+                </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px 0", paddingBottom: 12 }}>
-            {Array.from({ length: firstDay }).map((_, index) => <div key={`empty-${index}`} />)}
-            {Array.from({ length: lastDate }).map((_, index) => {
-              const day = index + 1;
-              const hasFest = festByDay[day]?.length > 0;
-              const isSelected = selectedDay === day;
-              const isToday = day === today.getDate() && month === today.getMonth() + 1 && year === today.getFullYear();
-              const weekday = (firstDay + index) % 7;
-              const defaultColor = weekday === 0 ? "#E24B4A" : weekday === 6 ? "#378ADD" : COLORS.primary;
+                <div className="festival-calendar-days">
+                  {calendarCells.map((cell, index) => {
+                    const dayEvents = cell.monthOffset === 0 ? festByDay[cell.day] ?? [] : [];
+                    const hasFest = dayEvents.length > 0;
+                    const isSelected = cell.monthOffset === 0 && selectedDay === cell.day;
+                    const isToday = cell.day === today.getDate() && cell.month === today.getMonth() + 1 && cell.year === today.getFullYear();
+                    const weekday = index % 7;
+                    const defaultColor = weekday === 0 ? "#E24B4A" : weekday === 6 ? "#378ADD" : COLORS.primary;
 
-              return (
-                <button type="button" key={day} onClick={() => setSelectedDay(day)} className={`festival-calendar-day${isSelected ? " selected" : ""}${isToday ? " today" : ""}`}>
-                  <span className="festival-calendar-day-number" style={{ color: !isSelected && !isToday ? defaultColor : undefined }}>{day}</span>
-                  {hasFest && (
-                    <div className="festival-calendar-dots">
-                      {festByDay[day].slice(0, 4).map((event, eventIndex) => (
-                        <i key={`${event.festivalId ?? event.id ?? day}-${eventIndex}`} style={{ background: getFestivalDotColor(event) }} />
-                      ))}
-                      {festByDay[day].length > 4 && <small>+{festByDay[day].length - 4}</small>}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                    return (
+                      <button
+                        type="button"
+                        key={`${cell.year}-${cell.month}-${cell.day}`}
+                        onClick={() => selectCalendarDay(cell)}
+                        className={`festival-calendar-day${isSelected ? " selected" : ""}${isToday ? " today" : ""}${cell.monthOffset !== 0 ? " muted" : ""}`}
+                      >
+                        <span className="festival-calendar-day-number" style={{ color: !isSelected && !isToday ? defaultColor : undefined }}>{cell.day}</span>
+                        {hasFest && (
+                          <div className="festival-calendar-dots">
+                            {dayEvents.slice(0, 4).map((event, eventIndex) => (
+                              <i key={`${event.festivalId ?? event.id ?? cell.day}-${eventIndex}`} style={{ background: getFestivalDotColor(event) }} />
+                            ))}
+                            {dayEvents.length > 4 && <small>+{dayEvents.length - 4}</small>}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
 
-        <div className="festival-daily-panel">
+          <section className="festival-daily-panel">
           <div className="festival-daily-title">
             <strong>{month}월 {selectedDay}일 행사</strong>
             <span>{festivals.length}건</span>
@@ -186,19 +239,16 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
               const progressStatus = getFestivalStatus(festival);
               return (
               <button type="button" onClick={() => onFestival?.(festival)} key={festival.id} className="festival-list-card">
-                <div className="festival-date-block">
-                  <span>{festival.month}</span>
-                  <strong>{festival.day}</strong>
-                </div>
                 <div className="festival-card-copy">
                   <strong>{festival.name}</strong>
-                  <span>📍 {festival.location || "장소 미정"} · {festival.date}</span>
+                  <span className="festival-location-line"><LocationIcon />{festival.location || "장소 미정"} · {festival.date}</span>
                 </div>
                 <span className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}>{PROGRESS_LABELS[progressStatus] ?? progressStatus}</span>
                 <span className="festival-card-chevron" aria-hidden="true">›</span>
               </button>
             )})
           )}
+          </section>
         </div>
       </div>
     </div>
