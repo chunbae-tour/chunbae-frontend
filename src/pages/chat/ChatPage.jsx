@@ -356,18 +356,15 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
   );
 }
 
-export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onOpenMobileRoom, onLogin, showToast }) {
+export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onLogin, showToast }) {
   const selectedRoomId = selectedRoom?.chatRoomId ?? selectedRoom?.id;
 
   const handleRoomSelect = (room) => {
     onSelectRoom?.(room);
-    if (window.matchMedia("(max-width: 900px)").matches) {
-      onOpenMobileRoom?.(room);
-    }
   };
 
   return (
-    <div className="chat-workspace-page">
+    <div className={`chat-workspace-page${selectedRoom ? " has-selected-room" : ""}`}>
       <aside className="chat-workspace-sidebar">
         <ChatListPage
           compact
@@ -379,12 +376,17 @@ export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onOpenMobileRoom
       </aside>
       <section className="chat-workspace-detail">
         {selectedRoom ? (
-          <ChatRoomPage
-            key={selectedRoomId}
-            embedded
-            room={selectedRoom}
-            showToast={showToast}
-          />
+          <>
+            <button type="button" className="chat-workspace-mobile-back" onClick={() => onSelectRoom?.(null)}>
+              ← 채팅 목록
+            </button>
+            <ChatRoomPage
+              key={selectedRoomId}
+              embedded
+              room={selectedRoom}
+              showToast={showToast}
+            />
+          </>
         ) : (
           <div className="chat-workspace-empty">
             <span>💬</span>

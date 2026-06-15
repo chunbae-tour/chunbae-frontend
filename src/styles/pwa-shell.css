@@ -8781,6 +8781,10 @@ button:disabled,
   background: #fbfaf7;
 }
 
+.chat-workspace-mobile-back {
+  display: none;
+}
+
 .chat-workspace-list-head {
   min-height: 84px;
   display: flex;
@@ -10463,6 +10467,29 @@ button:disabled,
 
   .chat-workspace-detail {
     display: none;
+  }
+
+  .chat-workspace-page.has-selected-room .chat-workspace-sidebar {
+    display: none;
+  }
+
+  .chat-workspace-page.has-selected-room .chat-workspace-detail {
+    display: block;
+    min-height: 100%;
+  }
+
+  .chat-workspace-mobile-back {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    border: 0;
+    border-bottom: 1px solid rgba(26, 26, 46, 0.1);
+    background: #ffffff;
+    color: #2c6e49;
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
   }
 
   .web-chat-list-page.is-compact {
