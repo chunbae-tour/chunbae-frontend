@@ -26,9 +26,16 @@ const FALLBACK_PLACES = [
 ];
 
 function getFestivalStatus(festival = {}) {
-  const raw = String(festival.dday || festival.progressStatus || "").trim();
-  if (!raw || raw === "ONGOING") return "진행 중";
-  return raw;
+  const raw = String(festival.progressStatus || festival.dday || "").trim().toUpperCase().replace(/-/g, "_");
+  if (!raw || raw === "ONGOING" || raw === "IN_PROGRESS") return "진행 중";
+  if (raw === "UPCOMING") return "예정";
+  if (raw === "ENDED") return "종료";
+  return festival.progressStatus || festival.dday || "";
+}
+
+function isFestivalInProgress(festival = {}) {
+  const raw = String(festival.progressStatus || festival.dday || "").trim().toUpperCase().replace(/-/g, "_");
+  return raw === "ONGOING" || raw === "IN_PROGRESS";
 }
 
 function getFestivalMonthDay(festival = {}) {
@@ -173,10 +180,13 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
     }));
   }, [nearbyPlaces]);
 
+  const inProgressFestivals = useMemo(
+    () => festivals.filter(isFestivalInProgress),
+    [festivals],
+  );
+
   const stats = [
-    { label: "등록 시장 수", value: `${Math.max(nearbyPlaces.filter(place => place.type === "전통시장").length, 128)}+` },
-    { label: "동행 완료 수", value: "340+" },
-    { label: "진행 중 축제 수", value: `${Math.max(festivals.length, 12)}개` },
+    { label: "진행 중 축제 수", value: `${inProgressFestivals.length}개` },
   ];
 
   const handlePrimaryCta = () => {
@@ -282,9 +292,10 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
         {festivalStatus === "loading" && <SkeletonList count={3} />}
         {festivalStatus === "error" && <div className="home-landing-empty">축제 일정을 불러오지 못했습니다.</div>}
         {festivalStatus === "empty" && <div className="home-landing-empty">진행 중인 축제 일정이 아직 없습니다.</div>}
-        {festivalStatus === "success" && (
+        {festivalStatus === "success" && inProgressFestivals.length === 0 && <div className="home-landing-empty">진행 중인 축제 일정이 아직 없습니다.</div>}
+        {festivalStatus === "success" && inProgressFestivals.length > 0 && (
           <div className="home-festival-schedule">
-            {festivals.slice(0, 4).map((festival) => {
+            {inProgressFestivals.slice(0, 4).map((festival) => {
               const { month, day } = getFestivalMonthDay(festival);
               return (
                 <button key={festival.id} type="button" className="home-festival-schedule-card" onClick={() => onFestClick(festival)}>

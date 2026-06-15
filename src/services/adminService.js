@@ -7,6 +7,7 @@ export function normalizeAdminUser(user = {}) {
     nickname: user.nickname ?? user.name ?? "사용자",
     email: user.email ?? "",
     date: user.joinedAt ?? user.createdAt ?? user.date ?? "",
+    role: user.role ?? "USER",
     status,
   };
 }
@@ -77,10 +78,11 @@ export async function fetchAdminDashboard() {
   return apiRequest("/admin/dashboard", { auth: true, role: "ADMIN" });
 }
 
-export async function fetchAdminUsers({ keyword = "", status = "" } = {}) {
+export async function fetchAdminUsers({ keyword = "", status = "", role = "" } = {}) {
   const params = new URLSearchParams({ size: "20" });
   if (keyword) params.set("keyword", keyword);
   if (status && status !== "전체") params.set("status", status === "정지" ? "SUSPENDED" : "ACTIVE");
+  if (role && role !== "전체") params.set("role", role);
   const data = await apiRequest(`/admin/users?${params.toString()}`, { auth: true, role: "ADMIN" });
   return getPageContent(data).map(normalizeAdminUser);
 }

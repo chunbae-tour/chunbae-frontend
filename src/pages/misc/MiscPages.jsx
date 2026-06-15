@@ -7,7 +7,7 @@ import { fetchFaqs, fetchFaqTranslation } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, deleteNotification, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
 import { updateCurrentUserProfile } from "../../services/authService.js";
-import YeopjeonImg from "../../assets/yeopjeon-icon.png";
+import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
 import { fetchUserHomeStats } from "../../services/myService.js";
@@ -227,7 +227,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
                   <SkeletonBlock className="caption" />
                 </div>
               ) : (
-                <div style={{ color: "#ffd369", fontSize: 26, fontWeight: 800, lineHeight: 1 }}>🪙 {balance.toLocaleString()} 엽전</div>
+                <div className="my-balance-amount">{balance.toLocaleString()}냥</div>
               )}
               <div className="my-balance-subtext">충전 후 전통시장에서 QR 결제 가능</div>
             </div>

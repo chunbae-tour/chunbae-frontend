@@ -408,6 +408,7 @@ export function AdminDashboardPage({ onBack, onNav }) {
 // ─── 유저 관리 ────────────────────────────────────────────────────────
 export function AdminUsersPage({ onBack, showToast }) {
   const [filter, setFilter] = useState("전체");
+  const [roleFilter, setRoleFilter] = useState("전체");
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -418,7 +419,7 @@ export function AdminUsersPage({ onBack, showToast }) {
     const timer = setTimeout(() => {
       setStatus("loading");
       setErrorMessage("");
-      fetchAdminUsers({ keyword: query, status: filter })
+      fetchAdminUsers({ keyword: query, status: filter, role: roleFilter })
         .then((data) => {
           if (ignore) return;
           setUsers(data);
@@ -436,9 +437,18 @@ export function AdminUsersPage({ onBack, showToast }) {
       ignore = true;
       clearTimeout(timer);
     };
-  }, [filter, query]);
+  }, [filter, query, roleFilter]);
 
-  const filtered = users.filter(u => (filter === "전체" || u.status === filter) && (u.nickname.includes(query) || u.email.includes(query)));
+  const filtered = users.filter(u => (
+    (filter === "전체" || u.status === filter)
+    && (roleFilter === "전체" || u.role === roleFilter)
+    && (u.nickname.includes(query) || u.email.includes(query))
+  ));
+  const roleMeta = {
+    USER: { label: "일반 사용자", background: "#E6F1FB", color: "#185FA5" },
+    MERCHANT: { label: "상인", background: COLORS.greenBg, color: COLORS.green },
+    ADMIN: { label: "관리자", background: "#FAEEDA", color: "#854F0B" },
+  };
 
   const toggleSuspension = async (user) => {
     try {
@@ -466,9 +476,35 @@ export function AdminUsersPage({ onBack, showToast }) {
       </div>
       <div style={{ padding: 16, background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="🔍 이메일/닉네임 검색" style={{ width: "100%", background: COLORS.bg, border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {["전체", "정상", "정지"].map(f => (
             <div key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: filter === f ? COLORS.primary : COLORS.bg, color: filter === f ? "#fff" : COLORS.textMuted }}>{f}</div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, paddingTop: 8, borderTop: "0.5px solid rgba(0,0,0,0.06)" }}>
+          {[
+            ["전체", "전체 역할"],
+            ["USER", "일반 사용자"],
+            ["MERCHANT", "상인"],
+            ["ADMIN", "관리자"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRoleFilter(value)}
+              style={{
+                border: `0.5px solid ${roleFilter === value ? COLORS.primary : "rgba(0,0,0,0.12)"}`,
+                background: roleFilter === value ? COLORS.greenBg : "#fff",
+                color: roleFilter === value ? COLORS.primary : COLORS.textMuted,
+                borderRadius: 8,
+                padding: "6px 10px",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
           ))}
         </div>
       </div>
@@ -486,9 +522,14 @@ export function AdminUsersPage({ onBack, showToast }) {
         )}
         {filtered.map(u => (
           <div key={u.id} style={{ background: "#fff", margin: "10px 16px 0", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{u.nickname}</span>
-              <span style={{ fontSize: 14, background: u.status === "정상" ? COLORS.greenBg : "#FEE8E8", color: u.status === "정상" ? COLORS.green : "#A32D2D", borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{u.status}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{u.nickname}</span>
+                <span style={{ fontSize: 11, background: roleMeta[u.role]?.background ?? COLORS.bg, color: roleMeta[u.role]?.color ?? COLORS.textMuted, borderRadius: 6, padding: "3px 7px", fontWeight: 700 }}>
+                  {roleMeta[u.role]?.label ?? u.role}
+                </span>
+              </div>
+              <span style={{ fontSize: 12, background: u.status === "정상" ? COLORS.greenBg : "#FEE8E8", color: u.status === "정상" ? COLORS.green : "#A32D2D", borderRadius: 6, padding: "3px 8px", fontWeight: 700, flexShrink: 0 }}>{u.status}</span>
             </div>
             <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 10 }}>{u.email} · 가입 {u.date}</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -2040,11 +2081,20 @@ export function AdminShopsPage({ onBack, showToast }) {
     }
   };
 
+  const hasCoordinates = shop?.lat != null
+    && shop?.lng != null
+    && Number.isFinite(Number(shop.lat))
+    && Number.isFinite(Number(shop.lng));
+  // TODO: AdminShopDetailResponse에 placeId/placeName/traditionalMarketId/traditionalMarketName 추가 필요.
+  const mapUrl = hasCoordinates
+    ? `https://map.kakao.com/link/map/${encodeURIComponent(shop?.shopName ?? "가게")},${shop.lat},${shop.lng}`
+    : "";
+
   return (
-    <AdminShell title="가게 도구" onBack={onBack}>
+    <AdminShell title="가게 상세 관리" onBack={onBack}>
       <AdminCard style={{ background: "#FFF7D7" }}>
         <div style={{ fontSize: 14, color: "#8A4B00", fontWeight: 700 }}>
-          관리자 가게 목록 API는 OpenAPI 명세에 없습니다. 현재는 shopId를 입력해 단건 조회/수정/상태 변경/장소 연결만 할 수 있습니다.
+          관리자 가게 목록 API가 없어 현재는 가게 ID로 단건 조회합니다. 연결된 전통시장 이름은 상세 응답에 포함되지 않아 ID 기준으로 관리합니다.
         </div>
       </AdminCard>
       <AdminCard>
@@ -2056,13 +2106,78 @@ export function AdminShopsPage({ onBack, showToast }) {
       {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={2} /></div>}
       {status === "error" && <div style={{ margin: 16 }}><ErrorState title="가게를 불러오지 못했습니다." description="shopId와 관리자 권한을 확인해주세요." onRetry={loadShop} /></div>}
       {shop && (
-        <AdminCard>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-            <strong style={{ color: COLORS.primary }}>{shop.shopName ?? shop.name ?? `가게 ${shop.id}`}</strong>
-            <AdminStatusBadge status={shop.status} />
-          </div>
-          <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{shop.category ?? "-"} · {shop.address ?? "-"}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+        <>
+          <AdminCard>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <strong style={{ color: COLORS.primary, fontSize: 20 }}>{shop.shopName ?? shop.name ?? `가게 ${shop.id}`}</strong>
+                  {shop.isCertified && <span style={{ padding: "3px 8px", borderRadius: 6, background: COLORS.greenBg, color: COLORS.green, fontSize: 11, fontWeight: 700 }}>인증 가게</span>}
+                </div>
+                <div style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>가게 ID {shop.id} · 소유자 ID {shop.userId ?? "-"}</div>
+              </div>
+              <AdminStatusBadge status={shop.status} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, marginTop: 16 }}>
+              {[
+                ["카테고리", shop.category ?? "미등록"],
+                ["주소", shop.address ?? "주소 미등록"],
+                ["전화번호", shop.phone ?? "전화번호 미등록"],
+                ["운영시간", shop.operatingHours ?? "운영시간 미등록"],
+                ["휴무일", shop.closedDays ?? "휴무일 미등록"],
+                ["평점·리뷰", `${shop.rating ?? 0}점 · 리뷰 ${shop.reviewCount ?? 0}개`],
+              ].map(([label, value]) => (
+                <div key={label} style={{ background: COLORS.bg, borderRadius: 8, padding: "11px 12px", minWidth: 0 }}>
+                  <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{label}</div>
+                  <div style={{ color: COLORS.text, fontSize: 13, fontWeight: 700, overflowWrap: "anywhere" }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </AdminCard>
+
+          <AdminCard>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <div>
+                <strong style={{ color: COLORS.primary }}>위치 및 장소 연결</strong>
+                <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>가게가 실제로 어디에 있고 어떤 장소에 속하는지 확인합니다.</div>
+              </div>
+              {mapUrl && (
+                <a href={mapUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", border: `1px solid ${COLORS.primary}`, color: COLORS.primary, padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                  지도에서 보기
+                </a>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 8 }}>
+              <div style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 12 }}>
+                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>실제 위치</div>
+                <div style={{ marginTop: 5, fontWeight: 700, color: COLORS.text }}>{shop.address || "주소 정보 없음"}</div>
+                <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>
+                  {hasCoordinates ? `위도 ${shop.lat} · 경도 ${shop.lng}` : "좌표 정보 없음"}
+                </div>
+              </div>
+              <div style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 12 }}>
+                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>연결된 장소</div>
+                <div style={{ marginTop: 5, fontWeight: 700, color: shop.placeId ? COLORS.primary : "#A32D2D" }}>
+                  {shop.placeId ? `장소 ID ${shop.placeId}` : "연결된 장소 없음"}
+                </div>
+                <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>장소 상세 이름은 현재 API 응답에 포함되지 않습니다.</div>
+              </div>
+              <div style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 12 }}>
+                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>소속 전통시장</div>
+                <div style={{ marginTop: 5, fontWeight: 700, color: shop.traditionalMarketId ? COLORS.primary : "#A32D2D" }}>
+                  {shop.traditionalMarketId ? `전통시장 ID ${shop.traditionalMarketId}` : "연결된 전통시장 없음"}
+                </div>
+                <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>시장 이름 확인을 위해 상세 응답 필드 추가가 필요합니다.</div>
+              </div>
+            </div>
+          </AdminCard>
+
+          <AdminCard>
+            <strong style={{ color: COLORS.primary }}>관리자 편집</strong>
+            <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>가게 상태와 연결 정보를 변경하거나 운영 정보를 보완합니다.</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
             <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
               <option value="ACTIVE">ACTIVE</option>
               <option value="SUSPENDED">SUSPENDED</option>
@@ -2078,7 +2193,8 @@ export function AdminShopsPage({ onBack, showToast }) {
             <textarea placeholder="가게 소개" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 90, resize: "vertical" }} />
           </div>
           <AdminButton onClick={saveBasic} style={{ width: "100%", marginTop: 10 }}>기본 정보 저장</AdminButton>
-        </AdminCard>
+          </AdminCard>
+        </>
       )}
     </AdminShell>
   );
