@@ -4,6 +4,21 @@ function getCommunityPostTypePath(type) {
   return type === "동행" || type === "companions" || type === "COMPANION" ? "companions" : "free";
 }
 
+function normalizeComment(comment = {}) {
+  return {
+    id: comment.commentId ?? comment.id,
+    parentCommentId: comment.parentCommentId ?? null,
+    author: comment.writer?.nickname ?? comment.nickname ?? comment.author ?? "여행자",
+    writerId: comment.writer?.userId ?? comment.writerId ?? comment.userId ?? null,
+    profileImageUrl: comment.writer?.profileImageUrl ?? comment.profileImageUrl ?? "",
+    text: comment.content ?? comment.text ?? "",
+    time: comment.createdAt ?? comment.time ?? "",
+    updatedAt: comment.updatedAt ?? "",
+    replyCount: Number(comment.replyCount ?? 0),
+    deleted: Boolean(comment.deleted),
+  };
+}
+
 export async function fetchCommunityPosts() {
   const [companions, freePosts] = await Promise.allSettled([
     apiRequest("/community/posts/companions?size=20"),
@@ -50,12 +65,7 @@ export async function fetchCommunityComments(postId, postType = "free") {
   const params = new URLSearchParams({ size: "20" });
   const typePath = getCommunityPostTypePath(postType);
   const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments?${params.toString()}`);
-  return getPageContent(data).map(comment => ({
-    id: comment.commentId ?? comment.id,
-    author: comment.writer?.nickname ?? comment.nickname ?? comment.author ?? "여행자",
-    text: comment.content ?? comment.text ?? "",
-    time: comment.createdAt ?? comment.time ?? "",
-  }));
+  return getPageContent(data).map(normalizeComment);
 }
 
 export async function createCommunityPost(payload) {
@@ -86,21 +96,15 @@ export async function createCommunityPost(payload) {
   return normalizeFreePost(data);
 }
 
-export async function createCommunityComment({ postId, postType = "free", text }) {
+export async function createCommunityComment({ postId, postType = "free", text, parentCommentId = null }) {
   const typePath = getCommunityPostTypePath(postType);
   const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments`, {
     method: "POST",
     auth: true,
     role: "USER",
-    body: { content: text },
+    body: { content: text, ...(parentCommentId ? { parentCommentId } : {}) },
   });
-  return {
-    id: data.commentId ?? data.id ?? Date.now(),
-    author: data.writer?.nickname ?? data.nickname ?? "여행자지수",
-    text: data.content ?? text,
-    time: data.createdAt ?? "방금",
-    postId,
-  };
+  return { ...normalizeComment(data), id: data.commentId ?? data.id ?? Date.now(), text: data.content ?? text, time: data.createdAt ?? "방금", postId };
 }
 
 function normalizeCompanionPost(post = {}) {
@@ -148,11 +152,26 @@ function normalizeFreePost(post = {}) {
 
 export async function updateCommunityPost(postId, postType, payload) {
   const typePath = getCommunityPostTypePath(postType);
+  const body = typePath === "companions"
+    ? {
+        title: payload.title,
+        content: payload.content,
+        placeId: payload.placeId,
+        placeName: payload.place ?? payload.placeName,
+        region: payload.region ?? "",
+        meetingDate: payload.date ?? payload.meetingDate,
+        maxMembers: Number(payload.maxPeople ?? payload.maxMembers ?? 4),
+      }
+    : {
+        title: payload.title,
+        content: payload.content,
+        imageUrls: payload.imageUrls ?? [],
+      };
   const data = await apiRequest(`/community/posts/${typePath}/${postId}`, {
     method: typePath === "companions" ? "PUT" : "PATCH",
     auth: true,
     role: "USER",
-    body: payload,
+    body,
   });
   return typePath === "companions" ? normalizeCompanionPost(data) : normalizeFreePost(data);
 }
@@ -168,17 +187,13 @@ export async function deleteCommunityPost(postId, postType) {
 
 export async function updateComment(postId, postType, commentId, text) {
   const typePath = getCommunityPostTypePath(postType);
-  const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}`, {
+  await apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}`, {
     method: "PATCH",
     auth: true,
     role: "USER",
     body: { content: text },
   });
-  return {
-    id: data.commentId ?? data.id,
-    text: data.content ?? text,
-    time: data.createdAt ?? "방금",
-  };
+  return { id: commentId, text };
 }
 
 export async function deleteComment(postId, postType, commentId) {
@@ -192,14 +207,6 @@ export async function deleteComment(postId, postType, commentId) {
 
 export async function fetchReplies(postId, postType, commentId) {
   const typePath = getCommunityPostTypePath(postType);
-  const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}/replies`, {
-    auth: true,
-    role: "USER",
-  });
-  return getPageContent(data).map(comment => ({
-    id: comment.commentId ?? comment.id,
-    author: comment.writer?.nickname ?? comment.nickname ?? "여행자",
-    text: comment.content ?? comment.text ?? "",
-    time: comment.createdAt ?? comment.time ?? "",
-  }));
+  const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}/replies`);
+  return getPageContent(data).map(normalizeComment);
 }

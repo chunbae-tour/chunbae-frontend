@@ -1,9 +1,10 @@
 ﻿import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, fetchMyChatRooms, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
-import { createCommunityComment, createCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts } from "../../services/communityService.js";
+import { createCommunityComment, createCommunityPost, deleteComment, deleteCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, fetchReplies, updateComment, updateCommunityPost } from "../../services/communityService.js";
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { searchPlaces } from "../../services/searchService.js";
 
@@ -76,8 +77,166 @@ function formatRelativeTime(value) {
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) return `${diffHours}시간 전`;
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}일 전`;
-  return formatCompactDate(value);
+  if (diffDays < 30) return `${diffDays}일 전`;
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths}개월 전`;
+  return `${Math.floor(diffMonths / 12)}년 전`;
+}
+
+function toLocalDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addLocalDays(date, days) {
+  const next = new Date(date);
+  next.setHours(12, 0, 0, 0);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getUpcomingSaturday(date, nextWeek = false) {
+  const daysUntilSaturday = (6 - date.getDay() + 7) % 7;
+  return addLocalDays(date, daysUntilSaturday + (nextWeek ? 7 : 0));
+}
+
+function formatMeetingDate(value) {
+  if (!value) return "날짜를 선택해주세요";
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return "날짜를 선택해주세요";
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(date);
+}
+
+function getCalendarCells(year, month) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const currentMonthDays = new Date(year, month + 1, 0).getDate();
+  const previousMonthDays = new Date(year, month, 0).getDate();
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const dayOffset = index - firstDay + 1;
+    if (dayOffset < 1) {
+      const day = previousMonthDays + dayOffset;
+      return { day, value: toLocalDateValue(new Date(year, month - 1, day)), outside: true };
+    }
+    if (dayOffset > currentMonthDays) {
+      const day = dayOffset - currentMonthDays;
+      return { day, value: toLocalDateValue(new Date(year, month + 1, day)), outside: true };
+    }
+    return { day: dayOffset, value: toLocalDateValue(new Date(year, month, dayOffset)), outside: false };
+  });
+}
+
+function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
+  const [viewDate, setViewDate] = useState(() => new Date(`${value || min}T12:00:00`));
+  const [draftDate, setDraftDate] = useState(value || min);
+  const [wheelMode, setWheelMode] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setViewDate(new Date(`${value || min}T12:00:00`));
+    setDraftDate(value || min);
+    setWheelMode(null);
+  }, [open, value, min]);
+
+  if (!open) return null;
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const cells = getCalendarCells(year, month);
+  const years = Array.from({ length: 21 }, (_, index) => year - 10 + index);
+  const months = Array.from({ length: 12 }, (_, index) => index);
+
+  const moveMonth = (offset) => {
+    setViewDate(new Date(year, month + offset, 1, 12));
+    setWheelMode(null);
+  };
+
+  const changeYear = (nextYear) => setViewDate(new Date(nextYear, month, 1, 12));
+  const changeMonth = (nextMonth) => setViewDate(new Date(year, nextMonth, 1, 12));
+  const handleWheel = (event, mode) => {
+    event.preventDefault();
+    if (mode === "year") changeYear(year + (event.deltaY > 0 ? 1 : -1));
+    if (mode === "month") changeMonth((month + (event.deltaY > 0 ? 1 : -1) + 12) % 12);
+  };
+
+  return createPortal(
+    <div className="hanok-calendar-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="hanok-calendar" role="dialog" aria-modal="true" aria-label="모임 날짜 선택" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="hanok-calendar-roof" aria-hidden="true">
+          <span className="hanok-roof-ridge" />
+          <div className="hanok-roof-tiles">
+            {Array.from({ length: 11 }, (_, index) => <i key={index} />)}
+          </div>
+        </div>
+        <header className="hanok-calendar-header">
+          <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
+          <div className="hanok-calendar-period">
+            <button type="button" className={wheelMode === "year" ? "active" : ""} onClick={() => setWheelMode(wheelMode === "year" ? null : "year")}>{year}년</button>
+            <button type="button" className={wheelMode === "month" ? "active" : ""} onClick={() => setWheelMode(wheelMode === "month" ? null : "month")}>{month + 1}월</button>
+          </div>
+          <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
+        </header>
+
+        {wheelMode && (
+          <div className="hanok-calendar-wheel-panel">
+            <div className="hanok-calendar-wheel-label">{wheelMode === "year" ? "연도 선택" : "월 선택"} · 마우스 휠로 넘겨보세요</div>
+            <div className="hanok-calendar-wheel" onWheel={(event) => handleWheel(event, wheelMode)}>
+              {(wheelMode === "year" ? years : months).map(option => {
+                const selected = wheelMode === "year" ? option === year : option === month;
+                return (
+                  <button type="button" key={option} className={selected ? "selected" : ""} onClick={() => wheelMode === "year" ? changeYear(option) : changeMonth(option)}>
+                    {wheelMode === "year" ? `${option}년` : `${option + 1}월`}
+                  </button>
+                );
+              })}
+            </div>
+            <button type="button" className="hanok-wheel-done" onClick={() => setWheelMode(null)}>달력 보기</button>
+          </div>
+        )}
+
+        <div className="hanok-calendar-body">
+          <div className="hanok-calendar-weekdays">
+            {["일", "월", "화", "수", "목", "금", "토"].map(day => <span key={day}>{day}</span>)}
+          </div>
+          <div className="hanok-calendar-days">
+            {cells.map(cell => (
+              <button
+                type="button"
+                key={cell.value}
+                className={`${cell.outside ? "outside" : ""} ${cell.value === draftDate ? "selected" : ""}`}
+                disabled={cell.value < min}
+                onClick={() => {
+                  setDraftDate(cell.value);
+                  if (cell.outside) setViewDate(new Date(`${cell.value}T12:00:00`));
+                }}
+              >
+                {cell.day}
+              </button>
+            ))}
+          </div>
+        </div>
+        <footer className="hanok-calendar-footer">
+          <span>{formatMeetingDate(draftDate)}</span>
+          <button type="button" onClick={() => onConfirm(draftDate)}>{new Date(`${draftDate}T12:00:00`).getDate()}일로 선택</button>
+        </footer>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
+function wasCommentEdited(comment) {
+  const createdAt = parseDateValue(comment?.time ?? comment?.createdAt);
+  const updatedAt = parseDateValue(comment?.updatedAt);
+  if (!createdAt || !updatedAt) return false;
+  return updatedAt.getTime() - createdAt.getTime() >= 1000;
 }
 
 function isClosedCompanionPost(post) {
@@ -336,7 +495,7 @@ export function CommunityListPage({ onPost, onWrite, onBack }) {
 }
 
 // ─── 게시글 상세 ──────────────────────────────────────────────────────
-export function CommunityPostPage({ post: initialPost, onBack, showToast, user, onChatRoom, onPlaceClick }) {
+export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted, showToast, user, onChatRoom, onPlaceClick }) {
   const [post, setPost] = useState(initialPost);
   const [comments, setComments] = useState([]);
   const [input, setInput] = useState("");
@@ -345,10 +504,24 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
   const [existingRoom, setExistingRoom] = useState(null);
   const [reportTarget, setReportTarget] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [deletingPost, setDeletingPost] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [commentActionId, setCommentActionId] = useState(null);
+  const [repliesByComment, setRepliesByComment] = useState({});
+  const [loadingRepliesId, setLoadingRepliesId] = useState(null);
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [replyInput, setReplyInput] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
 
   useEffect(() => {
     let ignore = false;
     setPost(initialPost);
+    setRepliesByComment({});
+    setEditingCommentId(null);
+    setEditingCommentText("");
+    setReplyTarget(null);
+    setReplyInput("");
 
     if (!initialPost?.id) return () => { ignore = true; };
 
@@ -451,6 +624,137 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
     setInput("");
   };
 
+  const isCommentOwner = (comment) => {
+    if (!comment || !user) return false;
+    return comment.writerId != null && user.userId != null && String(comment.writerId) === String(user.userId);
+  };
+
+  const startEditingComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.text);
+  };
+
+  const cancelEditingComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText("");
+  };
+
+  const saveEditedComment = async (comment) => {
+    const nextText = editingCommentText.trim();
+    if (!nextText || commentActionId) return;
+    setCommentActionId(comment.id);
+    try {
+      await updateComment(post.id, post.type, comment.id, nextText);
+      setComments(prev => prev.map(item => item.id === comment.id ? { ...item, text: nextText, updatedAt: new Date().toISOString() } : item));
+      setRepliesByComment(prev => Object.fromEntries(
+        Object.entries(prev).map(([rootId, replies]) => [
+          rootId,
+          replies.map(item => item.id === comment.id ? { ...item, text: nextText, updatedAt: new Date().toISOString() } : item),
+        ]),
+      ));
+      cancelEditingComment();
+      showToast?.("댓글을 수정했습니다.");
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setCommentActionId(null);
+    }
+  };
+
+  const removeComment = async (comment) => {
+    if (commentActionId || !window.confirm("댓글을 삭제하시겠습니까?")) return;
+    setCommentActionId(comment.id);
+    try {
+      await deleteComment(post.id, post.type, comment.id);
+      setComments(prev => prev.filter(item => item.id !== comment.id));
+      setRepliesByComment(prev => {
+        const next = { ...prev };
+        if (comment.parentCommentId) {
+          next[comment.parentCommentId] = (next[comment.parentCommentId] ?? []).filter(item => item.id !== comment.id);
+        } else {
+          delete next[comment.id];
+        }
+        return next;
+      });
+      if (comment.parentCommentId) {
+        setComments(prev => prev.map(item => item.id === comment.parentCommentId ? { ...item, replyCount: Math.max(0, item.replyCount - 1) } : item));
+      }
+      setPost(prev => prev ? { ...prev, comments: Math.max(0, (Number(prev.comments) || comments.length) - 1) } : prev);
+      showToast?.("댓글을 삭제했습니다.");
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setCommentActionId(null);
+    }
+  };
+
+  const toggleReplies = async (comment) => {
+    if (repliesByComment[comment.id]) {
+      setRepliesByComment(prev => {
+        const next = { ...prev };
+        delete next[comment.id];
+        return next;
+      });
+      return;
+    }
+    setLoadingRepliesId(comment.id);
+    try {
+      const replies = await fetchReplies(post.id, post.type, comment.id);
+      setRepliesByComment(prev => ({ ...prev, [comment.id]: replies }));
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setLoadingRepliesId(null);
+    }
+  };
+
+  const openReplyInput = async (comment, rootCommentId = comment.id) => {
+    setReplyTarget({
+      rootCommentId,
+      targetCommentId: comment.id,
+      author: comment.author,
+      preview: comment.text,
+    });
+    setReplyInput("");
+    if (!repliesByComment[rootCommentId]) {
+      setLoadingRepliesId(rootCommentId);
+      try {
+        const replies = await fetchReplies(post.id, post.type, rootCommentId);
+        setRepliesByComment(prev => ({ ...prev, [rootCommentId]: replies }));
+      } catch (error) {
+        showToast?.(getApiErrorHint(error));
+      } finally {
+        setLoadingRepliesId(null);
+      }
+    }
+  };
+
+  const sendReply = async () => {
+    const text = replyInput.trim();
+    if (!text || !replyTarget || sendingReply) return;
+    setSendingReply(true);
+    try {
+      const reply = await createCommunityComment({
+        postId: post.id,
+        postType: post.type,
+        text,
+        parentCommentId: replyTarget.rootCommentId,
+      });
+      setRepliesByComment(prev => ({
+        ...prev,
+        [replyTarget.rootCommentId]: [...(prev[replyTarget.rootCommentId] ?? []), reply],
+      }));
+      setComments(prev => prev.map(item => item.id === replyTarget.rootCommentId ? { ...item, replyCount: item.replyCount + 1 } : item));
+      setPost(prev => prev ? { ...prev, comments: (Number(prev.comments) || comments.length) + 1 } : prev);
+      setReplyTarget(null);
+      setReplyInput("");
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
   const getPostReportTargetType = () => (post?.type === "동행" ? "POST_COMPANION" : "POST_FREE");
 
   const openPostReport = () => {
@@ -463,6 +767,21 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
       targetId: post.id,
       label: `${post.type} 게시글 "${post.title}"`,
     });
+  };
+
+  const handleDeletePost = async () => {
+    if (deletingPost || !window.confirm("게시글을 삭제하시겠습니까? 삭제한 게시글은 복구할 수 없습니다.")) return;
+
+    setDeletingPost(true);
+    try {
+      await deleteCommunityPost(post.id, post.type);
+      showToast?.("게시글이 삭제되었습니다.");
+      onDeleted?.();
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setDeletingPost(false);
+    }
   };
 
   const openCommentReport = (comment) => {
@@ -638,7 +957,18 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
     <div style={S.screen} className="community-detail-screen">
       <div className="community-detail-topbar">
         <button type="button" onClick={onBack}>← 목록으로</button>
-        {!isAuthor && <button type="button" onClick={openPostReport}>신고</button>}
+        <div className="community-detail-topbar-actions">
+          {isAuthor ? (
+            <>
+              <button type="button" onClick={() => onEdit?.(post)}>수정</button>
+              <button type="button" className="danger" onClick={handleDeletePost} disabled={deletingPost}>
+                {deletingPost ? "삭제 중..." : "삭제"}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={openPostReport}>신고</button>
+          )}
+        </div>
       </div>
 
       <div style={S.scrollArea} className="community-detail-scroll">
@@ -711,17 +1041,105 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
                   description="첫 댓글로 동행 일정이나 궁금한 점을 남겨보세요."
                 />
               )}
-              {comments.map(c => (
-                <div key={c.id} className="community-comment-card">
-                  <div className="community-comment-head">
-                    <div>👤</div>
-                    <strong>{c.author}</strong>
-                    <span>{formatKoreanDateTime(c.time ?? c.createdAt) || "방금 전"}</span>
-                    <button type="button" className="community-comment-report" onClick={() => openCommentReport(c)}>신고</button>
+              {comments.map(c => {
+                const replies = repliesByComment[c.id];
+                const isEditing = editingCommentId === c.id;
+                return (
+                  <div key={c.id} className="community-comment-thread">
+                    <div className="community-comment-card">
+                      <div className="community-comment-head">
+                        <div>👤</div>
+                        <strong>{c.author}</strong>
+                        <span>{formatRelativeTime(c.time ?? c.createdAt) || "방금"}{wasCommentEdited(c) ? " · 수정됨" : ""}</span>
+                        <div className="community-comment-actions">
+                          {!c.deleted && <button type="button" onClick={() => openReplyInput(c)}>답글</button>}
+                          {!c.deleted && isCommentOwner(c) ? (
+                            <>
+                              <button type="button" onClick={() => startEditingComment(c)}>수정</button>
+                              <button type="button" className="danger" disabled={commentActionId === c.id} onClick={() => removeComment(c)}>삭제</button>
+                            </>
+                          ) : !c.deleted ? (
+                            <button type="button" className="danger" onClick={() => openCommentReport(c)}>신고</button>
+                          ) : null}
+                        </div>
+                      </div>
+                      {isEditing ? (
+                        <div className="community-comment-edit">
+                          <input value={editingCommentText} maxLength={1000} onChange={(e) => setEditingCommentText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEditedComment(c)} autoFocus />
+                          <button type="button" onClick={() => saveEditedComment(c)} disabled={!editingCommentText.trim() || commentActionId === c.id}>저장</button>
+                          <button type="button" className="subtle" onClick={cancelEditingComment}>취소</button>
+                        </div>
+                      ) : (
+                        <p>{c.deleted ? "삭제된 댓글입니다." : c.text}</p>
+                      )}
+                      {c.replyCount > 0 && (
+                        <button type="button" className="community-replies-toggle" disabled={loadingRepliesId === c.id} onClick={() => toggleReplies(c)}>
+                          {loadingRepliesId === c.id ? "답글 불러오는 중..." : replies ? "답글 접기 ∧" : `답글 ${c.replyCount}개 보기 ›`}
+                        </button>
+                      )}
+                    </div>
+                    {replyTarget?.targetCommentId === c.id && (
+                      <div className="community-reply-input">
+                        <span><strong>{replyTarget.author}</strong>님에게 답글 · {replyTarget.preview}</span>
+                        <div>
+                          <input value={replyInput} maxLength={1000} onChange={(e) => setReplyInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="답글을 입력하세요..." autoFocus />
+                          <button type="button" onClick={sendReply} disabled={!replyInput.trim() || sendingReply}>{sendingReply ? "등록 중" : "등록"}</button>
+                          <button type="button" className="subtle" onClick={() => { setReplyTarget(null); setReplyInput(""); }}>취소</button>
+                        </div>
+                      </div>
+                    )}
+                    {replies && (
+                      <div className="community-replies">
+                        {replies.length === 0 && <span className="community-replies-empty">표시할 대댓글이 없습니다.</span>}
+                        {replies.map(reply => {
+                          const isReplyEditing = editingCommentId === reply.id;
+                          return (
+                            <div key={reply.id} className="community-reply-thread">
+                              <div className="community-comment-card community-reply-card">
+                                <div className="community-comment-head">
+                                  <div>↳</div>
+                                  <strong>{reply.author}</strong>
+                                  <span>{formatRelativeTime(reply.time ?? reply.createdAt) || "방금"}{wasCommentEdited(reply) ? " · 수정됨" : ""}</span>
+                                  <div className="community-comment-actions">
+                                    {!reply.deleted && <button type="button" onClick={() => openReplyInput(reply, c.id)}>답글</button>}
+                                    {!reply.deleted && isCommentOwner(reply) ? (
+                                      <>
+                                        <button type="button" onClick={() => startEditingComment(reply)}>수정</button>
+                                        <button type="button" className="danger" disabled={commentActionId === reply.id} onClick={() => removeComment(reply)}>삭제</button>
+                                      </>
+                                    ) : !reply.deleted ? (
+                                      <button type="button" className="danger" onClick={() => openCommentReport(reply)}>신고</button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                {isReplyEditing ? (
+                                  <div className="community-comment-edit">
+                                    <input value={editingCommentText} maxLength={1000} onChange={(e) => setEditingCommentText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEditedComment(reply)} autoFocus />
+                                    <button type="button" onClick={() => saveEditedComment(reply)} disabled={!editingCommentText.trim() || commentActionId === reply.id}>저장</button>
+                                    <button type="button" className="subtle" onClick={cancelEditingComment}>취소</button>
+                                  </div>
+                                ) : (
+                                  <p>{reply.deleted ? "삭제된 댓글입니다." : reply.text}</p>
+                                )}
+                              </div>
+                              {replyTarget?.targetCommentId === reply.id && (
+                                <div className="community-reply-input community-nested-reply-input">
+                                  <span><strong>{replyTarget.author}</strong>님에게 답글 · {replyTarget.preview}</span>
+                                  <div>
+                                    <input value={replyInput} maxLength={1000} onChange={(e) => setReplyInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="답글을 입력하세요..." autoFocus />
+                                    <button type="button" onClick={sendReply} disabled={!replyInput.trim() || sendingReply}>{sendingReply ? "등록 중" : "등록"}</button>
+                                    <button type="button" className="subtle" onClick={() => { setReplyTarget(null); setReplyInput(""); }}>취소</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <p>{c.text}</p>
-                </div>
-              ))}
+                );
+              })}
               <div className="community-comment-input">
                 <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendComment()} placeholder="댓글을 입력하세요..." />
                 <button type="button" onClick={sendComment}>등록</button>
@@ -827,14 +1245,32 @@ export function CommunityPostPage({ post: initialPost, onBack, showToast, user, 
 }
 
 // ─── 게시글 작성 ──────────────────────────────────────────────────────
-export function CommunityWritePage({ onBack, showToast }) {
-  const [type, setType] = useState("동행");
-  const [form, setForm] = useState({ title: "", content: "", place: "", placeId: null, region: "", date: "", maxPeople: "4" });
-  const [placeQuery, setPlaceQuery] = useState("");
+export function CommunityWritePage({ post: initialPost, onBack, onSaved, showToast }) {
+  const isEditing = Boolean(initialPost?.id);
+  const todayValue = toLocalDateValue(new Date());
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [type, setType] = useState(initialPost?.type ?? "동행");
+  const [form, setForm] = useState(() => ({
+    title: initialPost?.title ?? "",
+    content: initialPost?.content ?? "",
+    place: initialPost?.place ?? initialPost?.placeName ?? "",
+    placeId: initialPost?.placeId ?? null,
+    region: initialPost?.region ?? "",
+    date: initialPost?.meetingDate ?? initialPost?.date ?? "",
+    maxPeople: String(initialPost?.maxMembers ?? initialPost?.max ?? 4),
+    imageUrls: initialPost?.imageUrls ?? [],
+  }));
+  const [placeQuery, setPlaceQuery] = useState(initialPost?.place ?? initialPost?.placeName ?? "");
   const [placeResults, setPlaceResults] = useState([]);
   const [placeSearchStatus, setPlaceSearchStatus] = useState("idle");
   const [submitting, setSubmitting] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const quickMeetingDates = [
+    { label: "오늘", value: todayValue },
+    { label: "내일", value: toLocalDateValue(addLocalDays(new Date(), 1)) },
+    { label: "이번 주말", value: toLocalDateValue(getUpcomingSaturday(new Date())) },
+    { label: "다음 주말", value: toLocalDateValue(getUpcomingSaturday(new Date(), true)) },
+  ];
 
   useEffect(() => {
     if (type !== "동행") {
@@ -897,18 +1333,26 @@ export function CommunityWritePage({ onBack, showToast }) {
     if (type === "동행") {
       if (!form.placeId || !form.place) { showToast("동행할 관광지를 검색해서 선택해주세요."); return; }
       if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
+      if (form.date < todayValue) { showToast("오늘 이후 날짜를 선택해주세요."); return; }
     }
     setSubmitting(true);
     try {
-      await createCommunityPost({ type, ...form });
+      const responsePost = isEditing
+        ? await updateCommunityPost(initialPost.id, type, form)
+        : await createCommunityPost({ type, ...form });
+      const savedPost = isEditing ? { ...initialPost, ...responsePost } : responsePost;
+      showToast(isEditing ? "게시글이 수정되었습니다." : "게시글이 등록되었습니다! 🎉");
+      if (onSaved) {
+        onSaved(savedPost);
+      } else {
+        setTimeout(onBack, 1200);
+      }
     } catch (error) {
       showToast(getApiErrorHint(error));
       return;
     } finally {
       setSubmitting(false);
     }
-    showToast("게시글이 등록되었습니다! 🎉");
-    setTimeout(onBack, 1200);
   };
 
   return (
@@ -916,7 +1360,7 @@ export function CommunityWritePage({ onBack, showToast }) {
       <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
-          <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>게시글 작성</span>
+          <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{isEditing ? "게시글 수정" : "게시글 작성"}</span>
         </div>
       </div>
       <div style={{ ...S.scrollArea, padding: 20 }}>
@@ -925,7 +1369,7 @@ export function CommunityWritePage({ onBack, showToast }) {
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 10 }}>게시판 선택</div>
           <div style={{ display: "flex", gap: 10 }}>
             {["동행", "자유"].map(t => (
-              <div key={t} onClick={() => setType(t)} style={{ flex: 1, background: type === t ? COLORS.primary : "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: "pointer", color: type === t ? "#fff" : COLORS.textMuted, border: `1.5px solid ${type === t ? COLORS.primary : "rgba(0,0,0,0.08)"}` }}>
+              <div key={t} onClick={() => !isEditing && setType(t)} style={{ flex: 1, background: type === t ? COLORS.primary : "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: isEditing ? "default" : "pointer", opacity: isEditing && type !== t ? 0.45 : 1, color: type === t ? "#fff" : COLORS.textMuted, border: `1.5px solid ${type === t ? COLORS.primary : "rgba(0,0,0,0.08)"}` }}>
                 {t === "동행" ? "동행 게시판" : "자유 게시판"}
               </div>
             ))}
@@ -987,7 +1431,33 @@ export function CommunityWritePage({ onBack, showToast }) {
             <>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>모임 날짜</div>
-                <input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+                <div className="community-date-picker">
+                  <div className="community-date-quick-options" aria-label="빠른 날짜 선택">
+                    {quickMeetingDates.map(option => (
+                      <button
+                        key={option.label}
+                        type="button"
+                        className={form.date === option.value ? "active" : ""}
+                        onClick={() => set("date", option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={`community-date-display ${form.date ? "selected" : ""}`}
+                    onClick={() => setCalendarOpen(true)}
+                  >
+                    <span className="community-date-calendar-icon" aria-hidden="true">▣</span>
+                    <span>
+                      <small>{form.date ? "선택한 모임 날짜" : "직접 날짜 선택"}</small>
+                      <strong>{formatMeetingDate(form.date)}</strong>
+                    </span>
+                    <em>달력 열기</em>
+                  </button>
+                  <p className="community-date-help">과거 날짜는 선택할 수 없어요. 참여자가 확인할 수 있도록 확정된 날짜를 선택해주세요.</p>
+                </div>
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>최대 인원</div>
@@ -1006,11 +1476,21 @@ export function CommunityWritePage({ onBack, showToast }) {
           </div>
           <div className="community-write-actions">
             <button type="button" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? "등록 중..." : "게시글 등록"}
+              {submitting ? (isEditing ? "수정 중..." : "등록 중...") : (isEditing ? "수정 완료" : "게시글 등록")}
             </button>
           </div>
         </div>
       </div>
+      <HanokCalendarModal
+        open={calendarOpen}
+        value={form.date}
+        min={todayValue}
+        onClose={() => setCalendarOpen(false)}
+        onConfirm={(date) => {
+          set("date", date);
+          setCalendarOpen(false);
+        }}
+      />
     </div>
   );
 }
