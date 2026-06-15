@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonBlock, SkeletonList } from "../../components/common";
-import YeopjeonImg from "../../assets/yeopjeon-icon.png";
+import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import {
@@ -18,7 +18,7 @@ import {
 
 const WON_TO_YEOPJEON_RATE = 10;
 const formatWon = (value) => `${value.toLocaleString()}원`;
-const formatYeopjeon = (value) => `${value.toLocaleString()} 엽전`;
+const formatYeopjeon = (value) => `${value.toLocaleString()}냥`;
 const toYeopjeon = (won) => Math.floor(won / WON_TO_YEOPJEON_RATE);
 
 export function PayChargePage({ onBack, onDone, showToast }) {
@@ -72,7 +72,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
 
   const handleCharge = async () => {
     if (charging) return;
-    if (!selected) { showToast("충전할 엽전을 선택해주세요!"); return; }
+    if (!selected) { showToast("충전할 금액을 선택해주세요!"); return; }
     setCharging(true);
     setError("");
     setSettlementMessage("");
@@ -95,12 +95,12 @@ export function PayChargePage({ onBack, onDone, showToast }) {
       }
 
       if (settlement.status === "completed" || settlement.status === "balance-updated") {
-        showToast(`엽전 충전이 반영되었습니다. 주문번호: ${result.orderUid || "확인 필요"}`);
+        showToast(`충전이 반영되었습니다. 주문번호: ${result.orderUid || "확인 필요"}`);
         setTimeout(onDone, 900);
         return;
       }
 
-      setError("결제는 승인됐지만 엽전 반영을 아직 확인하지 못했습니다. PortOne 웹훅 수신과 백엔드 결제 상태를 확인해주세요.");
+      setError("결제는 승인됐지만 잔액 반영을 아직 확인하지 못했습니다. 잠시 후 이용 내역을 확인해주세요.");
     } catch (err) {
       console.error("Charge payment failed", err);
       setError(err.message || "결제 요청 중 문제가 발생했습니다.");
@@ -112,7 +112,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
 
   return (
     <div style={S.screen} className="web-payment-page">
-      <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="web-page-topbar payment-charge-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
         <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <img src={YeopjeonImg} alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }} />
@@ -122,7 +122,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
       <div style={S.scrollArea} className="web-detail-scroll">
         <div className="web-payment-layout">
         <div className="web-payment-balance" style={{ background: COLORS.primary, margin: 16, borderRadius: 16, padding: 20, textAlign: "center" }}>
-          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginBottom: 6 }}>현재 엽전 잔액</div>
+          <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, marginBottom: 6 }}>현재 잔액</div>
           {balanceStatus === "loading" ? (
             <div className="payment-balance-skeleton" aria-label="잔액을 불러오는 중입니다.">
               <SkeletonBlock className="coin" />
@@ -137,15 +137,15 @@ export function PayChargePage({ onBack, onDone, showToast }) {
                 <img src={YeopjeonImg} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", boxShadow: "0 10px 26px rgba(255,180,30,0.28)" }} />
                 {balance.toLocaleString()}
               </div>
-              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, marginTop: 4 }}>엽전</div>
+              <div className="payment-balance-unit">냥</div>
             </>
           )}
           {balanceStatus === "error" && <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, marginTop: 8 }}>{balanceError}</div>}
         </div>
-        <div className="web-payment-section" style={{ padding: "0 16px 16px" }}>
+        <div className="web-payment-section web-payment-amount-section" style={{ padding: "0 16px 16px" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>충전 금액 선택</div>
           <div className="payment-rate-note">
-            최소 충전은 5,000원부터 가능해요. 1,000원 = 100엽전 기준으로 충전됩니다.
+            최소 충전은 5,000원부터 가능해요. 1,000원 결제 시 100냥이 충전됩니다.
           </div>
           <div className="web-payment-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
             {amounts.map(a => (
@@ -157,7 +157,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
             ))}
           </div>
         </div>
-        <div className="web-payment-section" style={{ padding: "0 16px 16px" }}>
+        <div className="web-payment-section web-payment-method-section" style={{ padding: "0 16px 16px" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>결제 수단</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {methods.map(m => (
@@ -178,7 +178,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
           {selected && (
             <div style={{ background: COLORS.bg, borderRadius: 12, padding: "12px 16px", marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>
-                <span>충전 엽전</span><span style={{ fontWeight: 700, color: COLORS.primary }}>{selected.label}</span>
+                <span>충전 수량</span><span style={{ fontWeight: 700, color: COLORS.primary }}>{selected.label}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.textMuted }}>
                 <span>결제 금액</span><span style={{ fontWeight: 700, color: COLORS.primary }}>{selected.price}</span>
@@ -194,7 +194,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
           <button type="button" className="payment-primary-action" disabled={charging} onClick={handleCharge} style={{ width: "100%", border: "none", background: COLORS.accent, color: COLORS.primary, borderRadius: 14, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: charging ? "default" : "pointer", opacity: charging ? 0.7 : 1 }}>
             {charging ? (settlementMessage ? "충전 반영 확인 중..." : "결제창 여는 중...") : selected ? `${selected.price} 결제 요청하기` : "충전할 금액을 먼저 선택해주세요"}
           </button>
-          <div style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center", marginTop: 8 }}>결제창에서 결제를 완료하면 웹훅으로 엽전 충전이 반영됩니다.</div>
+          <div style={{ fontSize: 13, color: COLORS.textMuted, textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>결제 완료 후 잔액 반영까지 잠시 걸릴 수 있습니다.</div>
         </div>
         </div>
       </div>
@@ -302,11 +302,11 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
 
   return (
     <div style={S.screen} className="web-payment-page">
-      <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="web-page-topbar payment-history-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
         <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>이용 내역</span>
       </div>
-      <div style={{ background: COLORS.primary, padding: "0 16px 20px", textAlign: "center" }}>
+      <div className="payment-history-balance-card" style={{ background: COLORS.primary, padding: "0 16px 20px", textAlign: "center" }}>
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>현재 잔액</div>
         {balanceStatus === "loading" ? (
           <div className="payment-history-balance-skeleton" aria-label="현재 잔액을 불러오는 중입니다.">
@@ -316,7 +316,7 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
         ) : (
           <div style={{ color: COLORS.accent, fontSize: 28, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <img src={YeopjeonImg} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
-            {balance.toLocaleString()} 엽전
+            {balance.toLocaleString()}냥
           </div>
         )}
         {balanceStatus === "error" && (
@@ -326,7 +326,8 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
         )}
       </div>
       <div style={S.scrollArea} className="web-detail-scroll">
-        <div style={{ display: "flex", gap: 8, padding: "16px 16px 0" }}>
+        <div className="payment-history-content">
+        <div className="payment-history-tabs" style={{ display: "flex", gap: 8, padding: "16px 16px 0" }}>
           {[
             { key: "yeopjeon", label: "엽전 내역" },
             { key: "chargeRefund", label: "충전/환불 내역" },
@@ -351,7 +352,7 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
             </button>
           ))}
         </div>
-        <div className="web-history-list" style={{ padding: 16 }}>
+        <div className="web-history-list payment-history-list" style={{ padding: 16 }}>
           {activeHistoryTab === "yeopjeon" && (
             <>
               {status === "loading" && <SkeletonList count={4} />}
@@ -468,6 +469,7 @@ export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast })
               ))}
             </>
           )}
+        </div>
         </div>
       </div>
     </div>

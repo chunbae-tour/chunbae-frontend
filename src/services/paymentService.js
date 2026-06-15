@@ -57,7 +57,7 @@ function formatDateTime(value) {
 function formatYeopjeonHistoryAmount(value) {
   const amount = Number(value) || 0;
   const sign = amount > 0 ? "+" : "";
-  return `${sign}${amount.toLocaleString()}전`;
+  return `${sign}${amount.toLocaleString()}냥`;
 }
 
 class PaymentApiError extends Error {
