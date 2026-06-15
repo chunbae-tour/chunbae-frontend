@@ -24,6 +24,9 @@ dist-ssr/
 .cache/
 coverage/
 .vite/
+playwright-report/
+test-results/
+blob-report/
 
 # Editor directories and files
 .vscode/*
