@@ -258,13 +258,33 @@ export async function cancelCompanion(chatRoomId) {
   return true;
 }
 
+function normalizeCompanionUserIds(userIds = []) {
+  const normalized = [...new Set(
+    userIds
+      .map((userId) => Number(userId))
+      .filter((userId) => Number.isInteger(userId) && userId > 0),
+  )];
+
+  if (normalized.length === 0) {
+    throw new ChatApiError("추가할 동행 참여자를 선택해주세요.", "COMPANION_PARTICIPANTS_REQUIRED", 400);
+  }
+
+  if (normalized.length > 50) {
+    throw new ChatApiError("동행 참여자는 한 번에 최대 50명까지 추가할 수 있습니다.", "COMPANION_PARTICIPANTS_TOO_MANY", 400);
+  }
+
+  return normalized;
+}
+
 export async function addCompanionParticipants(chatRoomId, userIds = []) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
+  const normalizedUserIds = normalizeCompanionUserIds(userIds);
+
   return apiRequest(`/chat/rooms/${chatRoomId}/companion/participants`, {
     method: "POST",
     auth: true,
     role: "USER",
-    body: { participantUserIds: userIds },
+    body: { userIds: normalizedUserIds },
   });
 }
 
