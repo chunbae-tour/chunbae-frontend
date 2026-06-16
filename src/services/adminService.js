@@ -1,4 +1,5 @@
 import { ApiClientError, apiRequest, getPageContent } from "./apiClient.js";
+import { getProductCategoryCode, isProductCategoryCode } from "../constants/productCategories.js";
 
 export function normalizeAdminUser(user = {}) {
   const status = user.status === "SUSPENDED" || user.suspended ? "정지" : "정상";
@@ -428,10 +429,12 @@ export async function deleteAdminProduct(productId) {
 
 export async function fetchAdminProducts({ category, cursor, size = 100 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
-  if (category) params.set("category", category);
+  if (category && isProductCategoryCode(category)) params.set("category", getProductCategoryCode(category));
   if (cursor) params.set("cursor", cursor);
-  // 관리자 전용 목록 API는 현재 OpenAPI에 없으므로 공개 상품 목록을 사용합니다.
-  const data = await apiRequest(`/store/products?${params.toString()}`);
+  const data = await apiRequest(`/admin/store/products?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
   return getPageContent(data);
 }
 

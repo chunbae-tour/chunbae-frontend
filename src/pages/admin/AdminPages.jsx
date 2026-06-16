@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
-import { PRODUCT_CATEGORIES, getProductCategoryLabel } from "../../constants/productCategories.js";
+import { PRODUCT_CATEGORIES, getProductCategoryCode, getProductCategoryLabel } from "../../constants/productCategories.js";
 import {
   approveAd,
   approveCertification,
@@ -1680,7 +1680,7 @@ export function AdminProductsPage({ onBack, showToast }) {
     setForm({
       name: product.name ?? "",
       description: product.description ?? "",
-      category: product.category ?? "DISCOUNT_COUPON",
+      category: getProductCategoryCode(product.category) || "DISCOUNT_COUPON",
       price: String(product.price ?? ""),
       originalPrice: String(product.originalPrice ?? ""),
       stock: String(product.stock ?? ""),

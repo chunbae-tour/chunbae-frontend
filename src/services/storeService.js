@@ -1,8 +1,9 @@
 import { apiRequest, getPageContent } from "./apiClient.js";
-import { getProductCategoryLabel } from "../constants/productCategories.js";
+import { getProductCategoryCode, getProductCategoryLabel, isProductCategoryCode } from "../constants/productCategories.js";
 
 function normalizeProduct(product = {}) {
   const id = product.productId ?? product.id;
+  const categoryCode = getProductCategoryCode(product.category);
   return {
     ...product,
     id,
@@ -11,8 +12,9 @@ function normalizeProduct(product = {}) {
     emoji: product.emoji ?? "🎟️",
     price: product.price ?? product.yeopjeonPrice ?? 0,
     stock: product.stock ?? product.remainingStock ?? 0,
-    category: product.category ?? "",
-    categoryLabel: product.categoryName ?? getProductCategoryLabel(product.category),
+    category: categoryCode,
+    categoryCode,
+    categoryLabel: product.categoryName ?? product.categoryLabel ?? getProductCategoryLabel(product.category),
     desc: product.description ?? product.desc ?? "",
     validDays: product.validDays ?? product.expireDays ?? 30,
   };
@@ -40,7 +42,7 @@ function normalizeStoreOrder(order = {}) {
 
 export async function fetchStoreProducts({ category, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
-  if (category) params.set("category", category);
+  if (category && isProductCategoryCode(category)) params.set("category", getProductCategoryCode(category));
   const data = await apiRequest(`/store/products?${params.toString()}`);
   return getPageContent(data).map(normalizeProduct);
 }

@@ -10,6 +10,23 @@ export const PRODUCT_CATEGORY_LABELS = Object.fromEntries(
   PRODUCT_CATEGORIES.map(({ value, label }) => [value, label]),
 );
 
+export const PRODUCT_CATEGORY_CODES = new Set(PRODUCT_CATEGORIES.map(({ value }) => value));
+
+export function getProductCategoryCode(category) {
+  if (!category) return "";
+  if (typeof category === "object") return category.code ?? category.value ?? "";
+  return String(category);
+}
+
 export function getProductCategoryLabel(category) {
+  if (!category) return "";
+  if (typeof category === "object") {
+    const code = getProductCategoryCode(category);
+    return category.label ?? category.displayName ?? PRODUCT_CATEGORY_LABELS[code] ?? code;
+  }
   return PRODUCT_CATEGORY_LABELS[category] ?? category ?? "";
+}
+
+export function isProductCategoryCode(category) {
+  return PRODUCT_CATEGORY_CODES.has(getProductCategoryCode(category));
 }
