@@ -19,10 +19,14 @@ export default function SignupPage({ onBack, onDone, onPrivacy, onHome }) {
 
   const validate = () => {
     const nextErrors = {};
-    if (!form.email.includes("@")) nextErrors.email = "올바른 이메일 형식이 아닙니다.";
-    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(form.pw)) nextErrors.pw = "비밀번호는 영문, 숫자, 특수문자를 포함해 8자 이상이어야 합니다.";
-    if (form.pw !== form.pwConfirm) nextErrors.pwConfirm = "비밀번호가 일치하지 않습니다.";
-    if (form.nickname.length < 2) nextErrors.nickname = "닉네임은 2자 이상이어야 합니다.";
+    const email = form.email.trim();
+    const password = form.pw.trim();
+    const passwordConfirm = form.pwConfirm.trim();
+    const nickname = form.nickname.trim();
+    if (!email.includes("@")) nextErrors.email = "올바른 이메일 형식이 아닙니다.";
+    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password)) nextErrors.pw = "비밀번호는 영문, 숫자, 특수문자를 포함해 8자 이상이어야 합니다.";
+    if (password !== passwordConfirm) nextErrors.pwConfirm = "비밀번호가 일치하지 않습니다.";
+    if (nickname.length < 2) nextErrors.nickname = "닉네임은 2자 이상이어야 합니다.";
     if (!consents.privacy) nextErrors.privacy = "개인정보 수집·이용 동의가 필요합니다.";
     return nextErrors;
   };
@@ -41,9 +45,9 @@ export default function SignupPage({ onBack, onDone, onPrivacy, onHome }) {
 
     try {
       const user = await signupAndLogin({
-        email: form.email,
-        password: form.pw,
-        nickname: form.nickname,
+        email: form.email.trim(),
+        password: form.pw.trim(),
+        nickname: form.nickname.trim(),
       });
       onDone(user);
     } catch (err) {

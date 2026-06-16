@@ -43,6 +43,17 @@ const SOCIAL_CONFIG = {
   },
 };
 
+function trimInput(value) {
+  return String(value ?? "").trim();
+}
+
+function normalizePhoneInput(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return trimInput(value);
+}
+
 function normalizeAuthData(data, fallbackRole) {
   const nickname = data.nickname
     ?? data.name
@@ -267,6 +278,8 @@ export function shouldClearSessionForError(error) {
 async function loginWithRole({ role, email, password }) {
   const normalizedRole = String(role).toUpperCase();
   const config = ROLE_CONFIG[normalizedRole];
+  const normalizedEmail = trimInput(email);
+  const normalizedPassword = trimInput(password);
 
   if (!config) {
     throw new ApiClientError("지원하지 않는 로그인 유형입니다.", "AUTH_ROLE_INVALID");
@@ -274,7 +287,7 @@ async function loginWithRole({ role, email, password }) {
 
   const data = await apiRequest(ROLE_ENDPOINTS[normalizedRole].login, {
     method: "POST",
-    body: { email, password },
+    body: { email: normalizedEmail, password: normalizedPassword },
   });
   const authData = normalizeAuthData(data, normalizedRole);
   saveSession(authData);
@@ -313,15 +326,19 @@ export async function login({ role, email, password }) {
 }
 
 export async function signupAndLogin({ email, password, nickname }) {
+  const normalizedEmail = trimInput(email);
+  const normalizedPassword = trimInput(password);
+  const normalizedNickname = trimInput(nickname);
+
   await apiRequest(ROLE_ENDPOINTS.USER.signup, {
     method: "POST",
-    body: { email, password, nickname },
+    body: { email: normalizedEmail, password: normalizedPassword, nickname: normalizedNickname },
   });
 
-  const authData = await login({ role: "USER", email, password });
+  const authData = await login({ role: "USER", email: normalizedEmail, password: normalizedPassword });
   if (authData.nickname) return authData;
 
-  const fallbackAuthData = normalizeAuthData({ ...authData, nickname }, "USER");
+  const fallbackAuthData = normalizeAuthData({ ...authData, nickname: normalizedNickname }, "USER");
   saveSession(fallbackAuthData);
   return fallbackAuthData;
 }
@@ -330,11 +347,11 @@ export async function completeOauthSignup({ ticket, name, phone, birthdate, nick
   const data = await apiRequest("/users/auth/oauth/signup", {
     method: "POST",
     body: {
-      ticket,
-      name,
-      phone,
-      birthdate,
-      nickname,
+      ticket: trimInput(ticket),
+      name: trimInput(name),
+      phone: normalizePhoneInput(phone),
+      birthdate: trimInput(birthdate),
+      nickname: trimInput(nickname),
     },
   });
 

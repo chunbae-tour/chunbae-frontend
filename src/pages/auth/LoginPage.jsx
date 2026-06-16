@@ -47,13 +47,15 @@ export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role =
 
   const handleLogin = async () => {
     if (loading) return;
-    if (!email || !pw) { setError("이메일과 비밀번호를 입력해주세요."); return; }
-    if (!email.includes("@")) { setError("올바른 이메일 형식이 아닙니다."); return; }
+    const normalizedEmail = email.trim();
+    const normalizedPassword = pw.trim();
+    if (!normalizedEmail || !normalizedPassword) { setError("이메일과 비밀번호를 입력해주세요."); return; }
+    if (!normalizedEmail.includes("@")) { setError("올바른 이메일 형식이 아닙니다."); return; }
     setError("");
     setLoading(true);
 
     try {
-      const user = await login({ role: normalizedRole, email, password: pw });
+      const user = await login({ role: normalizedRole, email: normalizedEmail, password: normalizedPassword });
       onLogin(user);
     } catch (err) {
       setError(err.message || "로그인 중 문제가 발생했습니다.");
