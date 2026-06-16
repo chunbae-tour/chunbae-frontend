@@ -4,7 +4,7 @@ import { S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchMapMarkers, fetchNearbyTravelSpotsWithLikes, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
+import { fetchMapMarkers, fetchNearbyTravelSpotsWithLikes, fetchPlaces, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
 import {
   getGeolocationErrorMessage,
   getGeolocationSupport,
@@ -12,6 +12,7 @@ import {
 } from "../../utils/geolocation.js";
 
 const MAP_FILTERS = ["전체", "관광지", "전통시장", "찜한 장소"];
+const REGION_FILTERS = ["전체", "서울", "경기", "인천", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "부산", "대구", "광주", "대전", "울산", "제주"];
 const MAX_MAP_SPAN_DEGREES = 2;
 const MARKER_REQUEST_MIN_INTERVAL_MS = 1200;
 const MARKER_RATE_LIMIT_COOLDOWN_MS = 5000;
@@ -62,6 +63,7 @@ export default function MapPage({ onPlaceClick }) {
   const [userLocation, setUserLocation] = useState(null);
   const [locationHint, setLocationHint] = useState("");
   const [regionInfo, setRegionInfo] = useState(null);
+  const [regionFilter, setRegionFilter] = useState("전체");
   const [requestingLocation, setRequestingLocation] = useState(false);
   const [pickLocationMode, setPickLocationMode] = useState(false);
   const [mapMarkers, setMapMarkers] = useState([]);
@@ -86,15 +88,18 @@ export default function MapPage({ onPlaceClick }) {
     setMapCenter(location);
   };
 
-  const loadPlaces = async (location = getDefaultLocation()) => {
+  const loadPlaces = async (location = getDefaultLocation(), region = regionFilter) => {
     applyLocation(location);
     setStatus("loading");
     setError("");
 
     try {
+      const selectedRegion = region === "전체" ? "" : region;
       const [spotsResult, regionResult] = await Promise.allSettled([
-        fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 }),
-        fetchRegionByCoordinate(location),
+        selectedRegion
+          ? fetchPlaces({ region: selectedRegion, size: 100 })
+          : fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 }),
+        selectedRegion ? Promise.resolve({ fullAddress: `${selectedRegion} 지역` }) : fetchRegionByCoordinate(location),
       ]);
       if (regionResult.status === "fulfilled") {
         setRegionInfo(regionResult.value);
@@ -225,7 +230,7 @@ export default function MapPage({ onPlaceClick }) {
 
   useEffect(() => {
     setSelectedPlace(null);
-  }, [filter]);
+  }, [filter, regionFilter]);
 
   useEffect(() => () => {
     window.clearTimeout(markerRequestTimer.current);
@@ -316,6 +321,21 @@ export default function MapPage({ onPlaceClick }) {
           <div key={f} onClick={() => setFilter(f)} className={filter === f ? "active" : ""}>
             {f}
           </div>
+        ))}
+      </div>
+      <div className="map-region-filter-row" aria-label="지역별 관광지 필터">
+        {REGION_FILTERS.map(region => (
+          <button
+            key={region}
+            type="button"
+            className={regionFilter === region ? "active" : ""}
+            onClick={() => {
+              setRegionFilter(region);
+              loadPlaces(mapCenter, region);
+            }}
+          >
+            {region}
+          </button>
         ))}
       </div>
 
