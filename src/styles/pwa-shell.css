@@ -12443,6 +12443,7 @@ button:disabled,
 }
 
 .map-filter-row,
+.map-region-filter-row,
 .map-list-head,
 .map-result-grid,
 .search-suggestion-shell,
@@ -12474,6 +12475,38 @@ button:disabled,
 .map-filter-row > div.active {
   background: #1a1a2e;
   color: #fff;
+}
+
+.map-region-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 8px auto 0;
+  padding: 0 2px;
+}
+
+.map-region-filter-row button {
+  border: 0.5px solid rgba(44, 110, 73, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: #4f5e55;
+  padding: 7px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.map-region-filter-row button:hover {
+  border-color: #2c6e49;
+  color: #2c6e49;
+}
+
+.map-region-filter-row button.active {
+  border-color: #2c6e49;
+  background: #e1f5ee;
+  color: #0f6e56;
 }
 
 .map-list-head {
@@ -13890,6 +13923,7 @@ button:disabled,
 
   .map-night-board,
   .map-filter-row,
+  .map-region-filter-row,
   .map-list-head,
   .map-result-grid,
   .map-state-card,
@@ -14048,6 +14082,7 @@ button:disabled,
 
   .map-night-board,
   .map-filter-row,
+  .map-region-filter-row,
   .map-list-head,
   .map-result-grid,
   .map-state-card,

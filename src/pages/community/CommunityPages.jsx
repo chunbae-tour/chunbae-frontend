@@ -370,12 +370,12 @@ function ParticipantAvatarStack({ current = 1, max = 4, hostLabel = "방장", de
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
 export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동행", onTabChange }) {
+  const PAGE_SIZE = 10;
   const [tab, setTab] = useState(initialTab);
   const [scope, setScope] = useState("전체");
   const [sort, setSort] = useState("latest");
   const [posts, setPosts] = useState([]);
-  const [freePage, setFreePage] = useState({ page: 1, cursor: "", nextCursor: null, hasNext: false });
-  const [freePageCursors, setFreePageCursors] = useState([""]);
+  const [boardPages, setBoardPages] = useState({ 동행: 1, 자유: 1 });
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const filtered = posts
@@ -399,28 +399,17 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
     });
   const companionCount = posts.filter(p => p.type === "동행").length;
   const freeCount = posts.filter(p => p.type === "자유").length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(boardPages[tab] ?? 1, totalPages);
+  const pagedPosts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const loadPosts = ({ freeCursor = freePageCursors[freePage.page - 1] ?? "", page = freePage.page } = {}) => {
+  const loadPosts = () => {
     setStatus("loading");
     setErrorMessage("");
-    fetchCommunityPosts({ freeCursor })
+    fetchCommunityPosts({ size: 100 })
       .then((data) => {
         const nextPosts = Array.isArray(data) ? data : data.posts ?? [];
-        const nextFreePage = Array.isArray(data) ? { cursor: freeCursor, nextCursor: null, hasNext: false } : data.freePage;
         setPosts(nextPosts);
-        setFreePage({
-          page,
-          cursor: freeCursor,
-          nextCursor: nextFreePage?.nextCursor ?? null,
-          hasNext: Boolean(nextFreePage?.hasNext),
-        });
-        if (nextFreePage?.nextCursor) {
-          setFreePageCursors(prev => {
-            const next = [...prev];
-            next[page] = nextFreePage.nextCursor;
-            return next;
-          });
-        }
         setStatus(nextPosts.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
@@ -440,27 +429,28 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
     setTab(initialTab);
     setScope("전체");
     setSort("latest");
+    setBoardPages(prev => ({ ...prev, [initialTab]: 1 }));
   }, [initialTab]);
+
+  useEffect(() => {
+    if ((boardPages[tab] ?? 1) > totalPages) {
+      setBoardPages(prev => ({ ...prev, [tab]: totalPages }));
+    }
+  }, [boardPages, tab, totalPages]);
 
   const handleTabChange = (nextTab) => {
     setTab(nextTab);
     setScope("전체");
     setSort("latest");
+    setBoardPages(prev => ({ ...prev, [nextTab]: 1 }));
     onTabChange?.(nextTab);
   };
 
-  const handleFreePageChange = (nextPage) => {
-    const cursor = freePageCursors[nextPage - 1];
-    if (cursor == null) return;
-    loadPosts({ freeCursor: cursor, page: nextPage });
+  const handlePageChange = (nextPage) => {
+    setBoardPages(prev => ({ ...prev, [tab]: nextPage }));
+    const scrollTarget = document.querySelector(".community-list-shell");
+    scrollTarget?.scrollIntoView({ block: "start", behavior: "smooth" });
   };
-
-  const freePageNumbers = tab === "자유"
-    ? Array.from(
-        { length: freePage.hasNext ? Math.max(freePage.page + 1, freePageCursors.length) : Math.max(freePage.page, freePageCursors.length) },
-        (_, index) => index + 1,
-      ).filter(pageNumber => pageNumber === 1 || freePageCursors[pageNumber - 1] != null || pageNumber === freePage.page + 1)
-    : [];
 
   return (
     <div style={S.screen} className="community-list-screen">
@@ -522,7 +512,7 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
             />
           )}
           <div className="community-card-grid">
-          {filtered.map(p => {
+          {pagedPosts.map(p => {
             const isCompanionPost = p.type === "동행";
             const closed = isCompanionPost && isClosedCompanionPost(p);
             const dateParts = getMeetingDateParts(p.meetingDate ?? p.date);
@@ -567,15 +557,14 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
             );
           })}
           </div>
-          {tab === "자유" && freePageNumbers.length > 1 && status !== "loading" && status !== "error" && (
-            <nav className="community-pagination" aria-label="자유 게시판 페이지 이동">
-              {freePageNumbers.map(pageNumber => (
+          {totalPages > 1 && status !== "loading" && status !== "error" && (
+            <nav className="community-pagination" aria-label={`${tab} 게시판 페이지 이동`}>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map(pageNumber => (
                 <button
                   key={pageNumber}
                   type="button"
-                  className={freePage.page === pageNumber ? "active" : ""}
-                  disabled={pageNumber !== 1 && freePageCursors[pageNumber - 1] == null}
-                  onClick={() => handleFreePageChange(pageNumber)}
+                  className={currentPage === pageNumber ? "active" : ""}
+                  onClick={() => handlePageChange(pageNumber)}
                 >
                   {pageNumber}
                 </button>

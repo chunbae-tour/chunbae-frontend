@@ -19,13 +19,12 @@ function normalizeComment(comment = {}) {
   };
 }
 
-export async function fetchCommunityPosts({ freeCursor = "", freeSize = 10 } = {}) {
-  const freeParams = new URLSearchParams({ size: String(freeSize) });
-  if (freeCursor) freeParams.set("cursor", freeCursor);
+export async function fetchCommunityPosts({ size = 100 } = {}) {
+  const listParams = new URLSearchParams({ size: String(size) });
 
   const [companions, freePosts] = await Promise.allSettled([
-    apiRequest("/community/posts/companions?size=20"),
-    apiRequest(`/community/posts/free?${freeParams.toString()}`),
+    apiRequest(`/community/posts/companions?${listParams.toString()}`),
+    apiRequest(`/community/posts/free?${listParams.toString()}`),
   ]);
 
   const companionPosts = companions.status === "fulfilled" ? getPageContent(companions.value).map(normalizeCompanionPost) : [];
@@ -35,12 +34,8 @@ export async function fetchCommunityPosts({ freeCursor = "", freeSize = 10 } = {
   }
   return {
     posts: [...companionPosts, ...reviewPosts],
-    freePage: {
-      cursor: freeCursor,
-      nextCursor: freePosts.status === "fulfilled" ? freePosts.value?.nextCursor ?? null : null,
-      hasNext: freePosts.status === "fulfilled" ? Boolean(freePosts.value?.hasNext) : false,
-      size: freePosts.status === "fulfilled" ? freePosts.value?.size ?? reviewPosts.length : reviewPosts.length,
-    },
+    companionPage: companions.status === "fulfilled" ? companions.value : null,
+    freePage: freePosts.status === "fulfilled" ? freePosts.value : null,
   };
 }
 
