@@ -503,7 +503,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
             <div key={notice.id} className="merchant-notice-item">
               <div>
                 <strong>{notice.title}</strong>
-                {notice.createdAt && <span>{notice.createdAt}</span>}
+                {(notice.createdAtLabel || notice.createdAt) && <span>{notice.createdAtLabel || notice.createdAt}</span>}
                 <p>{notice.content}</p>
               </div>
               <button type="button" onClick={() => handleNoticeDelete(notice.id)}>삭제</button>

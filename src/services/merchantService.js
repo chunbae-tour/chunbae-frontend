@@ -45,12 +45,29 @@ export function normalizeSettlement(item = {}) {
   };
 }
 
+function formatMerchantDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
 export function normalizeShopNotice(item = {}) {
+  const createdAt = item.createdAt ?? item.createdDate ?? item.date ?? "";
   return {
     id: item.noticeId ?? item.id,
     title: item.title ?? item.subject ?? "가게 공지",
     content: item.content ?? item.message ?? item.description ?? "",
-    createdAt: item.createdAt ?? item.createdDate ?? item.date ?? "",
+    createdAt,
+    createdAtLabel: formatMerchantDateTime(createdAt),
   };
 }
 
