@@ -385,6 +385,7 @@ export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onLogin, showToa
               embedded
               room={selectedRoom}
               showToast={showToast}
+              onBack={() => onSelectRoom?.(null)}
             />
           </>
         ) : (
@@ -434,6 +435,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const [reviewScore, setReviewScore] = useState(5);
   const [reviewContent, setReviewContent] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewedUserIds, setReviewedUserIds] = useState(() => new Set());
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translatedMessages, setTranslatedMessages] = useState({});
   const [translationErrors, setTranslationErrors] = useState({});
@@ -483,6 +485,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     !isSameUser(participant.userId, currentUserId)
     && !["MEMBER_LEFT", "MEMBER_KICKED"].includes(participant.memberState)
   ));
+  const hasReviewedParticipant = (userId) => reviewedUserIds.has(String(userId));
 
   const isMessageListNearBottom = () => {
     const node = messageScrollRef.current;
@@ -763,6 +766,29 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     return () => { ignore = true; };
   }, [roomId]);
 
+  useEffect(() => {
+    if (!roomId) return undefined;
+    let ignore = false;
+    const refreshRoomState = () => {
+      Promise.allSettled([fetchChatRoomDetail(roomId), fetchChatParticipants(roomId)])
+        .then(([detailResult, participantsResult]) => {
+          if (ignore) return;
+          if (detailResult.status === "fulfilled") {
+            setRoomDetail(detailResult.value);
+          }
+          if (participantsResult.status === "fulfilled") {
+            setParticipants(participantsResult.value);
+            setParticipantStatus(participantsResult.value.length > 0 ? "success" : "empty");
+          }
+        });
+    };
+    const intervalId = window.setInterval(refreshRoomState, 3000);
+    return () => {
+      ignore = true;
+      window.clearInterval(intervalId);
+    };
+  }, [roomId]);
+
   const send = async () => {
     const content = input.trim();
     if ((!content && pendingAttachments.length === 0) || sending) return;
@@ -849,7 +875,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     try {
       await action();
       showToast?.(successMessage);
-      afterSuccess?.();
+      await afterSuccess?.();
     } catch (error) {
       showToast?.(getApiErrorHint(error));
     } finally {
@@ -980,6 +1006,10 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       showToast?.("리뷰를 남길 참여자 정보를 찾지 못했습니다.");
       return;
     }
+    if (hasReviewedParticipant(participant.userId)) {
+      showToast?.("이미 동행 리뷰를 남긴 참여자입니다.");
+      return;
+    }
     setReviewTarget(participant);
     setReviewScore(5);
     setReviewContent("");
@@ -996,6 +1026,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         content: reviewContent.trim(),
       });
       showToast?.(`${reviewTarget.nickname || "참여자"} 님에게 동행 리뷰를 남겼습니다.`);
+      setReviewedUserIds(prev => new Set(prev).add(String(reviewTarget.userId)));
       setReviewTarget(null);
       setReviewContent("");
       setReviewScore(5);
@@ -1045,6 +1076,13 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       .then((items) => {
         setProfileReviews(items);
         setProfileReviewStatus(items.length > 0 ? "success" : "empty");
+        const alreadyReviewedByMe = items.some((item) => (
+          isSameUser(item.reviewerId ?? item.writerId ?? item.userId, currentUserId)
+          || (currentUserSession?.nickname && item.reviewerNickname === currentUserSession.nickname)
+        ));
+        if (alreadyReviewedByMe) {
+          setReviewedUserIds(prev => new Set(prev).add(String(target.userId)));
+        }
       })
       .catch(() => {
         setProfileReviews([]);
@@ -1344,7 +1382,9 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                       {messageMenuId === messageId && (
                         <div className="chat-message-menu" role="menu">
                           <button type="button" onClick={() => { setMessageMenuId(null); openProfile(messageProfile); }}>프로필 보기</button>
-                          <button type="button" disabled={reviewSubmitting} onClick={() => { setMessageMenuId(null); openCompanionReview(messageProfile); }}>동행 리뷰</button>
+                          {!hasReviewedParticipant(messageProfile.userId) && (
+                            <button type="button" disabled={reviewSubmitting} onClick={() => { setMessageMenuId(null); openCompanionReview(messageProfile); }}>동행 리뷰</button>
+                          )}
                           <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setMessageMenuId(null); handleMessageReport(m); }}>메시지 신고</button>
                         </div>
                       )}
@@ -1576,7 +1616,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
               ))}
             </div>
             <div className="chat-profile-actions">
-              {!isSameUser(profileTarget.userId, currentUserId) && (
+              {!isSameUser(profileTarget.userId, currentUserId) && !hasReviewedParticipant(profileTarget.userId) && (
                 <button type="button" disabled={reviewSubmitting} onClick={() => { openCompanionReview(profileTarget); setProfileTarget(null); }}>동행 리뷰 남기기</button>
               )}
               <button type="button" className="danger" onClick={() => { handleProfileReport(profileTarget); setProfileTarget(null); }}>사용자 신고하기</button>
@@ -1625,7 +1665,9 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                   </button>
                   {!isSameUser(participant.userId, currentUserId) && (
                     <div className="chat-management-card-actions">
-                      <button type="button" disabled={reviewSubmitting} onClick={() => openCompanionReview(participant)}>리뷰</button>
+                      {!hasReviewedParticipant(participant.userId) && (
+                        <button type="button" disabled={reviewSubmitting} onClick={() => openCompanionReview(participant)}>리뷰</button>
+                      )}
                       {isCurrentUserHost && (
                         <>
                           <button type="button" className="primary" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setOwnerTransferTarget(participant)}>방장 위임</button>
