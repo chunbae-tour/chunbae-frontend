@@ -67,10 +67,11 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
     if (key === "month" && nextValue.length === 2) dayInputRef.current?.focus();
   };
 
-  const padBirthPart = (key) => {
+  const padBirthPart = (key, rawValue) => {
+    const value = String(rawValue ?? getBirthParts(form.birthdate)[key] ?? "").replace(/\D/g, "");
+    if (!value) return;
     const parts = getBirthParts(form.birthdate);
-    if (!parts[key]) return;
-    const nextParts = { ...parts, [key]: parts[key].padStart(key === "year" ? 4 : 2, "0") };
+    const nextParts = { ...parts, [key]: value.padStart(key === "year" ? 4 : 2, "0") };
     set("birthdate", `${nextParts.year}-${nextParts.month}-${nextParts.day}`);
   };
 
@@ -188,7 +189,7 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
                 ref={monthInputRef}
                 value={birthParts.month}
                 onChange={event => setBirthPart("month", event.target.value)}
-                onBlur={() => padBirthPart("month")}
+                onBlur={event => padBirthPart("month", event.target.value)}
                 type="text"
                 inputMode="numeric"
                 placeholder="MM"
@@ -201,7 +202,7 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
                 ref={dayInputRef}
                 value={birthParts.day}
                 onChange={event => setBirthPart("day", event.target.value)}
-                onBlur={() => padBirthPart("day")}
+                onBlur={event => padBirthPart("day", event.target.value)}
                 type="text"
                 inputMode="numeric"
                 placeholder="DD"
