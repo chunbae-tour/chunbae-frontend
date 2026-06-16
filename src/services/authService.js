@@ -208,6 +208,15 @@ function assertSocialRoleMatches(authData, expectedRole) {
   throw error;
 }
 
+function getSocialLoginEndpoint(provider, role) {
+  const normalizedProvider = String(provider || "").toLowerCase();
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === "MERCHANT") {
+    return `/merchants/auth/oauth/${normalizedProvider}`;
+  }
+  return `/users/auth/oauth/${normalizedProvider}`;
+}
+
 export function getSocialLoginUrl(provider, { role = "USER" } = {}) {
   const normalizedProvider = String(provider || "").toUpperCase();
   const normalizedRole = normalizeRole(role);
@@ -280,7 +289,7 @@ export async function completeSocialLoginFromCallback(provider) {
 
   let data;
   try {
-    data = await apiRequest(`/users/auth/oauth/${normalizedProvider.toLowerCase()}`, {
+    data = await apiRequest(getSocialLoginEndpoint(normalizedProvider, expectedRole || "USER"), {
       method: "POST",
       body: {
         code,
