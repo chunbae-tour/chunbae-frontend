@@ -155,16 +155,23 @@ export function clearPendingOauthSignup() {
 }
 
 function setPendingSocialAuth({ provider, role }) {
-  sessionStorage.setItem(PENDING_SOCIAL_AUTH_KEY, JSON.stringify({
+  const payload = JSON.stringify({
     provider,
     role,
     createdAt: Date.now(),
-  }));
+  });
+  sessionStorage.setItem(PENDING_SOCIAL_AUTH_KEY, payload);
+  try {
+    localStorage.setItem(PENDING_SOCIAL_AUTH_KEY, payload);
+  } catch {
+    // localStorage is a fallback for OAuth redirects that lose sessionStorage.
+  }
 }
 
 function getPendingSocialAuth(provider) {
   try {
-    const raw = sessionStorage.getItem(PENDING_SOCIAL_AUTH_KEY);
+    const raw = sessionStorage.getItem(PENDING_SOCIAL_AUTH_KEY)
+      || localStorage.getItem(PENDING_SOCIAL_AUTH_KEY);
     const pending = raw ? JSON.parse(raw) : null;
     if (!pending) return null;
     const normalizedProvider = String(provider || "").toUpperCase();
@@ -172,12 +179,22 @@ function getPendingSocialAuth(provider) {
     return pending;
   } catch {
     sessionStorage.removeItem(PENDING_SOCIAL_AUTH_KEY);
+    try {
+      localStorage.removeItem(PENDING_SOCIAL_AUTH_KEY);
+    } catch {
+      // ignore storage cleanup failure
+    }
     return null;
   }
 }
 
 function clearPendingSocialAuth() {
   sessionStorage.removeItem(PENDING_SOCIAL_AUTH_KEY);
+  try {
+    localStorage.removeItem(PENDING_SOCIAL_AUTH_KEY);
+  } catch {
+    // ignore storage cleanup failure
+  }
 }
 
 function assertSocialRoleMatches(authData, expectedRole) {
@@ -261,13 +278,21 @@ export async function completeSocialLoginFromCallback(provider) {
     }
   }
 
-  const data = await apiRequest(`/users/auth/oauth/${normalizedProvider.toLowerCase()}`, {
-    method: "POST",
-    body: {
-      code,
-      redirectUri: getSocialCallbackUrl(normalizedProvider),
-    },
-  });
+  let data;
+  try {
+    data = await apiRequest(`/users/auth/oauth/${normalizedProvider.toLowerCase()}`, {
+      method: "POST",
+      body: {
+        code,
+        redirectUri: getSocialCallbackUrl(normalizedProvider),
+      },
+    });
+  } catch (requestError) {
+    if (expectedRole && !requestError.expectedRole) {
+      requestError.expectedRole = expectedRole;
+    }
+    throw requestError;
+  }
 
   if (data.needSignup) {
     const signupRole = expectedRole || "USER";
