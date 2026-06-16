@@ -56,7 +56,8 @@ function normalizePhoneInput(value) {
 }
 
 function normalizeRole(role, fallbackRole = "USER") {
-  const normalizedRole = String(role || fallbackRole).toUpperCase();
+  const normalizedFallbackRole = String(fallbackRole || "USER").replace(/^ROLE_/i, "").toUpperCase();
+  const normalizedRole = String(role || normalizedFallbackRole).replace(/^ROLE_/i, "").toUpperCase();
   return ROLE_CONFIG[normalizedRole] ? normalizedRole : fallbackRole;
 }
 
@@ -68,7 +69,7 @@ function normalizeAuthData(data, fallbackRole) {
 
   return {
     accessToken: data.accessToken,
-    role: data.role ?? fallbackRole,
+    role: normalizeRole(data.role, fallbackRole),
     userId: data.userId ?? data.id ?? data.accountId,
     email: data.email,
     nickname: nickname ?? "",
@@ -181,7 +182,7 @@ function clearPendingSocialAuth() {
 
 function assertSocialRoleMatches(authData, expectedRole) {
   const normalizedExpectedRole = normalizeRole(expectedRole);
-  const responseRole = String(authData.role || "").toUpperCase();
+  const responseRole = normalizeRole(authData.role, "");
   if (!responseRole || responseRole === normalizedExpectedRole) return;
 
   const roleLabel = normalizedExpectedRole === "MERCHANT" ? "상인" : normalizedExpectedRole === "ADMIN" ? "관리자" : "사용자";
@@ -248,7 +249,8 @@ export async function completeSocialLoginFromCallback(provider) {
   }
 
   const pendingSocialAuth = getPendingSocialAuth(normalizedProvider);
-  const expectedRole = normalizeRole(pendingSocialAuth?.role);
+  const hasExpectedRole = Boolean(pendingSocialAuth?.role);
+  const expectedRole = hasExpectedRole ? normalizeRole(pendingSocialAuth.role) : null;
 
   if (normalizedProvider === "NAVER") {
     const state = params.get("state");
@@ -268,17 +270,18 @@ export async function completeSocialLoginFromCallback(provider) {
   });
 
   if (data.needSignup) {
-    if (expectedRole !== "USER") {
+    const signupRole = expectedRole || "USER";
+    if (signupRole !== "USER") {
       clearPendingSocialAuth();
-      const roleLabel = expectedRole === "MERCHANT" ? "상인" : "관리자";
+      const roleLabel = signupRole === "MERCHANT" ? "상인" : "관리자";
       const error = new ApiClientError(`${roleLabel} 권한이 없는 소셜 계정입니다. 승인된 ${roleLabel} 계정으로 로그인해주세요.`, "AUTH_ROLE_MISMATCH", 403);
-      error.expectedRole = expectedRole;
+      error.expectedRole = signupRole;
       throw error;
     }
 
     sessionStorage.setItem("oauthSignupPending", JSON.stringify({
       provider: normalizedProvider,
-      role: expectedRole,
+      role: signupRole,
       signupTicket: data.signupTicket,
       email: data.email,
       nickname: data.nickname,
@@ -287,11 +290,14 @@ export async function completeSocialLoginFromCallback(provider) {
     throw new ApiClientError("신규 소셜 계정입니다. 추가 가입 화면 연동이 필요합니다.", "SOCIAL_SIGNUP_REQUIRED", 409);
   }
 
-  const authData = normalizeAuthData(data, expectedRole);
+  const responseRole = normalizeRole(data.role, expectedRole || "USER");
+  const authData = normalizeAuthData(data, responseRole);
   clearPendingSocialAuth();
-  assertSocialRoleMatches(authData, expectedRole);
+  if (hasExpectedRole) {
+    assertSocialRoleMatches(authData, expectedRole);
+  }
   saveSession(authData);
-  if (String(authData.role || "USER").toUpperCase() === "USER") {
+  if (normalizeRole(authData.role, "USER") === "USER") {
     try {
       return await fetchCurrentUser();
     } catch {

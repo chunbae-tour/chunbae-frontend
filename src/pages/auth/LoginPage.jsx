@@ -37,21 +37,27 @@ const ROLE_LOGIN_CONFIG = {
   },
 };
 
-export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role = "USER" }) {
+export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role = "USER", notice = "", onNoticeClear }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const normalizedRole = String(role || "USER").toUpperCase();
   const loginConfig = ROLE_LOGIN_CONFIG[normalizedRole] ?? ROLE_LOGIN_CONFIG.USER;
+  const visibleError = error || notice;
+
+  const clearAuthFeedback = () => {
+    setError("");
+    onNoticeClear?.();
+  };
 
   const handleLogin = async () => {
     if (loading) return;
     const normalizedEmail = email.trim();
     const normalizedPassword = pw.trim();
-    if (!normalizedEmail || !normalizedPassword) { setError("이메일과 비밀번호를 입력해주세요."); return; }
-    if (!normalizedEmail.includes("@")) { setError("올바른 이메일 형식이 아닙니다."); return; }
-    setError("");
+    if (!normalizedEmail || !normalizedPassword) { clearAuthFeedback(); setError("이메일과 비밀번호를 입력해주세요."); return; }
+    if (!normalizedEmail.includes("@")) { clearAuthFeedback(); setError("올바른 이메일 형식이 아닙니다."); return; }
+    clearAuthFeedback();
     setLoading(true);
 
     try {
@@ -66,6 +72,7 @@ export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role =
 
   const handleSocialLogin = (provider) => {
     try {
+      clearAuthFeedback();
       window.location.href = getSocialLoginUrl(provider, { role: normalizedRole });
     } catch (err) {
       setError(err.message || "소셜 로그인 URL 설정이 필요합니다.");
@@ -90,19 +97,19 @@ export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role =
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
           <input
             value={email}
-            onChange={e => { setEmail(e.target.value); }}
+            onChange={e => { clearAuthFeedback(); setEmail(e.target.value); }}
             placeholder="이메일"
             style={{ width: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "14px 16px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
           />
           <input
             value={pw}
-            onChange={e => { setPw(e.target.value); }}
+            onChange={e => { clearAuthFeedback(); setPw(e.target.value); }}
             type="password"
             placeholder="비밀번호"
             onKeyDown={e => e.key === "Enter" && handleLogin()}
             style={{ width: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "14px 16px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
           />
-          {error && <div style={{ color: "#FF6B6B", fontSize: 14, paddingLeft: 4 }}>{error}</div>}
+          {visibleError && <div style={{ color: "#FF6B6B", fontSize: 14, paddingLeft: 4 }}>{visibleError}</div>}
           <button type="button" disabled={loading} onClick={handleLogin} style={{ width: "100%", background: COLORS.accent, color: COLORS.primary, border: "none", borderRadius: 14, padding: "14px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: loading ? "default" : "pointer", marginTop: 4, opacity: loading ? 0.7 : 1 }}>
             {loading ? loginConfig.loadingLabel : loginConfig.buttonLabel}
           </button>

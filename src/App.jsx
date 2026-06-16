@@ -149,6 +149,7 @@ export default function App() {
   const [tab, setTab] = useState(storedNavigation?.tab || "home");
   const [screen, setScreen] = useState(() => storedNavigation?.screen || getInitialScreenForRole(storedSession?.role));
   const [toast, setToast] = useState("");
+  const [authNotice, setAuthNotice] = useState("");
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [selectedPlace, setSelectedPlace] = useState(storedNavigation?.selectedPlace || null);
   const [selectedRoom, setSelectedRoom] = useState(storedNavigation?.selectedRoom || null);
@@ -348,6 +349,7 @@ export default function App() {
   const handleLogin = (userData) => {
     const role = String(userData?.role || "USER").toUpperCase();
     clearStoredNavigationState();
+    setAuthNotice("");
     setUser(userData);
     setAppState("main");
     setTab("home");
@@ -370,6 +372,7 @@ export default function App() {
   };
   const handleRoleLoginHome = () => {
     setEntryRole(null);
+    setAuthNotice("");
     window.history.pushState({ chunbaeTour: true, appState: "landing", screen: "home", tab: "home" }, "", "/");
     setAppState("landing");
   };
@@ -402,13 +405,15 @@ export default function App() {
         }
         clearAuthSession();
         setUser(null);
+        const authMessage = error.message || "소셜 로그인 처리 중 문제가 발생했습니다.";
         if (error.expectedRole && error.expectedRole !== "USER") {
           setEntryRole(error.expectedRole);
           setAppState("roleLogin");
         } else {
           setAppState("login");
         }
-        setToast(error.message || "소셜 로그인 처리 중 문제가 발생했습니다.");
+        setAuthNotice(authMessage);
+        setToast(authMessage);
         window.history.replaceState({
           chunbaeTour: true,
           appState: error.expectedRole && error.expectedRole !== "USER" ? "roleLogin" : "login",
@@ -547,6 +552,7 @@ export default function App() {
     <div style={S.app}>
       {content}
       <PwaInstallPrompt />
+      <Toast msg={toast} />
     </div>
   );
 
@@ -569,8 +575,8 @@ export default function App() {
       </div>
     );
   }
-  if (appState === "roleLogin") return withPwaInstall(<LoginPage role={entryRole} onLogin={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("roleLogin")} />);
-  if (appState === "login")  return withPwaInstall(<LoginPage role="USER" onLogin={handleLogin} onSignup={() => setAppState("signup")} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("login")} />);
+  if (appState === "roleLogin") return withPwaInstall(<LoginPage role={entryRole} notice={authNotice} onNoticeClear={() => setAuthNotice("")} onLogin={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("roleLogin")} />);
+  if (appState === "login")  return withPwaInstall(<LoginPage role="USER" notice={authNotice} onNoticeClear={() => setAuthNotice("")} onLogin={handleLogin} onSignup={() => setAppState("signup")} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("login")} />);
   if (appState === "signup") return withPwaInstall(<SignupPage onBack={() => setAppState("login")} onDone={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("signup")} />);
   if (appState === "oauthSignup") return withPwaInstall(<OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("oauthSignup")} />);
   if (appState === "privacyPolicy") return withPwaInstall(<PrivacyPolicyPage onBack={() => setAppState(privacyBackState)} />);
