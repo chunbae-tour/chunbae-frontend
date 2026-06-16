@@ -19,6 +19,25 @@ const CATEGORY_FILTERS = [
 const FAVORITE_FILTER = "찜한 장소";
 const MAP_FILTERS = [...CATEGORY_FILTERS.map(({ label }) => label), FAVORITE_FILTER];
 const REGION_FILTERS = ["전체", "서울", "경기", "인천", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "부산", "대구", "광주", "대전", "울산", "제주"];
+const REGION_QUERY_ALIASES = {
+  서울: "서울특별시",
+  경기: "경기도",
+  인천: "인천광역시",
+  강원: "강원",
+  충북: "충청북도",
+  충남: "충청남도",
+  전북: "전북",
+  전남: "전라남도",
+  경북: "경상북도",
+  경남: "경상남도",
+  부산: "부산광역시",
+  대구: "대구광역시",
+  광주: "광주광역시",
+  대전: "대전광역시",
+  울산: "울산광역시",
+  제주: "제주",
+};
+const PLACE_FILTER_PAGE_SIZE = 50;
 const MAX_MAP_SPAN_DEGREES = 2;
 const MARKER_REQUEST_MIN_INTERVAL_MS = 1200;
 const MARKER_RATE_LIMIT_COOLDOWN_MS = 5000;
@@ -35,6 +54,12 @@ function getCategoryFilterValue(filter) {
 function normalizeRegionFilter(region) {
   const value = String(region ?? "").trim();
   return value || "전체";
+}
+
+function getRegionQueryValue(region) {
+  const normalizedRegion = normalizeRegionFilter(region);
+  if (normalizedRegion === "전체") return "";
+  return REGION_QUERY_ALIASES[normalizedRegion] ?? normalizedRegion;
 }
 
 function hasMarkerCoordinate(place) {
@@ -117,14 +142,14 @@ export default function MapPage({ onPlaceClick }) {
 
     try {
       const normalizedRegion = normalizeRegionFilter(region);
-      const selectedRegion = normalizedRegion === "전체" ? "" : normalizedRegion;
+      const selectedRegion = getRegionQueryValue(normalizedRegion);
       const selectedCategory = getCategoryFilterValue(nextFilter);
       const shouldUsePlaceSearch = Boolean(selectedRegion || selectedCategory);
       const [spotsResult, regionResult] = await Promise.allSettled([
         shouldUsePlaceSearch
-          ? fetchPlaces({ region: selectedRegion, category: selectedCategory, size: 100 })
+          ? fetchPlaces({ region: selectedRegion, category: selectedCategory, size: PLACE_FILTER_PAGE_SIZE })
           : fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 }),
-        selectedRegion ? Promise.resolve({ fullAddress: `${selectedRegion} 지역` }) : fetchRegionByCoordinate(location),
+        selectedRegion ? Promise.resolve({ fullAddress: `${normalizedRegion} 지역` }) : fetchRegionByCoordinate(location),
       ]);
       if (regionResult.status === "fulfilled") {
         setRegionInfo(regionResult.value);
