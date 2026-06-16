@@ -1,4 +1,4 @@
-import { apiRequest, getPageContent } from "./apiClient.js";
+import { apiFormRequest, apiRequest, getPageContent } from "./apiClient.js";
 import { getStoredAuthSession } from "./authService.js";
 
 function getStoredMerchantShopId() {
@@ -96,6 +96,12 @@ export function normalizeShop(data = {}) {
   };
 }
 
+export function normalizeShopImageUpload(data = {}) {
+  return {
+    objectKey: data.objectKey ?? data.key ?? "",
+  };
+}
+
 export async function fetchMerchantShops() {
   const data = await apiRequest("/merchants/me/shops", { auth: true, role: "MERCHANT" });
   const shops = Array.isArray(data) ? data : getPageContent(data);
@@ -143,6 +149,25 @@ export async function updateMerchantShopStatus(shopId, nextStatus) {
     body: { status: nextStatus },
   });
   return normalizeShop(data);
+}
+
+export async function uploadMerchantShopImage(shopId, file) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  if (!file) {
+    throw new Error("업로드할 가게 사진을 선택해주세요.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const data = await apiFormRequest(`/merchants/me/shops/${resolvedShopId}/images`, {
+    method: "POST",
+    auth: true,
+    role: "MERCHANT",
+    formData,
+  });
+
+  return normalizeShopImageUpload(data);
 }
 
 export async function fetchMerchantShopNotices(shopId) {

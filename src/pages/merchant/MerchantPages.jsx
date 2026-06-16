@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
+import { getApiErrorHint } from "../../services/apiClient.js";
 import {
   addMerchantMenu,
   addMerchantShopNotice,
@@ -21,6 +22,7 @@ import {
   updateMerchantMenu,
   updateMerchantShop,
   updateMerchantShopStatus,
+  uploadMerchantShopImage,
   useCustomerItemByToken,
 } from "../../services/merchantService.js";
 
@@ -82,6 +84,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "" });
   const [isSavingNotice, setIsSavingNotice] = useState(false);
+  const [isUploadingShopImage, setIsUploadingShopImage] = useState(false);
   const [itemUseToken, setItemUseToken] = useState("");
   const [itemUseStatus, setItemUseStatus] = useState("idle");
   const [itemUseResult, setItemUseResult] = useState(null);
@@ -169,6 +172,8 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   };
 
   const currentShopId = selectedShopId ?? shop.id ?? "";
+  const shopImagePreview = [shop.thumbnailUrl, ...(Array.isArray(shop.imageUrls) ? shop.imageUrls : [])]
+    .find(value => typeof value === "string" && (/^https?:\/\//.test(value) || value.startsWith("/")));
   const handleShopSelect = (event) => {
     onShopChange?.(event.target.value);
   };
@@ -242,6 +247,29 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       showToast("가게 상태 변경에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleShopImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || isUploadingShopImage) return;
+    if (!currentShopId) {
+      showToast("사진을 업로드할 가게를 먼저 선택해주세요.");
+      return;
+    }
+
+    setIsUploadingShopImage(true);
+    try {
+      await uploadMerchantShopImage(currentShopId, file);
+      const refreshedShop = await fetchMerchantShop(currentShopId);
+      setShop(refreshedShop);
+      setShops(prev => prev.map(item => String(item.id) === String(refreshedShop.id) ? { ...item, ...refreshedShop } : item));
+      showToast("가게 사진을 업로드했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    } finally {
+      setIsUploadingShopImage(false);
     }
   };
 
@@ -418,6 +446,22 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                   ))}
                 </div>
               )}
+            </div>
+            <div className="merchant-image-card">
+              <strong>가게 사진</strong>
+              <small>S3에 사진을 업로드하고 사용자 화면의 가게 이미지로 반영합니다.</small>
+              {shopImagePreview && (
+                <img src={shopImagePreview} alt={`${shop.name || "가게"} 대표 사진`} />
+              )}
+              <label className={isUploadingShopImage || !currentShopId ? "disabled" : ""}>
+                {isUploadingShopImage ? "업로드 중" : "사진 업로드"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleShopImageUpload}
+                  disabled={isUploadingShopImage || !currentShopId}
+                />
+              </label>
             </div>
           </div>
         </div>

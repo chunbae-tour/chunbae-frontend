@@ -8471,6 +8471,11 @@ button:disabled,
   padding: 10px 14px;
 }
 
+.merchant-image-card label.disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .merchant-image-card input {
   display: none;
 }
