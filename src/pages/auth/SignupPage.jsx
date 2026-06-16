@@ -63,7 +63,7 @@ export default function SignupPage({ onBack, onDone, onPrivacy, onHome }) {
       return;
     }
     try {
-      window.location.href = getSocialLoginUrl(provider);
+      window.location.href = getSocialLoginUrl(provider, { role: "USER" });
     } catch (err) {
       setSubmitError(err.message || "소셜 회원가입 URL 설정이 필요합니다.");
     }

@@ -66,7 +66,7 @@ export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role =
 
   const handleSocialLogin = (provider) => {
     try {
-      window.location.href = getSocialLoginUrl(provider);
+      window.location.href = getSocialLoginUrl(provider, { role: normalizedRole });
     } catch (err) {
       setError(err.message || "소셜 로그인 URL 설정이 필요합니다.");
     }

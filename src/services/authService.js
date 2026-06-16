@@ -42,6 +42,7 @@ const SOCIAL_CONFIG = {
     callbackPath: "/oauth/naver/callback",
   },
 };
+const PENDING_SOCIAL_AUTH_KEY = "pendingSocialAuth";
 
 function trimInput(value) {
   return String(value ?? "").trim();
@@ -52,6 +53,11 @@ function normalizePhoneInput(value) {
   if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
   if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
   return trimInput(value);
+}
+
+function normalizeRole(role, fallbackRole = "USER") {
+  const normalizedRole = String(role || fallbackRole).toUpperCase();
+  return ROLE_CONFIG[normalizedRole] ? normalizedRole : fallbackRole;
 }
 
 function normalizeAuthData(data, fallbackRole) {
@@ -147,8 +153,46 @@ export function clearPendingOauthSignup() {
   sessionStorage.removeItem("oauthSignupPending");
 }
 
-export function getSocialLoginUrl(provider) {
+function setPendingSocialAuth({ provider, role }) {
+  sessionStorage.setItem(PENDING_SOCIAL_AUTH_KEY, JSON.stringify({
+    provider,
+    role,
+    createdAt: Date.now(),
+  }));
+}
+
+function getPendingSocialAuth(provider) {
+  try {
+    const raw = sessionStorage.getItem(PENDING_SOCIAL_AUTH_KEY);
+    const pending = raw ? JSON.parse(raw) : null;
+    if (!pending) return null;
+    const normalizedProvider = String(provider || "").toUpperCase();
+    if (normalizedProvider && pending.provider !== normalizedProvider) return null;
+    return pending;
+  } catch {
+    sessionStorage.removeItem(PENDING_SOCIAL_AUTH_KEY);
+    return null;
+  }
+}
+
+function clearPendingSocialAuth() {
+  sessionStorage.removeItem(PENDING_SOCIAL_AUTH_KEY);
+}
+
+function assertSocialRoleMatches(authData, expectedRole) {
+  const normalizedExpectedRole = normalizeRole(expectedRole);
+  const responseRole = String(authData.role || "").toUpperCase();
+  if (!responseRole || responseRole === normalizedExpectedRole) return;
+
+  const roleLabel = normalizedExpectedRole === "MERCHANT" ? "상인" : normalizedExpectedRole === "ADMIN" ? "관리자" : "사용자";
+  const error = new ApiClientError(`${roleLabel} 권한이 없는 계정입니다. ${roleLabel} 계정으로 로그인해주세요.`, "AUTH_ROLE_MISMATCH", 403);
+  error.expectedRole = normalizedExpectedRole;
+  throw error;
+}
+
+export function getSocialLoginUrl(provider, { role = "USER" } = {}) {
   const normalizedProvider = String(provider || "").toUpperCase();
+  const normalizedRole = normalizeRole(role);
   const config = SOCIAL_CONFIG[normalizedProvider];
 
   if (!config) {
@@ -156,11 +200,13 @@ export function getSocialLoginUrl(provider) {
   }
 
   const redirectUri = getSocialCallbackUrl(normalizedProvider);
+  setPendingSocialAuth({ provider: normalizedProvider, role: normalizedRole });
 
   if (config.loginUrl) {
     return config.loginUrl
       .replace("{redirectUri}", encodeURIComponent(redirectUri))
-      .replace("{callbackUrl}", encodeURIComponent(redirectUri));
+      .replace("{callbackUrl}", encodeURIComponent(redirectUri))
+      .replace("{role}", encodeURIComponent(normalizedRole.toLowerCase()));
   }
 
   if (!config.clientId) {
@@ -201,6 +247,9 @@ export async function completeSocialLoginFromCallback(provider) {
     throw new ApiClientError("소셜 로그인 콜백에 인가 코드가 없습니다.", "SOCIAL_CODE_MISSING");
   }
 
+  const pendingSocialAuth = getPendingSocialAuth(normalizedProvider);
+  const expectedRole = normalizeRole(pendingSocialAuth?.role);
+
   if (normalizedProvider === "NAVER") {
     const state = params.get("state");
     const savedState = sessionStorage.getItem("naverOauthState");
@@ -219,16 +268,28 @@ export async function completeSocialLoginFromCallback(provider) {
   });
 
   if (data.needSignup) {
+    if (expectedRole !== "USER") {
+      clearPendingSocialAuth();
+      const roleLabel = expectedRole === "MERCHANT" ? "상인" : "관리자";
+      const error = new ApiClientError(`${roleLabel} 권한이 없는 소셜 계정입니다. 승인된 ${roleLabel} 계정으로 로그인해주세요.`, "AUTH_ROLE_MISMATCH", 403);
+      error.expectedRole = expectedRole;
+      throw error;
+    }
+
     sessionStorage.setItem("oauthSignupPending", JSON.stringify({
       provider: normalizedProvider,
+      role: expectedRole,
       signupTicket: data.signupTicket,
       email: data.email,
       nickname: data.nickname,
     }));
+    clearPendingSocialAuth();
     throw new ApiClientError("신규 소셜 계정입니다. 추가 가입 화면 연동이 필요합니다.", "SOCIAL_SIGNUP_REQUIRED", 409);
   }
 
-  const authData = normalizeAuthData(data, "USER");
+  const authData = normalizeAuthData(data, expectedRole);
+  clearPendingSocialAuth();
+  assertSocialRoleMatches(authData, expectedRole);
   saveSession(authData);
   if (String(authData.role || "USER").toUpperCase() === "USER") {
     try {

@@ -402,9 +402,19 @@ export default function App() {
         }
         clearAuthSession();
         setUser(null);
-        setAppState("login");
+        if (error.expectedRole && error.expectedRole !== "USER") {
+          setEntryRole(error.expectedRole);
+          setAppState("roleLogin");
+        } else {
+          setAppState("login");
+        }
         setToast(error.message || "소셜 로그인 처리 중 문제가 발생했습니다.");
-        window.history.replaceState({ chunbaeTour: true, appState: "login", screen: "home", tab: "home" }, "", "/");
+        window.history.replaceState({
+          chunbaeTour: true,
+          appState: error.expectedRole && error.expectedRole !== "USER" ? "roleLogin" : "login",
+          screen: "home",
+          tab: "home",
+        }, "", "/");
       });
 
     return () => { ignore = true; };
