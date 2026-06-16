@@ -11,15 +11,30 @@ import {
   requestCurrentPosition,
 } from "../../utils/geolocation.js";
 
-const MAP_FILTERS = ["전체", "관광지", "전통시장", "찜한 장소"];
+const CATEGORY_FILTERS = [
+  { label: "전체", value: "" },
+  { label: "관광지", value: "TOURIST_SPOT" },
+  { label: "전통시장", value: "TRADITIONAL_MARKET" },
+];
+const FAVORITE_FILTER = "찜한 장소";
+const MAP_FILTERS = [...CATEGORY_FILTERS.map(({ label }) => label), FAVORITE_FILTER];
 const REGION_FILTERS = ["전체", "서울", "경기", "인천", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "부산", "대구", "광주", "대전", "울산", "제주"];
 const MAX_MAP_SPAN_DEGREES = 2;
 const MARKER_REQUEST_MIN_INTERVAL_MS = 1200;
 const MARKER_RATE_LIMIT_COOLDOWN_MS = 5000;
 
 function filterPlacesByType(items, filter) {
-  if (filter === "찜한 장소") return items.filter((place) => place.isLiked);
+  if (filter === FAVORITE_FILTER) return items.filter((place) => place.isLiked);
   return filter === "전체" ? items : items.filter((place) => place.type === filter);
+}
+
+function getCategoryFilterValue(filter) {
+  return CATEGORY_FILTERS.find((item) => item.label === filter)?.value ?? "";
+}
+
+function normalizeRegionFilter(region) {
+  const value = String(region ?? "").trim();
+  return value || "전체";
 }
 
 function hasMarkerCoordinate(place) {
@@ -64,6 +79,7 @@ export default function MapPage({ onPlaceClick }) {
   const [locationHint, setLocationHint] = useState("");
   const [regionInfo, setRegionInfo] = useState(null);
   const [regionFilter, setRegionFilter] = useState("전체");
+  const [regionInput, setRegionInput] = useState("");
   const [requestingLocation, setRequestingLocation] = useState(false);
   const [pickLocationMode, setPickLocationMode] = useState(false);
   const [mapMarkers, setMapMarkers] = useState([]);
@@ -82,22 +98,31 @@ export default function MapPage({ onPlaceClick }) {
   const filteredMarkers = filterPlacesByType(markerSource, filter);
   const accessOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const isSecureAccess = typeof window !== "undefined" ? window.isSecureContext : true;
+  const activeCategory = getCategoryFilterValue(filter);
+  const activeFilterLabels = [
+    regionFilter !== "전체" ? `지역 ${regionFilter}` : "",
+    activeCategory ? filter : "",
+    filter === FAVORITE_FILTER ? FAVORITE_FILTER : "",
+  ].filter(Boolean);
 
   const applyLocation = (location) => {
     setUserLocation(location);
     setMapCenter(location);
   };
 
-  const loadPlaces = async (location = getDefaultLocation(), region = regionFilter) => {
+  const loadPlaces = async (location = getDefaultLocation(), region = regionFilter, nextFilter = filter) => {
     applyLocation(location);
     setStatus("loading");
     setError("");
 
     try {
-      const selectedRegion = region === "전체" ? "" : region;
+      const normalizedRegion = normalizeRegionFilter(region);
+      const selectedRegion = normalizedRegion === "전체" ? "" : normalizedRegion;
+      const selectedCategory = getCategoryFilterValue(nextFilter);
+      const shouldUsePlaceSearch = Boolean(selectedRegion || selectedCategory);
       const [spotsResult, regionResult] = await Promise.allSettled([
-        selectedRegion
-          ? fetchPlaces({ region: selectedRegion, size: 100 })
+        shouldUsePlaceSearch
+          ? fetchPlaces({ region: selectedRegion, category: selectedCategory, size: 100 })
           : fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 }),
         selectedRegion ? Promise.resolve({ fullAddress: `${selectedRegion} 지역` }) : fetchRegionByCoordinate(location),
       ]);
@@ -118,6 +143,25 @@ export default function MapPage({ onPlaceClick }) {
       setError(getApiErrorHint(err));
       setStatus("error");
     }
+  };
+
+  const handleCategoryFilterClick = (nextFilter) => {
+    setFilter(nextFilter);
+    loadPlaces(mapCenter, regionFilter, nextFilter);
+  };
+
+  const applyRegionFilter = (region = regionInput) => {
+    const normalizedRegion = normalizeRegionFilter(region);
+    setRegionFilter(normalizedRegion);
+    setRegionInput(normalizedRegion === "전체" ? "" : normalizedRegion);
+    loadPlaces(mapCenter, normalizedRegion, filter);
+  };
+
+  const resetPlaceFilters = () => {
+    setFilter("전체");
+    setRegionFilter("전체");
+    setRegionInput("");
+    loadPlaces(mapCenter, "전체", "전체");
   };
 
   const executeMapMarkerLoad = useCallback(async (bounds, boundsKey) => {
@@ -315,35 +359,67 @@ export default function MapPage({ onPlaceClick }) {
         </div>
       )}
 
-      {/* 카테고리 필터 */}
-      <div className="map-filter-row">
-        {MAP_FILTERS.map(f => (
-          <div key={f} onClick={() => setFilter(f)} className={filter === f ? "active" : ""}>
-            {f}
+      <section className="map-filter-panel" aria-label="관광지 검색 필터">
+        <div className="map-filter-section">
+          <span className="map-filter-label">카테고리</span>
+          <div className="map-filter-row">
+            {MAP_FILTERS.map(f => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => handleCategoryFilterClick(f)}
+                className={filter === f ? "active" : ""}
+              >
+                {f}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="map-region-filter-row" aria-label="지역별 관광지 필터">
-        {REGION_FILTERS.map(region => (
-          <button
-            key={region}
-            type="button"
-            className={regionFilter === region ? "active" : ""}
-            onClick={() => {
-              setRegionFilter(region);
-              loadPlaces(mapCenter, region);
+        </div>
+
+        <div className="map-filter-section">
+          <span className="map-filter-label">지역</span>
+          <form
+            className="map-region-filter-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              applyRegionFilter();
             }}
           >
-            {region}
-          </button>
-        ))}
-      </div>
+            <input
+              value={regionInput}
+              onChange={(event) => setRegionInput(event.target.value)}
+              placeholder="지역명 입력 (예: 종로구, 완주)"
+              aria-label="지역명 입력"
+            />
+            <button type="submit" className="map-region-submit">적용</button>
+            <button type="button" className="map-filter-reset" onClick={resetPlaceFilters}>초기화</button>
+          </form>
+          <div className="map-region-filter-row" aria-label="지역 빠른 필터">
+            {REGION_FILTERS.map(region => (
+              <button
+                key={region}
+                type="button"
+                className={regionFilter === region ? "active" : ""}
+                onClick={() => applyRegionFilter(region)}
+              >
+                {region}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* 장소 목록 */}
       <div style={S.scrollArea}>
         <div className="map-list-head">
           <span>주변 골목 포인트 ({filtered.length}개)</span>
-          <small>{regionInfo?.fullAddress ? `${regionInfo.fullAddress} 기준` : "거리 · 운영시간 · 리뷰를 보고 바로 들어가세요."}</small>
+          <small>
+            {activeFilterLabels.length > 0
+              ? `${activeFilterLabels.join(" · ")} 필터 적용 중`
+              : regionInfo?.fullAddress
+                ? `${regionInfo.fullAddress} 기준`
+                : "거리 · 운영시간 · 리뷰를 보고 바로 들어가세요."}
+          </small>
         </div>
         {status === "loading" && <div className="map-result-grid"><SkeletonList count={4} /></div>}
         {status === "error" && (
