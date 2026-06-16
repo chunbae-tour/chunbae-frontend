@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { S } from "../../constants/colors";
+import ChunbaeImg from "../../assets/hwangchunbae.png";
 import { completeOauthSignup, getPendingOauthSignup } from "../../services/authService.js";
 
 function formatPhoneNumber(value) {
@@ -26,7 +27,7 @@ function isValidBirthdate(value) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
-export default function OauthSignupPage({ onBack, onDone, onPrivacy }) {
+export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
   const pending = useMemo(() => getPendingOauthSignup(), []);
   const monthInputRef = useRef(null);
   const dayInputRef = useRef(null);
@@ -123,6 +124,9 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy }) {
   return (
     <div className="auth-screen auth-signup-screen" style={{ ...S.screen, overflow: "auto", "--auth-background": "#2d8a5e" }}>
       <main className="auth-signup-panel">
+        <button type="button" className="auth-signup-brand-button" onClick={onHome} aria-label="춘배투어 홈으로 이동">
+          <img src={ChunbaeImg} alt="춘배 캐릭터" />
+        </button>
         <div className="auth-signup-heading">
           <button type="button" className="auth-back-button" onClick={onBack} aria-label="로그인으로 돌아가기">←</button>
           <div>

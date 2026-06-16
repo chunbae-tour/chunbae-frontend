@@ -1337,6 +1337,27 @@ button:disabled,
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
+.auth-brand-home-button,
+.auth-signup-brand-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.auth-brand-home-button {
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.auth-brand-home-button:focus-visible,
+.auth-signup-brand-button:focus-visible {
+  outline: 2px solid #ffd369;
+  outline-offset: 4px;
+}
+
 .auth-login-footer {
   width: 100%;
   max-width: 460px;
@@ -1432,6 +1453,19 @@ button:disabled,
     0 8px 32px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 220, 150, 0.12);
   backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.auth-signup-brand-button {
+  display: grid;
+  place-items: center;
+  width: fit-content;
+  margin: 0 auto 18px;
+}
+
+.auth-signup-brand-button img {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
 }
 
 .auth-signup-heading {
@@ -16083,6 +16117,42 @@ body {
   border-top: 0.5px solid rgba(26, 61, 43, 0.14);
   color: #999;
   font-size: 11px;
+}
+
+.community-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.community-pagination button {
+  min-width: 34px;
+  height: 34px;
+  border: 0.5px solid rgba(26, 61, 43, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #4f5e55;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.community-pagination button:hover:not(:disabled) {
+  border-color: #2c6e49;
+  color: #2c6e49;
+}
+
+.community-pagination button.active {
+  border-color: #2c6e49;
+  background: #2c6e49;
+  color: #fff;
+}
+
+.community-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .community-card-participants {

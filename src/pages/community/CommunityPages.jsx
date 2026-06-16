@@ -145,6 +145,15 @@ function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
     setWheelMode(null);
   }, [open, value, min]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const year = viewDate.getFullYear();
@@ -185,13 +194,13 @@ function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
         </header>
 
         {wheelMode && (
-          <div className="hanok-calendar-wheel-panel">
+          <div className="hanok-calendar-wheel-panel" onWheel={(event) => handleWheel(event, wheelMode)}>
             <div className="hanok-calendar-wheel-label">{wheelMode === "year" ? "연도 선택" : "월 선택"} · 마우스 휠로 넘겨보세요</div>
-            <div className="hanok-calendar-wheel" onWheel={(event) => handleWheel(event, wheelMode)}>
+            <div className={`hanok-calendar-wheel ${wheelMode}`}>
               {(wheelMode === "year" ? years : months).map(option => {
                 const selected = wheelMode === "year" ? option === year : option === month;
                 return (
-                  <button type="button" key={option} className={selected ? "selected" : ""} onClick={() => wheelMode === "year" ? changeYear(option) : changeMonth(option)}>
+                  <button type="button" key={option} className={selected ? "selected" : ""} onWheel={(event) => handleWheel(event, wheelMode)} onClick={() => wheelMode === "year" ? changeYear(option) : changeMonth(option)}>
                     {wheelMode === "year" ? `${option}년` : `${option + 1}월`}
                   </button>
                 );
@@ -342,6 +351,8 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
   const [scope, setScope] = useState("전체");
   const [sort, setSort] = useState("latest");
   const [posts, setPosts] = useState([]);
+  const [freePage, setFreePage] = useState({ page: 1, cursor: "", nextCursor: null, hasNext: false });
+  const [freePageCursors, setFreePageCursors] = useState([""]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const filtered = posts
@@ -366,13 +377,28 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
   const companionCount = posts.filter(p => p.type === "동행").length;
   const freeCount = posts.filter(p => p.type === "자유").length;
 
-  const loadPosts = () => {
+  const loadPosts = ({ freeCursor = freePageCursors[freePage.page - 1] ?? "", page = freePage.page } = {}) => {
     setStatus("loading");
     setErrorMessage("");
-    fetchCommunityPosts()
+    fetchCommunityPosts({ freeCursor })
       .then((data) => {
-        setPosts(data);
-        setStatus(data.length > 0 ? "success" : "empty");
+        const nextPosts = Array.isArray(data) ? data : data.posts ?? [];
+        const nextFreePage = Array.isArray(data) ? { cursor: freeCursor, nextCursor: null, hasNext: false } : data.freePage;
+        setPosts(nextPosts);
+        setFreePage({
+          page,
+          cursor: freeCursor,
+          nextCursor: nextFreePage?.nextCursor ?? null,
+          hasNext: Boolean(nextFreePage?.hasNext),
+        });
+        if (nextFreePage?.nextCursor) {
+          setFreePageCursors(prev => {
+            const next = [...prev];
+            next[page] = nextFreePage.nextCursor;
+            return next;
+          });
+        }
+        setStatus(nextPosts.length > 0 ? "success" : "empty");
       })
       .catch((error) => {
         setPosts([]);
@@ -399,6 +425,19 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
     setSort("latest");
     onTabChange?.(nextTab);
   };
+
+  const handleFreePageChange = (nextPage) => {
+    const cursor = freePageCursors[nextPage - 1];
+    if (cursor == null) return;
+    loadPosts({ freeCursor: cursor, page: nextPage });
+  };
+
+  const freePageNumbers = tab === "자유"
+    ? Array.from(
+        { length: freePage.hasNext ? Math.max(freePage.page + 1, freePageCursors.length) : Math.max(freePage.page, freePageCursors.length) },
+        (_, index) => index + 1,
+      ).filter(pageNumber => pageNumber === 1 || freePageCursors[pageNumber - 1] != null || pageNumber === freePage.page + 1)
+    : [];
 
   return (
     <div style={S.screen} className="community-list-screen">
@@ -505,6 +544,21 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
             );
           })}
           </div>
+          {tab === "자유" && freePageNumbers.length > 1 && status !== "loading" && status !== "error" && (
+            <nav className="community-pagination" aria-label="자유 게시판 페이지 이동">
+              {freePageNumbers.map(pageNumber => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={freePage.page === pageNumber ? "active" : ""}
+                  disabled={pageNumber !== 1 && freePageCursors[pageNumber - 1] == null}
+                  onClick={() => handleFreePageChange(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { S } from "../../constants/colors";
+import ChunbaeImg from "../../assets/hwangchunbae.png";
 import { getSocialLoginUrl, signupAndLogin } from "../../services/authService.js";
 
-export default function SignupPage({ onBack, onDone, onPrivacy }) {
+export default function SignupPage({ onBack, onDone, onPrivacy, onHome }) {
   const [form, setForm] = useState({ email: "", pw: "", pwConfirm: "", nickname: "" });
   const [consents, setConsents] = useState({ privacy: false, marketing: false });
   const [errors, setErrors] = useState({});
@@ -74,6 +75,9 @@ export default function SignupPage({ onBack, onDone, onPrivacy }) {
   return (
     <div className="auth-screen auth-signup-screen" style={{ ...S.screen, overflow: "auto", "--auth-background": "#2d8a5e" }}>
       <main className="auth-signup-panel">
+        <button type="button" className="auth-signup-brand-button" onClick={onHome} aria-label="춘배투어 홈으로 이동">
+          <img src={ChunbaeImg} alt="춘배 캐릭터" />
+        </button>
         <div className="auth-signup-heading">
           <button type="button" className="auth-back-button" onClick={onBack} aria-label="로그인으로 돌아가기">←</button>
           <div>

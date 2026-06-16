@@ -26,6 +26,35 @@ function getYearEndDateString(date = new Date()) {
   return `${date.getFullYear()}-12-31`;
 }
 
+function parseLocalDate(value) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function compareDateValue(a, b) {
+  return (a?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b?.getTime() ?? Number.MAX_SAFE_INTEGER);
+}
+
+function getFestivalSortBucket(festival = {}, today = new Date()) {
+  const startDate = parseLocalDate(festival.startDate);
+  const endDate = parseLocalDate(festival.endDate) ?? startDate;
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  if (startDate && startDate >= monthStart && startDate <= monthEnd) {
+    return { group: 0, date: startDate };
+  }
+  if (endDate && endDate >= todayStart && endDate <= monthEnd) {
+    return { group: 1, date: endDate };
+  }
+  if (startDate && startDate >= todayStart) {
+    return { group: 2, date: startDate };
+  }
+  return { group: 3, date: endDate ?? startDate };
+}
+
 export function normalizeFestival(festival = {}) {
   const startDate = festival.startDate ?? "";
   const startParts = startDate ? startDate.split("-").map(Number) : [];
@@ -100,7 +129,10 @@ export async function fetchRemainingYearFestivals({ today = new Date(), size = 1
   }
 
   return allItems.sort((a, b) => {
-    const dateCompare = String(a.startDate || "").localeCompare(String(b.startDate || ""));
+    const aSort = getFestivalSortBucket(a, today);
+    const bSort = getFestivalSortBucket(b, today);
+    if (aSort.group !== bSort.group) return aSort.group - bSort.group;
+    const dateCompare = compareDateValue(aSort.date, bSort.date);
     if (dateCompare !== 0) return dateCompare;
     return Number(a.festivalId ?? a.id ?? 0) - Number(b.festivalId ?? b.id ?? 0);
   });

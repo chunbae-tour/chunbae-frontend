@@ -74,11 +74,13 @@ export default function LoginPage({ onLogin, onSignup, onPrivacy, onHome, role =
     <div className="auth-screen" style={{ ...S.screen, overflow: "auto", "--auth-background": loginConfig.background }}>
       <div className="auth-login-panel">
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <img
-            src={ChunbaeImg}
-            alt="춘배 캐릭터"
-            style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 12 }}
-          />
+          <button type="button" className="auth-brand-home-button" onClick={onHome} aria-label="춘배투어 홈으로 이동">
+            <img
+              src={ChunbaeImg}
+              alt="춘배 캐릭터"
+              style={{ width: 120, height: 120, objectFit: "contain" }}
+            />
+          </button>
           {loginConfig.badge && <div className="role-login-badge">{loginConfig.badge}</div>}
           <div style={{ color: COLORS.accent, fontSize: 26, fontWeight: 700 }}>{loginConfig.title}</div>
           <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginTop: 6 }}>{loginConfig.subtitle}</div>

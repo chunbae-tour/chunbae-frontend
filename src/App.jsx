@@ -560,9 +560,9 @@ export default function App() {
     );
   }
   if (appState === "roleLogin") return withPwaInstall(<LoginPage role={entryRole} onLogin={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("roleLogin")} />);
-  if (appState === "login")  return withPwaInstall(<LoginPage role="USER" onLogin={handleLogin} onSignup={() => setAppState("signup")} onPrivacy={() => openPrivacyPolicy("login")} />);
-  if (appState === "signup") return withPwaInstall(<SignupPage onBack={() => setAppState("login")} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("signup")} />);
-  if (appState === "oauthSignup") return withPwaInstall(<OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} onPrivacy={() => openPrivacyPolicy("oauthSignup")} />);
+  if (appState === "login")  return withPwaInstall(<LoginPage role="USER" onLogin={handleLogin} onSignup={() => setAppState("signup")} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("login")} />);
+  if (appState === "signup") return withPwaInstall(<SignupPage onBack={() => setAppState("login")} onDone={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("signup")} />);
+  if (appState === "oauthSignup") return withPwaInstall(<OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("oauthSignup")} />);
   if (appState === "privacyPolicy") return withPwaInstall(<PrivacyPolicyPage onBack={() => setAppState(privacyBackState)} />);
 
   return (

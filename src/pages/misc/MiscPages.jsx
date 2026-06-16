@@ -710,7 +710,7 @@ function resolveFestivalRegion(value = "") {
 }
 
 function getFestivalProgressStatus(festival = {}) {
-  return festival.progressStatus ?? festival.dday ?? "";
+  return String(festival.progressStatus ?? festival.dday ?? "").trim().toUpperCase().replace(/-/g, "_");
 }
 
 function isFestivalEnded(festival = {}, today = new Date()) {

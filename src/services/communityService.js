@@ -19,10 +19,13 @@ function normalizeComment(comment = {}) {
   };
 }
 
-export async function fetchCommunityPosts() {
+export async function fetchCommunityPosts({ freeCursor = "", freeSize = 10 } = {}) {
+  const freeParams = new URLSearchParams({ size: String(freeSize) });
+  if (freeCursor) freeParams.set("cursor", freeCursor);
+
   const [companions, freePosts] = await Promise.allSettled([
     apiRequest("/community/posts/companions?size=20"),
-    apiRequest("/community/posts/free?size=10"),
+    apiRequest(`/community/posts/free?${freeParams.toString()}`),
   ]);
 
   const companionPosts = companions.status === "fulfilled" ? getPageContent(companions.value).map(normalizeCompanionPost) : [];
@@ -30,7 +33,15 @@ export async function fetchCommunityPosts() {
   if (companions.status === "rejected" && freePosts.status === "rejected") {
     throw companions.reason;
   }
-  return [...companionPosts, ...reviewPosts];
+  return {
+    posts: [...companionPosts, ...reviewPosts],
+    freePage: {
+      cursor: freeCursor,
+      nextCursor: freePosts.status === "fulfilled" ? freePosts.value?.nextCursor ?? null : null,
+      hasNext: freePosts.status === "fulfilled" ? Boolean(freePosts.value?.hasNext) : false,
+      size: freePosts.status === "fulfilled" ? freePosts.value?.size ?? reviewPosts.length : reviewPosts.length,
+    },
+  };
 }
 
 export async function fetchCompanionPostsByPlace(place, { size = 50 } = {}) {

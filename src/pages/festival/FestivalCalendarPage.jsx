@@ -12,7 +12,7 @@ const PROGRESS_LABELS = {
 };
 
 function getFestivalStatus(festival = {}) {
-  return festival.progressStatus ?? festival.dday ?? "";
+  return String(festival.progressStatus ?? festival.dday ?? "").trim().toUpperCase().replace(/-/g, "_");
 }
 
 function getFestivalDotColor(festival = {}) {
