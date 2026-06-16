@@ -417,6 +417,18 @@ button:disabled,
   font-size: 16px;
 }
 
+:root.comfortable-view .my-profile-card,
+:root.comfortable-view .my-menu-card,
+:root.comfortable-view .my-trip-board,
+:root.comfortable-view .my-next-card,
+:root.comfortable-view .my-profile-card *,
+:root.comfortable-view .my-menu-card *,
+:root.comfortable-view .my-trip-board *,
+:root.comfortable-view .my-next-card * {
+  font-size: max(18px, 1em) !important;
+  line-height: 1.6;
+}
+
 :root.comfortable-view button,
 :root.comfortable-view [style*="cursor: pointer"] {
   min-height: 56px;
@@ -4942,10 +4954,11 @@ button:disabled,
 .hanok-calendar-wheel {
   height: 154px;
   display: grid;
-  align-content: center;
+  align-content: start;
   gap: 4px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding: 6px 0;
   scrollbar-width: none;
   mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
 }
@@ -4984,6 +4997,31 @@ button:disabled,
   position: relative;
 }
 
+.community-place-source-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.community-place-source-tabs button {
+  border: 1px solid rgba(44, 110, 73, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 12px;
+}
+
+.community-place-source-tabs button.active {
+  border-color: #2c6e49;
+  background: #2c6e49;
+  color: #fff;
+}
+
 .community-selected-place {
   margin-top: 8px;
   border: 1px solid rgba(47, 125, 90, 0.18);
@@ -5009,6 +5047,18 @@ button:disabled,
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
+}
+
+.community-selected-place {
+  flex-wrap: wrap;
+}
+
+.community-selected-place .community-selected-festival-period {
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  font-style: normal;
+  color: var(--color-primary-dark);
 }
 
 .community-selected-place button {

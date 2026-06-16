@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
@@ -6,6 +6,8 @@ import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, fetchMyChatRooms, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, deleteComment, deleteCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, fetchReplies, updateComment, updateCommunityPost } from "../../services/communityService.js";
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
+import { searchFestivals } from "../../services/festivalService.js";
+import { fetchWishlist } from "../../services/myService.js";
 import { searchPlaces } from "../../services/searchService.js";
 
 function getCompanionJoinErrorMessage(error) {
@@ -114,6 +116,20 @@ function formatMeetingDate(value) {
   }).format(date);
 }
 
+function formatFestivalDate(value) {
+  if (!value) return "";
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric" }).format(date);
+}
+
+function formatFestivalRange(startDate, endDate) {
+  const start = formatFestivalDate(startDate);
+  const end = formatFestivalDate(endDate);
+  if (start && end) return start === end ? start : `${start} ~ ${end}`;
+  return start || end || "";
+}
+
 function getCalendarCells(year, month) {
   const firstDay = new Date(year, month, 1).getDay();
   const currentMonthDays = new Date(year, month + 1, 0).getDate();
@@ -137,6 +153,7 @@ function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
   const [viewDate, setViewDate] = useState(() => new Date(`${value || min}T12:00:00`));
   const [draftDate, setDraftDate] = useState(value || min);
   const [wheelMode, setWheelMode] = useState(null);
+  const wheelRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -154,13 +171,19 @@ function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const cells = getCalendarCells(year, month);
   const years = Array.from({ length: 21 }, (_, index) => year - 10 + index);
   const months = Array.from({ length: 12 }, (_, index) => index);
+
+  useEffect(() => {
+    if (!wheelMode) return;
+    const selected = wheelRef.current?.querySelector("button.selected");
+    selected?.scrollIntoView({ block: "center", inline: "nearest" });
+  }, [wheelMode, year, month]);
+
+  if (!open) return null;
 
   const moveMonth = (offset) => {
     setViewDate(new Date(year, month + offset, 1, 12));
@@ -185,18 +208,18 @@ function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
           </div>
         </div>
         <header className="hanok-calendar-header">
-          <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
+          <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>?</button>
           <div className="hanok-calendar-period">
             <button type="button" className={wheelMode === "year" ? "active" : ""} onClick={() => setWheelMode(wheelMode === "year" ? null : "year")}>{year}년</button>
             <button type="button" className={wheelMode === "month" ? "active" : ""} onClick={() => setWheelMode(wheelMode === "month" ? null : "month")}>{month + 1}월</button>
           </div>
-          <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
+          <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>?</button>
         </header>
 
         {wheelMode && (
           <div className="hanok-calendar-wheel-panel" onWheel={(event) => handleWheel(event, wheelMode)}>
             <div className="hanok-calendar-wheel-label">{wheelMode === "year" ? "연도 선택" : "월 선택"} · 마우스 휠로 넘겨보세요</div>
-            <div className={`hanok-calendar-wheel ${wheelMode}`}>
+            <div ref={wheelRef} className={`hanok-calendar-wheel ${wheelMode}`}>
               {(wheelMode === "year" ? years : months).map(option => {
                 const selected = wheelMode === "year" ? option === year : option === month;
                 return (
@@ -586,6 +609,20 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
   const [sendingReply, setSendingReply] = useState(false);
 
   useEffect(() => {
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document.querySelector(".shell-main")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+      document.querySelector(".app-shell")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+    };
+
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialPost?.id]);
+
+  useEffect(() => {
     let ignore = false;
     setPost(initialPost);
     setRepliesByComment({});
@@ -894,7 +931,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
         </div>
         <div style={{ padding: 24 }}>
           <EmptyState
-            icon="💬"
+            icon="??"
             title="게시글을 찾을 수 없습니다."
             description="목록에서 게시글을 다시 선택해주세요."
             actionLabel="목록으로"
@@ -1093,7 +1130,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
               <section className="community-detail-card">
                 <div className="community-section-title">게시글 포인트</div>
                 <div className="community-good-grid">
-                  {goodPoints.map(point => <div key={point}>✅ {point}</div>)}
+                  {goodPoints.map(point => <div key={point}>? {point}</div>)}
                 </div>
                 <div className="community-tip-box">
                   <strong>공유 팁</strong>
@@ -1118,7 +1155,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                   <div key={c.id} className="community-comment-thread">
                     <div className="community-comment-card">
                       <div className="community-comment-head">
-                        <div>👤</div>
+                        <div>??</div>
                         <strong>{c.author}</strong>
                         <span>{formatRelativeTime(c.time ?? c.createdAt) || "방금"}{wasCommentEdited(c) ? " · 수정됨" : ""}</span>
                         <div className="community-comment-actions">
@@ -1144,7 +1181,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                       )}
                       {c.replyCount > 0 && (
                         <button type="button" className="community-replies-toggle" disabled={loadingRepliesId === c.id} onClick={() => toggleReplies(c)}>
-                          {loadingRepliesId === c.id ? "답글 불러오는 중..." : replies ? "답글 접기 ∧" : `답글 ${c.replyCount}개 보기 ›`}
+                          {loadingRepliesId === c.id ? "답글 불러오는 중..." : replies ? "답글 접기 ∧" : `답글 ${c.replyCount}개 보기 ?`}
                         </button>
                       )}
                     </div>
@@ -1167,7 +1204,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                             <div key={reply.id} className="community-reply-thread">
                               <div className="community-comment-card community-reply-card">
                                 <div className="community-comment-head">
-                                  <div>↳</div>
+                                  <div>?</div>
                                   <strong>{reply.author}</strong>
                                   <span>{formatRelativeTime(reply.time ?? reply.createdAt) || "방금"}{wasCommentEdited(reply) ? " · 수정됨" : ""}</span>
                                   <div className="community-comment-actions">
@@ -1327,8 +1364,13 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     imageUrls: initialPost?.imageUrls ?? [],
   }));
   const [placeQuery, setPlaceQuery] = useState(initialPost?.place ?? initialPost?.placeName ?? "");
+  const [placeSource, setPlaceSource] = useState("search");
   const [placeResults, setPlaceResults] = useState([]);
   const [placeSearchStatus, setPlaceSearchStatus] = useState("idle");
+  const [likedPlaces, setLikedPlaces] = useState([]);
+  const [festivalResults, setFestivalResults] = useState([]);
+  const [likedStatus, setLikedStatus] = useState("idle");
+  const [festivalSearchStatus, setFestivalSearchStatus] = useState("idle");
   const [submitting, setSubmitting] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const quickMeetingDates = [
@@ -1339,9 +1381,9 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
   ];
 
   useEffect(() => {
-    if (type !== "동행") {
+    if (type !== "동행" || placeSource !== "search") {
       setPlaceResults([]);
-      setPlaceSearchStatus("idle");
+      if (placeSource !== "search") setPlaceSearchStatus("idle");
       return;
     }
 
@@ -1373,31 +1415,96 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
       ignore = true;
       clearTimeout(timer);
     };
-  }, [placeQuery, type]);
+  }, [placeQuery, placeSource, type]);
 
+  useEffect(() => {
+    if (type !== "동행" || placeSource !== "festival") {
+      setFestivalResults([]);
+      if (placeSource !== "festival") setFestivalSearchStatus("idle");
+      return;
+    }
+
+    const query = placeQuery.trim();
+    if (query.length < 2) {
+      setFestivalResults([]);
+      setFestivalSearchStatus(query.length > 0 ? "too-short" : "idle");
+      return;
+    }
+
+    let ignore = false;
+    setFestivalSearchStatus("loading");
+    const timer = setTimeout(() => {
+      searchFestivals({ q: query, size: 8, source: "community-place-selector" })
+        .then((page) => {
+          if (ignore) return;
+          const festivals = page.content ?? [];
+          setFestivalResults(festivals);
+          setFestivalSearchStatus(festivals.length > 0 ? "success" : "empty");
+        })
+        .catch((error) => {
+          if (ignore) return;
+          setFestivalResults([]);
+          setFestivalSearchStatus("error");
+          console.error("Failed to search festivals for companion post", error);
+        });
+    }, 260);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [placeQuery, placeSource, type]);
+
+  useEffect(() => {
+    if (type !== "동행" || placeSource !== "liked") return;
+
+    let ignore = false;
+    setLikedStatus("loading");
+    fetchWishlist()
+      .then((places) => {
+        if (ignore) return;
+        setLikedPlaces(places);
+        setLikedStatus(places.length > 0 ? "success" : "empty");
+      })
+      .catch((error) => {
+        if (ignore) return;
+        setLikedPlaces([]);
+        setLikedStatus("error");
+        console.error("Failed to load liked places for companion post", error);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [placeSource, type]);
   const getPlaceRegion = (place) => {
     const rawRegion = place.region ?? place.addr ?? place.address ?? "";
     return String(rawRegion).trim().split(/\s+/).slice(0, 2).join(" ").slice(0, 50);
   };
 
-  const handleSelectPlace = (place) => {
+  const handleSelectPlace = (place, source = "place") => {
     const placeName = place.name || place.placeName || "";
+    const isFestival = source === "festival";
     setForm(f => ({
       ...f,
       place: placeName,
-      placeId: place.placeId ?? place.id,
+      placeId: isFestival ? null : (place.placeId ?? place.id),
       region: getPlaceRegion(place),
+      festivalStartDate: isFestival ? (place.startDate ?? "") : "",
+      festivalEndDate: isFestival ? (place.endDate ?? "") : "",
     }));
     setPlaceQuery(placeName);
     setPlaceResults([]);
+    setFestivalResults([]);
     setPlaceSearchStatus("selected");
+    setFestivalSearchStatus("selected");
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
     if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
     if (type === "동행") {
-      if (!form.placeId || !form.place) { showToast("동행할 관광지를 검색해서 선택해주세요."); return; }
+      if (!form.place) { showToast("동행할 장소나 축제를 선택해주세요."); return; }
       if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
       if (form.date < todayValue) { showToast("오늘 이후 날짜를 선택해주세요."); return; }
     }
@@ -1407,7 +1514,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
         ? await updateCommunityPost(initialPost.id, type, form)
         : await createCommunityPost({ type, ...form });
       const savedPost = isEditing ? { ...initialPost, ...responsePost } : responsePost;
-      showToast(isEditing ? "게시글이 수정되었습니다." : "게시글이 등록되었습니다! 🎉");
+      showToast(isEditing ? "게시글이 수정되었습니다." : "게시글이 등록되었습니다! ??");
       if (onSaved) {
         onSaved(savedPost);
       } else {
@@ -1455,27 +1562,65 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
             <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>관광지</div>
             {type === "동행" ? (
               <div className="community-place-search">
-                <input
-                  value={placeQuery}
-                  onChange={(e) => {
-                    setPlaceQuery(e.target.value);
-                    setForm(f => ({ ...f, place: "", placeId: null, region: "" }));
-                  }}
-                  placeholder="관광지 이름을 2자 이상 검색하세요"
-                  style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                />
-                {form.placeId && (
+                <div className="community-place-source-tabs" aria-label="장소 선택 방식">
+                  {[
+                    { key: "search", label: "관광지 검색" },
+                    { key: "liked", label: "찜한 관광지" },
+                    { key: "festival", label: "축제 검색" },
+                  ].map(option => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={placeSource === option.key ? "active" : ""}
+                      onClick={() => {
+                        setPlaceSource(option.key);
+                        setPlaceResults([]);
+                        setFestivalResults([]);
+                        setPlaceSearchStatus("idle");
+                        setFestivalSearchStatus("idle");
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {placeSource !== "liked" && (
+                  <input
+                    value={placeQuery}
+                    onChange={(e) => {
+                      setPlaceQuery(e.target.value);
+                      setForm(f => ({ ...f, place: "", placeId: null, region: "" }));
+                    }}
+                    placeholder={placeSource === "festival" ? "축제 이름을 2자 이상 검색하세요" : "관광지 이름을 2자 이상 검색하세요"}
+                    style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                  />
+                )}
+                {form.place && (
                   <div className="community-selected-place">
                     <span>선택됨</span>
                     <strong>{form.place}</strong>
-                    <button type="button" onClick={() => { set("place", ""); set("placeId", null); setPlaceQuery(""); }}>변경</button>
+                    <button type="button" onClick={() => { setForm(f => ({ ...f, place: "", placeId: null, festivalStartDate: "", festivalEndDate: "" })); setPlaceQuery(""); }}>변경</button>
+                    {form.festivalEndDate && (
+                      <em className="community-selected-festival-period">
+                        축제 기간 {formatFestivalRange(form.festivalStartDate, form.festivalEndDate)}
+                      </em>
+                    )}
                   </div>
                 )}
-                {placeSearchStatus === "loading" && <div className="community-place-search-note">관광지를 검색하는 중입니다.</div>}
-                {placeSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
-                {placeSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 이름으로 검색해보세요.</div>}
-                {placeSearchStatus === "error" && <div className="community-place-search-note error">관광지 검색을 불러오지 못했습니다.</div>}
-                {placeResults.length > 0 && (
+                {!form.place && (
+                <>
+                {placeSource === "search" && placeSearchStatus === "loading" && <div className="community-place-search-note">관광지를 검색하는 중입니다.</div>}
+                {placeSource === "search" && placeSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
+                {placeSource === "search" && placeSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 이름으로 검색해보세요.</div>}
+                {placeSource === "search" && placeSearchStatus === "error" && <div className="community-place-search-note error">관광지 검색을 불러오지 못했습니다.</div>}
+                {placeSource === "festival" && festivalSearchStatus === "loading" && <div className="community-place-search-note">축제를 검색하는 중입니다.</div>}
+                {placeSource === "festival" && festivalSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
+                {placeSource === "festival" && festivalSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 이름으로 검색해보세요.</div>}
+                {placeSource === "festival" && festivalSearchStatus === "error" && <div className="community-place-search-note error">축제 검색을 불러오지 못했습니다.</div>}
+                {placeSource === "liked" && likedStatus === "loading" && <div className="community-place-search-note">찜한 관광지를 불러오는 중입니다.</div>}
+                {placeSource === "liked" && likedStatus === "empty" && <div className="community-place-search-note">아직 찜한 관광지가 없습니다.</div>}
+                {placeSource === "liked" && likedStatus === "error" && <div className="community-place-search-note error">찜한 관광지를 불러오지 못했습니다.</div>}
+                {placeSource === "search" && placeResults.length > 0 && (
                   <div className="community-place-result-list">
                     {placeResults.map((place) => (
                       <button key={place.placeId ?? place.id} type="button" onClick={() => handleSelectPlace(place)}>
@@ -1485,8 +1630,29 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                     ))}
                   </div>
                 )}
-              </div>
-            ) : (
+                {placeSource === "liked" && likedPlaces.length > 0 && (
+                  <div className="community-place-result-list">
+                    {likedPlaces.map((place) => (
+                      <button key={place.placeId ?? place.id} type="button" onClick={() => handleSelectPlace(place)}>
+                        <strong>{place.name}</strong>
+                        <span>{place.addr || place.address || place.type || "찜한 관광지"}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {placeSource === "festival" && festivalResults.length > 0 && (
+                  <div className="community-place-result-list">
+                    {festivalResults.map((festival) => (
+                      <button key={festival.festivalId ?? festival.id} type="button" onClick={() => handleSelectPlace(festival, "festival")}>
+                        <strong>{festival.name}</strong>
+                        <span>{festival.address || festival.location || festival.date || "축제"}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                </>
+                )}
+              </div>            ) : (
               <div className="community-place-disabled">
                 자유 게시판 장소 연결은 백엔드 작성 API에 placeId/placeName 필드가 추가되면 연결할 수 있습니다.
               </div>
@@ -1535,7 +1701,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>사진 추가 (0/5)</div>
             <div onClick={() => showToast("사진 업로드 기능 (준비 중)")} style={{ background: "#fff", border: "1.5px dashed rgba(0,0,0,0.15)", borderRadius: 12, padding: "20px 0", textAlign: "center", cursor: "pointer" }}>
-              <div style={{ fontSize: 28, marginBottom: 4 }}>📷</div>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>??</div>
               <div style={{ fontSize: 14, color: COLORS.textMuted }}>사진을 추가하세요</div>
             </div>
           </div>
