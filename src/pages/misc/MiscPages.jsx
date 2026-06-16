@@ -15,10 +15,8 @@ import { fetchUserHomeStats } from "../../services/myService.js";
 // ─── 마이페이지 ───────────────────────────────────────────────────────
 const NICKNAME_PATTERN = /^[\p{L}\p{N}_-]{2,20}$/u;
 const DEFAULT_NOTIFICATION_SETTINGS = {
-  payment: false,
   companion: false,
-  post: false,
-  ad: false,
+  support: false,
 };
 
 function normalizeProfileLanguage(language) {
@@ -399,10 +397,8 @@ export function NotificationSettingsPage({ onBack, showToast }) {
     return window.Notification.permission;
   });
   const items = [
-    { key: "payment", title: "결제/엽전 알림", desc: "충전, QR 결제 승인, 잔액 변동" },
     { key: "companion", title: "동행 채팅 알림", desc: "참여 신청, 수락, 채팅 메시지" },
-    { key: "post", title: "게시물 알림", desc: "댓글, 좋아요, 내 게시물 반응" },
-    { key: "ad", title: "광고/이벤트 알림", desc: "춘배인증 상점 광고와 이벤트 소식" },
+    { key: "support", title: "고객센터 알림", desc: "문의 답변, 상담 메시지" },
   ];
 
   const loadSettings = () => {
@@ -459,7 +455,7 @@ export function NotificationSettingsPage({ onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         <div className="settings-note">
-          알림 목록은 서버와 연결되어 있고, 카테고리별 수신 설정은 백엔드 API가 준비될 때까지 이 기기에 저장됩니다.
+          현재는 동행 채팅과 고객센터 알림만 설정할 수 있어요.
         </div>
         <div className="settings-list">
           <button
@@ -503,9 +499,6 @@ export function NotificationSettingsPage({ onBack, showToast }) {
               <em className={settings[item.key] ? "on" : ""}>{settings[item.key] ? "ON" : "OFF"}</em>
             </button>
           ))}
-        </div>
-        <div className="owned-items-todo">
-          TODO: GET/PUT 내 알림 설정 API, 광고/게시물/채팅/결제 카테고리 enum 협의가 필요합니다.
         </div>
       </div>
     </div>

@@ -1,10 +1,8 @@
 import { apiRequest, getPageContent } from "./apiClient.js";
 
 const DEFAULT_NOTIFICATION_SETTINGS = {
-  payment: true,
   companion: true,
-  post: true,
-  ad: false,
+  support: true,
 };
 const NOTIFICATION_SETTINGS_STORAGE_KEY = "chunbae_notification_settings";
 
