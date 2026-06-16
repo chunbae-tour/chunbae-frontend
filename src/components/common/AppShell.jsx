@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { COLORS } from "../../constants/colors.js";
 import TabBar from "./TabBar.jsx";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import MascotDefault from "../../assets/brand/mascot-default.png";
+import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 
 const NAV_ITEMS = [
   { key: "home", label: "홈", icon: "🏠" },
@@ -52,6 +53,8 @@ const SCREEN_NAV_KEY = {
 
 export default function AppShell({ active, screen, onTab, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, onNotificationIntent, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [topbarBalance, setTopbarBalance] = useState(null);
+  const [topbarBalanceStatus, setTopbarBalanceStatus] = useState("idle");
   const selectedKey = String(screen || "").startsWith("admin") ? "adminDashboard" : SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
   const hideFaqFloating = [
     "chatroom",
@@ -68,6 +71,33 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
   const isLoggedIn = Boolean(user);
   const isAdmin = String(user?.role || "").toUpperCase() === "ADMIN";
   const notificationBadgeText = unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
+
+  useEffect(() => {
+    if (!isLoggedIn || isAdmin) {
+      setTopbarBalance(null);
+      setTopbarBalanceStatus("idle");
+      return undefined;
+    }
+
+    let ignore = false;
+    setTopbarBalanceStatus("loading");
+
+    fetchYeopjeonBalance()
+      .then((balance) => {
+        if (ignore) return;
+        setTopbarBalance(balance);
+        setTopbarBalanceStatus("success");
+      })
+      .catch(() => {
+        if (ignore) return;
+        setTopbarBalance(null);
+        setTopbarBalanceStatus("error");
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [isLoggedIn, isAdmin, screen]);
   const openAuthOrTab = (key) => {
     if (!isLoggedIn && ["my", "pay", "notif"].includes(key)) {
       onLogin?.();
@@ -206,7 +236,10 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
               {isLoggedIn && (
                 <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
                   <span>내 엽전 잔액</span>
-                  <strong><img src={YeopjeonImg} alt="" /> 잔액 확인</strong>
+                  <strong>
+                    <img src={YeopjeonImg} alt="" />
+                    {topbarBalanceStatus === "success" ? `${topbarBalance.toLocaleString()}냥` : "잔액 확인"}
+                  </strong>
                 </button>
               )}
               <button type="button" className="topbar-notification" onClick={() => openAuthOrTab("notif")} aria-label="알림">

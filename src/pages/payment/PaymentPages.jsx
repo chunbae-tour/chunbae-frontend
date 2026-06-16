@@ -42,7 +42,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
     ...item,
     value: item.won,
     coinAmount: toYeopjeon(item.won),
-    label: formatYeopjeon(toYeopjeon(item.won)),
+    label: `+${formatYeopjeon(toYeopjeon(item.won))} 충전`,
     price: formatWon(item.won),
   }));
   const methods = [
@@ -95,7 +95,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
       }
 
       if (settlement.status === "completed" || settlement.status === "balance-updated") {
-        showToast(`충전이 반영되었습니다. 주문번호: ${result.orderUid || "확인 필요"}`);
+        showToast(`${formatYeopjeon(selected.coinAmount)} 충전이 반영되었습니다.`);
         setTimeout(onDone, 900);
         return;
       }
@@ -145,14 +145,14 @@ export function PayChargePage({ onBack, onDone, showToast }) {
         <div className="web-payment-section web-payment-amount-section" style={{ padding: "0 16px 16px" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>충전 금액 선택</div>
           <div className="payment-rate-note">
-            최소 충전은 5,000원부터 가능해요. 1,000원 결제 시 100냥이 충전됩니다.
+            결제 금액은 원화 기준이며, 10원 결제 시 1냥으로 충전됩니다.
           </div>
           <div className="web-payment-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
             {amounts.map(a => (
               <div key={a.value} className="payment-amount-card" onClick={() => setSelected(a)} style={{ background: selected?.value === a.value ? COLORS.primary : "#fff", border: `2px solid ${selected?.value === a.value ? COLORS.primary : "rgba(0,0,0,0.08)"}`, borderRadius: 14, padding: "14px 12px", cursor: "pointer", position: "relative", textAlign: "center" }}>
                 {a.best && <span style={{ position: "absolute", top: -8, right: 10, background: COLORS.accent, color: COLORS.primary, fontSize: 14, fontWeight: 700, borderRadius: 20, padding: "2px 8px" }}>BEST</span>}
                 <div style={{ fontSize: 16, fontWeight: 700, color: selected?.value === a.value ? COLORS.accent : COLORS.primary }}>{a.price}</div>
-                <div style={{ fontSize: 14, color: selected?.value === a.value ? "rgba(255,255,255,0.6)" : COLORS.textMuted, marginTop: 4 }}>{a.label}</div>
+                <div style={{ fontSize: 14, color: selected?.value === a.value ? "rgba(255,255,255,0.78)" : COLORS.textMuted, marginTop: 4 }}>{a.label}</div>
               </div>
             ))}
           </div>
@@ -178,7 +178,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
           {selected && (
             <div style={{ background: COLORS.bg, borderRadius: 12, padding: "12px 16px", marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>
-                <span>충전 수량</span><span style={{ fontWeight: 700, color: COLORS.primary }}>{selected.label}</span>
+                <span>충전 예정</span><span style={{ fontWeight: 700, color: COLORS.primary }}>{formatYeopjeon(selected.coinAmount)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.textMuted }}>
                 <span>결제 금액</span><span style={{ fontWeight: 700, color: COLORS.primary }}>{selected.price}</span>
@@ -192,7 +192,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
           {error && <div style={{ color: "#E24B4A", fontSize: 14, marginBottom: 10 }}>{error}</div>}
           {settlementMessage && <div style={{ color: COLORS.primary, fontSize: 14, marginBottom: 10, fontWeight: 700 }}>{settlementMessage}</div>}
           <button type="button" className="payment-primary-action" disabled={charging} onClick={handleCharge} style={{ width: "100%", border: "none", background: COLORS.accent, color: COLORS.primary, borderRadius: 14, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: charging ? "default" : "pointer", opacity: charging ? 0.7 : 1 }}>
-            {charging ? (settlementMessage ? "충전 반영 확인 중..." : "결제창 여는 중...") : selected ? `${selected.price} 결제 요청하기` : "충전할 금액을 먼저 선택해주세요"}
+            {charging ? (settlementMessage ? "충전 반영 확인 중..." : "결제창 여는 중...") : selected ? `${selected.price} 결제하고 ${formatYeopjeon(selected.coinAmount)} 충전` : "충전할 금액을 먼저 선택해주세요"}
           </button>
           <div style={{ fontSize: 13, color: COLORS.textMuted, textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>결제 완료 후 잔액 반영까지 잠시 걸릴 수 있습니다.</div>
         </div>
