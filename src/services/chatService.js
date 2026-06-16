@@ -264,7 +264,7 @@ export async function addCompanionParticipants(chatRoomId, userIds = []) {
     method: "POST",
     auth: true,
     role: "USER",
-    body: { userIds },
+    body: { participantUserIds: userIds },
   });
 }
 
