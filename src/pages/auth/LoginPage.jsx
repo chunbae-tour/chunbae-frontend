@@ -21,7 +21,7 @@ const ROLE_LOGIN_CONFIG = {
     buttonLabel: "상인으로 로그인",
     loadingLabel: "상인 로그인 중...",
     background: "#245f48",
-    showSocial: false,
+    showSocial: true,
     showSignup: false,
     badge: "MERCHANT",
   },
