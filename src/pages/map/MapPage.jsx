@@ -4,7 +4,7 @@ import { S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchMapMarkers, fetchNearbyTravelSpotsWithLikes, fetchPlaces, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
+import { fetchMapMarkers, fetchNearbyTraditionalMarkets, fetchNearbyTravelSpotsWithLikes, fetchPlaces, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
 import {
   getGeolocationErrorMessage,
   getGeolocationSupport,
@@ -60,6 +60,29 @@ function getRegionQueryValue(region) {
   const normalizedRegion = normalizeRegionFilter(region);
   if (normalizedRegion === "전체") return "";
   return REGION_QUERY_ALIASES[normalizedRegion] ?? normalizedRegion;
+}
+
+function getRegionFilterKeywords(region) {
+  const normalizedRegion = normalizeRegionFilter(region);
+  if (normalizedRegion === "전체") return [];
+  return Array.from(new Set([normalizedRegion, getRegionQueryValue(normalizedRegion)].filter(Boolean)));
+}
+
+function filterPlacesByRegion(items, region) {
+  const keywords = getRegionFilterKeywords(region);
+  if (keywords.length === 0) return items;
+
+  return items.filter((place) => {
+    const searchableText = [
+      place?.address,
+      place?.addr,
+      place?.roadAddressName,
+      place?.addressName,
+      place?.name,
+    ].filter(Boolean).join(" ");
+
+    return keywords.some((keyword) => searchableText.includes(keyword));
+  });
 }
 
 function hasMarkerCoordinate(place) {
@@ -144,11 +167,39 @@ export default function MapPage({ onPlaceClick }) {
       const normalizedRegion = normalizeRegionFilter(region);
       const selectedRegion = getRegionQueryValue(normalizedRegion);
       const selectedCategory = getCategoryFilterValue(nextFilter);
-      const shouldUsePlaceSearch = Boolean(selectedRegion || selectedCategory);
+      const placesPromise = (() => {
+        if (selectedCategory === "TRADITIONAL_MARKET") {
+          return fetchNearbyTraditionalMarkets({ ...location, radius: 50000, size: PLACE_FILTER_PAGE_SIZE })
+            .then((markets) => filterPlacesByRegion(markets, normalizedRegion));
+        }
+
+        if (selectedRegion || selectedCategory) {
+          const placeSearchPromise = fetchPlaces({ region: selectedRegion, category: selectedCategory, size: PLACE_FILTER_PAGE_SIZE });
+
+          if (!selectedCategory) {
+            return Promise.allSettled([
+              placeSearchPromise,
+              fetchNearbyTraditionalMarkets({ ...location, radius: 50000, size: PLACE_FILTER_PAGE_SIZE })
+                .then((markets) => filterPlacesByRegion(markets, normalizedRegion)),
+            ]).then(([placesResult, marketsResult]) => {
+              if (placesResult.status === "rejected" && marketsResult.status === "rejected") {
+                throw placesResult.reason;
+              }
+
+              return mergeMarkerSources(
+                placesResult.status === "fulfilled" ? placesResult.value : [],
+                marketsResult.status === "fulfilled" ? marketsResult.value : [],
+              );
+            });
+          }
+
+          return placeSearchPromise;
+        }
+
+        return fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 });
+      })();
       const [spotsResult, regionResult] = await Promise.allSettled([
-        shouldUsePlaceSearch
-          ? fetchPlaces({ region: selectedRegion, category: selectedCategory, size: PLACE_FILTER_PAGE_SIZE })
-          : fetchNearbyTravelSpotsWithLikes({ ...location, size: 20 }),
+        placesPromise,
         selectedRegion ? Promise.resolve({ fullAddress: `${normalizedRegion} 지역` }) : fetchRegionByCoordinate(location),
       ]);
       if (regionResult.status === "fulfilled") {
