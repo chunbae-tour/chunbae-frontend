@@ -1489,6 +1489,27 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     setFestivalSearchStatus("selected");
   };
 
+  const handleTypeChange = (nextType) => {
+    if (isEditing) return;
+    setType(nextType);
+    if (nextType === "자유") {
+      setForm(f => ({
+        ...f,
+        place: "",
+        placeId: null,
+        region: "",
+        date: "",
+        festivalStartDate: "",
+        festivalEndDate: "",
+      }));
+      setPlaceQuery("");
+      setPlaceResults([]);
+      setFestivalResults([]);
+      setPlaceSearchStatus("idle");
+      setFestivalSearchStatus("idle");
+    }
+  };
+
   const handleSubmit = async () => {
     if (submitting) return;
     if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
@@ -1497,11 +1518,18 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
       if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
       if (form.date < todayValue) { showToast("오늘 이후 날짜를 선택해주세요."); return; }
     }
+    const submitForm = type === "동행"
+      ? form
+      : {
+          title: form.title,
+          content: form.content,
+          imageUrls: form.imageUrls ?? [],
+        };
     setSubmitting(true);
     try {
       const responsePost = isEditing
-        ? await updateCommunityPost(initialPost.id, type, form)
-        : await createCommunityPost({ type, ...form });
+        ? await updateCommunityPost(initialPost.id, type, submitForm)
+        : await createCommunityPost({ type, ...submitForm });
       const savedPost = isEditing ? { ...initialPost, ...responsePost } : responsePost;
       showToast(isEditing ? "게시글이 수정되었습니다." : "게시글이 등록되었습니다! ??");
       if (onSaved) {
@@ -1531,7 +1559,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 10 }}>게시판 선택</div>
           <div style={{ display: "flex", gap: 10 }}>
             {["동행", "자유"].map(t => (
-              <div key={t} onClick={() => !isEditing && setType(t)} style={{ flex: 1, background: type === t ? COLORS.primary : "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: isEditing ? "default" : "pointer", opacity: isEditing && type !== t ? 0.45 : 1, color: type === t ? "#fff" : COLORS.textMuted, border: `1.5px solid ${type === t ? COLORS.primary : "rgba(0,0,0,0.08)"}` }}>
+              <div key={t} onClick={() => handleTypeChange(t)} style={{ flex: 1, background: type === t ? COLORS.primary : "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: isEditing ? "default" : "pointer", opacity: isEditing && type !== t ? 0.45 : 1, color: type === t ? "#fff" : COLORS.textMuted, border: `1.5px solid ${type === t ? COLORS.primary : "rgba(0,0,0,0.08)"}` }}>
                 {t === "동행" ? "동행 게시판" : "자유 게시판"}
               </div>
             ))}
@@ -1547,9 +1575,9 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
             <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>내용</div>
             <textarea value={form.content} onChange={e => set("content", e.target.value)} placeholder="내용을 입력하세요" rows={5} style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", resize: "none", boxSizing: "border-box" }} />
           </div>
+          {type === "동행" && (
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>관광지</div>
-            {type === "동행" ? (
               <div className="community-place-search">
                 <div className="community-place-source-tabs" aria-label="장소 선택 방식">
                   {[
@@ -1641,12 +1669,9 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                 )}
                 </>
                 )}
-              </div>            ) : (
-              <div className="community-place-disabled">
-                자유 게시판 장소 연결은 백엔드 작성 API에 placeId/placeName 필드가 추가되면 연결할 수 있습니다.
               </div>
-            )}
           </div>
+          )}
           {type === "동행" && (
             <>
               <div>
