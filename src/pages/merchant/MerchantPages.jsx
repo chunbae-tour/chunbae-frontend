@@ -187,10 +187,17 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   };
 
   const currentShopId = selectedShopId ?? shop.id ?? "";
+  const sortedShopImages = [...shopImages].sort((a, b) => {
+    if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+    if (a.type !== b.type) return a.type === "PROFILE" ? -1 : 1;
+    return Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0);
+  });
+  const profileShopImage = sortedShopImages.find(item => item.type === "PROFILE" || item.isPrimary);
   const shopImagePreview = [
+    profileShopImage?.url || profileShopImage?.imageUrl,
     shop.thumbnailUrl,
     ...(Array.isArray(shop.imageUrls) ? shop.imageUrls : []),
-    ...shopImages.map(item => item.url || item.imageUrl),
+    ...sortedShopImages.map(item => item.url || item.imageUrl),
   ]
     .find(value => typeof value === "string" && (/^https?:\/\//.test(value) || value.startsWith("/")));
   const handleShopSelect = (event) => {
@@ -269,7 +276,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     }
   };
 
-  const handleShopImageUpload = async (event) => {
+  const handleShopImageUpload = async (event, type = "GALLERY") => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || isUploadingShopImage) return;
@@ -280,7 +287,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
 
     setIsUploadingShopImage(true);
     try {
-      await uploadMerchantShopImage(currentShopId, file);
+      await uploadMerchantShopImage(currentShopId, file, type);
       const [refreshedShop, refreshedImages] = await Promise.all([
         fetchMerchantShop(currentShopId),
         fetchMerchantShopImages(currentShopId),
@@ -289,7 +296,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       setShops(prev => prev.map(item => String(item.id) === String(refreshedShop.id) ? { ...item, ...refreshedShop } : item));
       setShopImages(refreshedImages);
       setImageStatus(refreshedImages.length > 0 ? "success" : "empty");
-      showToast("가게 사진을 업로드했습니다.");
+      showToast(type === "PROFILE" ? "대표 사진을 변경했습니다." : "소개 사진을 추가했습니다.");
     } catch (error) {
       showToast(getApiErrorHint(error));
     } finally {
@@ -495,15 +502,26 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               {shopImagePreview && (
                 <img src={shopImagePreview} alt={`${shop.name || "가게"} 대표 사진`} />
               )}
-              <label className={isUploadingShopImage || !currentShopId ? "disabled" : ""}>
-                {isUploadingShopImage ? "업로드 중" : "사진 업로드"}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleShopImageUpload}
-                  disabled={isUploadingShopImage || !currentShopId}
-                />
-              </label>
+              <div className="merchant-image-actions">
+                <label className={isUploadingShopImage || !currentShopId ? "disabled" : ""}>
+                  {isUploadingShopImage ? "업로드 중" : "대표 사진 등록"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => handleShopImageUpload(event, "PROFILE")}
+                    disabled={isUploadingShopImage || !currentShopId}
+                  />
+                </label>
+                <label className={isUploadingShopImage || !currentShopId ? "disabled secondary" : "secondary"}>
+                  {isUploadingShopImage ? "업로드 중" : "소개 사진 추가"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => handleShopImageUpload(event, "GALLERY")}
+                    disabled={isUploadingShopImage || !currentShopId}
+                  />
+                </label>
+              </div>
               {imageStatus === "loading" && <small className="merchant-image-empty">사진 목록을 불러오는 중입니다.</small>}
               {imageStatus === "error" && <small className="merchant-image-empty">사진 목록을 불러오지 못했습니다.</small>}
               {imageStatus !== "loading" && imageStatus !== "error" && shopImages.length === 0 && (
@@ -511,12 +529,17 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               )}
               {shopImages.length > 0 && (
                 <div className="merchant-image-list">
-                  {shopImages.map(image => {
+                  {sortedShopImages.map(image => {
                     const imageId = image.imageId ?? image.id;
                     const imageUrl = image.url || image.imageUrl;
                     return (
                       <figure key={imageId || imageUrl}>
                         {imageUrl ? <img src={imageUrl} alt={`${shop.name || "가게"} 사진`} /> : <span>이미지 URL 없음</span>}
+                        <figcaption>
+                          <span className={image.type === "PROFILE" || image.isPrimary ? "merchant-image-type-badge" : "merchant-image-type-badge gallery"}>
+                            {image.type === "PROFILE" || image.isPrimary ? "대표" : "소개"}
+                          </span>
+                        </figcaption>
                         <button
                           type="button"
                           onClick={() => handleShopImageDelete(imageId)}
