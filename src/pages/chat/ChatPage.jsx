@@ -12,8 +12,10 @@ import {
   fetchChatMessagesPage,
   fetchChatParticipants,
   fetchChatRoomDetail,
+  fetchCompanionDetail,
   fetchJoinRequests,
   fetchMyChatRooms,
+  fetchMyJoinRequests,
   endCompanion,
   kickChatParticipant,
   leaveChatRoom,
@@ -71,6 +73,32 @@ function formatChatDate(message = {}) {
     month: "long",
     day: "numeric",
   }).format(date);
+}
+
+function formatPlainDate(value) {
+  if (!value) return "-";
+  const parsed = Date.parse(`${value}T00:00:00`);
+  if (Number.isNaN(parsed)) return value;
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "long",
+    day: "numeric",
+  }).format(new Date(parsed));
+}
+
+function getCompanionStatusLabel(status) {
+  return {
+    ONGOING: "진행 중",
+    ENDED: "종료",
+  }[status] ?? (status || "상태 없음");
+}
+
+function getJoinRequestStatusLabel(status) {
+  return {
+    PENDING: "대기",
+    APPROVED: "수락",
+    REJECTED: "거절",
+  }[status] ?? (status || "확인 중");
 }
 
 function shouldShowDate(currentMessage, prevMessage) {
@@ -222,6 +250,8 @@ function formatRoomLastMessage(message, currentUserId) {
 
 export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, selectedRoomId = null }) {
   const [rooms, setRooms] = useState([]);
+  const [myJoinRequests, setMyJoinRequests] = useState([]);
+  const [myJoinRequestStatus, setMyJoinRequestStatus] = useState("idle");
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [loginRequired, setLoginRequired] = useState(false);
@@ -282,6 +312,17 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
 
   useEffect(() => {
     loadRooms();
+    setMyJoinRequestStatus("loading");
+    fetchMyJoinRequests({ size: 5 })
+      .then((data) => {
+        const nextRequests = data.content ?? [];
+        setMyJoinRequests(nextRequests);
+        setMyJoinRequestStatus(nextRequests.length > 0 ? "success" : "empty");
+      })
+      .catch(() => {
+        setMyJoinRequestStatus("error");
+      });
+
     const intervalId = window.setInterval(() => {
       loadRooms({ silent: true });
     }, 2000);
@@ -350,6 +391,31 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
             ))}
             </div>
           )}
+          {myJoinRequestStatus !== "loading" && myJoinRequests.length > 0 && (
+            <section className="chat-my-join-requests" aria-label="내 참여 신청">
+              <div>
+                <strong>내 참여 신청</strong>
+                <span>최근 {myJoinRequests.length}건</span>
+              </div>
+              {myJoinRequests.map(request => (
+                <button
+                  key={request.joinRequestId ?? request.id}
+                  type="button"
+                  className="chat-my-join-request-row"
+                  onClick={() => request.chatRoomId && onChatRoom({
+                    chatRoomId: request.chatRoomId,
+                    id: request.chatRoomId,
+                    title: request.chatRoomTitle,
+                  })}
+                >
+                  <span>{request.chatRoomTitle || "삭제된 채팅방"}</span>
+                  <em className={`status-${String(request.status).toLowerCase()}`}>
+                    {getJoinRequestStatusLabel(request.status)}
+                  </em>
+                </button>
+              ))}
+            </section>
+          )}
         </div>
       </div>
     </div>
@@ -413,6 +479,8 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const [participants, setParticipants] = useState([]);
   const [participantStatus, setParticipantStatus] = useState("idle");
   const [roomDetail, setRoomDetail] = useState(null);
+  const [companionDetail, setCompanionDetail] = useState(null);
+  const [companionStatus, setCompanionStatus] = useState("idle");
   const [managementPanelOpen, setManagementPanelOpen] = useState(false);
   const [managementTab, setManagementTab] = useState("participants");
   const [joinRequests, setJoinRequests] = useState([]);
@@ -481,11 +549,28 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const companionParticipantIds = participants
     .map(participant => participant.userId)
     .filter(userId => userId && !isSameUser(userId, currentUserId));
+  const companionEndedCount = companionDetail?.participants?.filter(participant => participant.endedAt).length ?? 0;
+  const companionTotalCount = companionDetail?.participants?.length ?? 0;
   const hasOtherActiveParticipants = participants.some(participant => (
     !isSameUser(participant.userId, currentUserId)
     && !["MEMBER_LEFT", "MEMBER_KICKED"].includes(participant.memberState)
   ));
   const hasReviewedParticipant = (userId) => reviewedUserIds.has(String(userId));
+
+  const loadCompanionDetail = ({ silent = true } = {}) => {
+    if (!roomId) return Promise.resolve(null);
+    if (!silent) setCompanionStatus("loading");
+    return fetchCompanionDetail(roomId)
+      .then((detail) => {
+        setCompanionDetail(detail);
+        setCompanionStatus(detail ? "success" : "empty");
+        return detail;
+      })
+      .catch((error) => {
+        setCompanionStatus("error");
+        throw error;
+      });
+  };
 
   const isMessageListNearBottom = () => {
     const node = messageScrollRef.current;
@@ -552,6 +637,8 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     setJoinRequests([]);
     setJoinRequestStatus("idle");
     setRoomDetail(null);
+    setCompanionDetail(null);
+    setCompanionStatus("loading");
     setMessages([]);
     setOlderCursor(null);
     setHasOlderMessages(false);
@@ -571,6 +658,16 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         if (!ignore) {
           setRoomDetail(null);
         }
+      });
+
+    fetchCompanionDetail(roomId)
+      .then((detail) => {
+        if (ignore) return;
+        setCompanionDetail(detail);
+        setCompanionStatus(detail ? "success" : "empty");
+      })
+      .catch(() => {
+        if (!ignore) setCompanionStatus("error");
       });
 
     fetchChatMessagesPage(roomId, { size: 50 }).then((page) => {
@@ -770,8 +867,8 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     if (!roomId) return undefined;
     let ignore = false;
     const refreshRoomState = () => {
-      Promise.allSettled([fetchChatRoomDetail(roomId), fetchChatParticipants(roomId)])
-        .then(([detailResult, participantsResult]) => {
+      Promise.allSettled([fetchChatRoomDetail(roomId), fetchChatParticipants(roomId), fetchCompanionDetail(roomId)])
+        .then(([detailResult, participantsResult, companionResult]) => {
           if (ignore) return;
           if (detailResult.status === "fulfilled") {
             setRoomDetail(detailResult.value);
@@ -779,6 +876,10 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
           if (participantsResult.status === "fulfilled") {
             setParticipants(participantsResult.value);
             setParticipantStatus(participantsResult.value.length > 0 ? "success" : "empty");
+          }
+          if (companionResult.status === "fulfilled") {
+            setCompanionDetail(companionResult.value);
+            setCompanionStatus(companionResult.value ? "success" : "empty");
           }
         });
     };
@@ -924,6 +1025,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         tripEndDate,
       }),
       successMessage: "동행을 생성했습니다.",
+      afterSuccess: () => loadCompanionDetail(),
     });
   };
 
@@ -936,6 +1038,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       key: "companion-add",
       action: () => addCompanionParticipants(roomId, companionParticipantIds),
       successMessage: "동행 참여자를 추가했습니다.",
+      afterSuccess: () => loadCompanionDetail(),
     });
   };
 
@@ -943,13 +1046,17 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     key: "companion-end",
     action: () => endCompanion(roomId),
     successMessage: "동행을 종료했습니다. 참여자 리뷰를 남길 수 있습니다.",
+    afterSuccess: () => loadCompanionDetail(),
   });
 
   const handleCancelCompanion = () => runRoomAction({
     key: "companion-cancel",
     action: () => cancelCompanion(roomId),
     successMessage: "진행 중인 동행을 취소했습니다.",
-    afterSuccess: () => setCompanionCancelConfirmOpen(false),
+    afterSuccess: () => {
+      setCompanionCancelConfirmOpen(false);
+      return loadCompanionDetail();
+    },
   });
 
   const handleTransferOwner = (participant) => {
@@ -1781,6 +1888,35 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
           )}
           {managementTab === "settings" && (
             <div className="chat-management-settings">
+              <div className="chat-companion-detail-card">
+                <div>
+                  <strong>현재 동행</strong>
+                  <span className={`chat-companion-status status-${String(companionDetail?.status || "empty").toLowerCase()}`}>
+                    {companionStatus === "loading"
+                      ? "조회 중"
+                      : companionDetail
+                        ? getCompanionStatusLabel(companionDetail.status)
+                        : "생성 전"}
+                  </span>
+                </div>
+                {companionDetail ? (
+                  <>
+                    <dl>
+                      <div>
+                        <dt>여행 기간</dt>
+                        <dd>{formatPlainDate(companionDetail.tripStartDate)} ~ {formatPlainDate(companionDetail.tripEndDate)}</dd>
+                      </div>
+                      <div>
+                        <dt>참여 종료</dt>
+                        <dd>{companionEndedCount} / {companionTotalCount}명</dd>
+                      </div>
+                    </dl>
+                    {companionDetail.endedAt && <small>동행 종료: {formatChatTime({ sentAt: companionDetail.endedAt })}</small>}
+                  </>
+                ) : (
+                  <small>동행을 생성하면 여행 기간과 참여자 종료 상태가 여기에 표시됩니다.</small>
+                )}
+              </div>
               {isCurrentUserHost && (
                 <div className="chat-companion-settings">
                   <strong>동행 여행 기간</strong>
