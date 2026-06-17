@@ -8471,6 +8471,17 @@ button:disabled,
   padding: 10px 14px;
 }
 
+.merchant-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.merchant-image-card label.secondary {
+  background: #e1f5ee;
+  color: #0f6e56;
+}
+
 .merchant-image-card label.disabled {
   cursor: not-allowed;
   opacity: 0.62;
@@ -8510,6 +8521,26 @@ button:disabled,
   height: 74px;
   border-radius: 8px;
   object-fit: cover;
+}
+
+.merchant-image-list figcaption {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 6px;
+}
+
+.merchant-image-type-badge {
+  border-radius: 999px;
+  background: #faeeda;
+  color: #854f0b;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 8px;
+}
+
+.merchant-image-type-badge.gallery {
+  background: #e1f5ee;
+  color: #0f6e56;
 }
 
 .merchant-image-list span {
@@ -9828,6 +9859,78 @@ button:disabled,
 
 .chat-room-row:hover {
   background: #fffaf0;
+}
+
+.chat-my-join-requests {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  border: 1px solid rgba(44, 110, 73, 0.16);
+  border-radius: 10px;
+  background: #f7fbf8;
+  padding: 12px;
+}
+
+.chat-my-join-requests > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-my-join-requests strong {
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+.chat-my-join-requests span {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.chat-my-join-request-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.chat-my-join-request-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-my-join-request-row em {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #faeeda;
+  color: #854f0b;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  padding: 3px 8px;
+}
+
+.chat-my-join-request-row em.status-approved {
+  background: #e1f5ee;
+  color: #0f6e56;
+}
+
+.chat-my-join-request-row em.status-rejected {
+  background: #f4f1eb;
+  color: var(--color-text-tertiary);
 }
 
 .chat-room-row strong,
@@ -11259,6 +11362,80 @@ button:disabled,
 .chat-companion-settings strong {
   color: var(--color-text-primary);
   font-size: 13px;
+}
+
+.chat-companion-detail-card {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(44, 110, 73, 0.18);
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.chat-companion-detail-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-companion-detail-card strong {
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+.chat-companion-detail-card small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.chat-companion-status {
+  border-radius: 999px;
+  background: #f4f1eb;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 8px;
+}
+
+.chat-companion-status.status-ongoing {
+  background: #e1f5ee;
+  color: #0f6e56;
+}
+
+.chat-companion-status.status-ended {
+  background: #faeeda;
+  color: #854f0b;
+}
+
+.chat-companion-detail-card dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.chat-companion-detail-card dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-companion-detail-card dt {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.chat-companion-detail-card dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 850;
+  text-align: right;
 }
 
 .chat-companion-settings label {
