@@ -114,13 +114,26 @@ export function createChatRealtimeClient({ chatRoomId, onMessage, onStatus, onEr
       client = null;
       notifyStatus("closed");
     },
-    send({ content, attachmentIds = [] }) {
+    send({
+      content = "",
+      messageType = "TEXT",
+      fileUrl,
+      fileName,
+      fileSize,
+      attachmentIds = [],
+    }) {
       if (!client?.connected) {
         throw new Error("채팅 서버에 연결되지 않았습니다.");
       }
+      const payload = { content, messageType };
+      if (fileUrl) payload.fileUrl = fileUrl;
+      if (fileName) payload.fileName = fileName;
+      if (typeof fileSize === "number") payload.fileSize = fileSize;
+      if (attachmentIds.length > 0) payload.attachmentIds = attachmentIds;
+
       client.publish({
         destination: sendDestination,
-        body: JSON.stringify({ content, attachmentIds }),
+        body: JSON.stringify(payload),
         headers: { "content-type": "application/json" },
       });
     },

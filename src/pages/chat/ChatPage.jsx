@@ -796,20 +796,31 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     setSending(true);
     shouldAutoScrollRef.current = true;
     try {
-      let uploadedAttachments = pendingAttachments;
+      if (!realtimeClientRef.current?.isConnected()) {
+        showToast?.("채팅 서버 연결이 끊겼습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
 
+      let uploadedAttachments = [];
       if (pendingAttachments.length > 0) {
         uploadedAttachments = await uploadChatAttachments(pendingAttachments, { chatRoomId: roomId });
       }
 
-      const attachmentIds = uploadedAttachments.map(item => item.uploadId).filter(Boolean);
-      if (!realtimeClientRef.current?.isConnected()) {
-        showToast?.("실시간 채팅 서버에 연결되지 않았습니다. WebSocket 설정을 확인해주세요.");
-        return;
+      if (uploadedAttachments.length === 0) {
+        realtimeClientRef.current.send({ content, messageType: "TEXT" });
+      } else {
+        uploadedAttachments.forEach((file, index) => {
+          realtimeClientRef.current.send({
+            content: index === 0 ? content : "",
+            messageType: file.messageType,
+            fileUrl: file.fileUrl,
+            fileName: file.fileName,
+            fileSize: file.fileSize,
+          });
+        });
       }
 
       shouldAutoScrollRef.current = true;
-      realtimeClientRef.current.send({ content, attachmentIds });
       setInput("");
       setPendingAttachments([]);
     } catch (error) {
@@ -862,7 +873,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     ]);
     setAttachOpen(false);
     event.target.value = "";
-    showToast?.("첨부 파일을 추가했습니다. 업로드 API 연결 전까지는 화면에서만 표시됩니다.");
+    showToast?.("첨부 파일을 추가했습니다.");
   };
 
   const removeAttachment = (id) => {
@@ -1342,11 +1353,53 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                   >
                     {m.text ?? m.content ?? ""}
                     {m.attachments?.length > 0 && (
-                      <div className="chat-attachment-preview" style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${mine ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"}` }}>
+                      <div className="chat-attachment-preview" style={{ marginTop: (m.text ?? m.content) ? 8 : 0, paddingTop: (m.text ?? m.content) ? 8 : 0, borderTop: (m.text ?? m.content) ? `1px solid ${mine ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"}` : "none" }}>
                         {m.attachments.map(file => (
-                          <div key={file.id} style={{ fontSize: 13, opacity: 0.9 }}>
-                            {file.type === "image" ? "📷 사진" : "📎 파일"} · {file.name}
-                          </div>
+                          file.previewType === "image" && file.url ? (
+                            <a
+                              key={file.id}
+                              href={file.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ display: "block", color: "inherit", textDecoration: "none" }}
+                            >
+                              <img
+                                src={file.url}
+                                alt={file.name}
+                                style={{
+                                  display: "block",
+                                  width: "min(260px, 100%)",
+                                  maxHeight: 220,
+                                  objectFit: "cover",
+                                  borderRadius: 12,
+                                  background: "rgba(0,0,0,0.08)",
+                                }}
+                              />
+                              <span style={{ display: "block", marginTop: 6, fontSize: 12, opacity: 0.82 }}>
+                                {file.name}
+                              </span>
+                            </a>
+                          ) : (
+                            <a
+                              key={file.id}
+                              href={file.url || undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                              download={file.name}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                color: "inherit",
+                                textDecoration: "none",
+                                fontSize: 13,
+                                opacity: 0.95,
+                              }}
+                            >
+                              <span aria-hidden="true">📎</span>
+                              <span>{file.name}</span>
+                            </a>
+                          )
                         ))}
                       </div>
                     )}

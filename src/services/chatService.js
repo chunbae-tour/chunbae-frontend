@@ -100,6 +100,32 @@ export function normalizeChatRoomDetail(room = {}) {
 
 export function normalizeChatMessage(message = {}) {
   const unreadCount = message.unreadCount ?? message.unreadMemberCount ?? message.notReadCount ?? message.unread;
+  const messageType = message.messageType ?? message.type ?? "TEXT";
+  const inlineAttachment = message.fileUrl
+    ? [{
+        id: message.fileUrl,
+        url: message.fileUrl,
+        name: message.fileName ?? "첨부 파일",
+        size: message.fileSize ?? 0,
+        contentType: message.contentType ?? "",
+        previewType: messageType === "IMAGE" ? "image" : "file",
+      }]
+    : [];
+  const attachments = Array.isArray(message.attachments)
+    ? message.attachments.map((file = {}) => {
+        const fileUrl = file.fileUrl ?? file.url ?? "";
+        const contentType = file.contentType ?? file.type ?? "";
+        return {
+          ...file,
+          id: file.id ?? file.attachmentId ?? file.fileId ?? fileUrl,
+          url: fileUrl,
+          name: file.fileName ?? file.originalName ?? file.name ?? "첨부 파일",
+          size: file.fileSize ?? file.size ?? 0,
+          contentType,
+          previewType: contentType.startsWith("image/") || file.messageType === "IMAGE" ? "image" : "file",
+        };
+      })
+    : inlineAttachment;
 
   return {
     ...message,
@@ -107,12 +133,13 @@ export function normalizeChatMessage(message = {}) {
     userId: message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId,
     user: message.senderNickname ?? message.user ?? "여행자",
     avatar: message.senderProfileImageUrl ?? message.profileImageUrl ?? message.avatar ?? "👤",
-    messageType: message.messageType ?? message.type ?? "TEXT",
+    messageType,
     text: message.content ?? message.text ?? "",
     time: message.sentAt ?? message.time ?? "",
     me: message.isMine ?? message.me ?? message.mine ?? null,
     read: message.isRead ?? message.read ?? message.readByMe ?? null,
     unreadCount: typeof unreadCount === "number" ? unreadCount : null,
+    attachments,
   };
 }
 
@@ -290,7 +317,7 @@ export async function addCompanionParticipants(chatRoomId, userIds = []) {
 
 export async function endCompanion(chatRoomId) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
-  return apiRequest(`/chat/rooms/${chatRoomId}/companion/end`, {
+  return apiRequest(`/chat/rooms/${chatRoomId}/companion/participation/end`, {
     method: "PATCH",
     auth: true,
     role: "USER",

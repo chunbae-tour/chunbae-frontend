@@ -1,31 +1,48 @@
 import { apiFormRequest } from "./apiClient.js";
 
 export function normalizeAttachmentUpload(item = {}) {
+  const fileUrl = item.fileUrl ?? item.url ?? "";
+  const fileName = item.fileName ?? item.originalName ?? item.name ?? "";
+  const contentType = item.contentType ?? "";
+  const fileSize = item.fileSize ?? item.size ?? 0;
+  const messageType = item.messageType ?? (contentType.startsWith("image/") ? "IMAGE" : "FILE");
+
   return {
     ...item,
     uploadId: item.attachmentId ?? item.fileId ?? item.uploadId ?? item.id,
-    url: item.url ?? item.fileUrl ?? "",
-    name: item.originalName ?? item.fileName ?? item.name ?? "",
-    type: item.contentType ?? item.type ?? "",
+    url: fileUrl,
+    fileUrl,
+    name: fileName,
+    fileName,
+    fileSize,
+    contentType,
+    messageType,
+    previewType: messageType === "IMAGE" ? "image" : "file",
   };
 }
 
 export async function uploadChatAttachment(file, { chatRoomId, type = "file" } = {}) {
-  // TODO: 파일 업로드 API 최종 경로/필드명 확정 필요.
-  // 현재 후보: POST /files/chat-attachments, multipart field: file, chatRoomId, type
+  if (!chatRoomId) {
+    throw new Error("채팅방 ID가 없어 파일을 업로드할 수 없습니다.");
+  }
+
   const formData = new FormData();
   formData.append("file", file);
-  if (chatRoomId) formData.append("chatRoomId", String(chatRoomId));
-  formData.append("type", type);
 
-  const data = await apiFormRequest("/files/chat-attachments", {
+  const data = await apiFormRequest(`/chat/rooms/${chatRoomId}/files`, {
     method: "POST",
     auth: true,
     role: "USER",
     formData,
   });
 
-  return normalizeAttachmentUpload(data);
+  return normalizeAttachmentUpload({
+    ...data,
+    type,
+    name: data?.fileName ?? file.name,
+    size: data?.fileSize ?? file.size,
+    contentType: data?.contentType ?? file.type,
+  });
 }
 
 export async function uploadChatAttachments(files, options = {}) {
