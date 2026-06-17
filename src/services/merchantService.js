@@ -114,21 +114,23 @@ export function normalizeShop(data = {}) {
 }
 
 export function normalizeShopImageUpload(data = {}) {
-  return {
-    objectKey: data.objectKey ?? data.key ?? "",
-  };
+  return normalizeShopImage(data);
 }
 
 export function normalizeShopImage(item = {}) {
   const imageId = item.imageId ?? item.id ?? item.objectKey ?? item.imageUrl ?? item.url;
   const imageUrl = item.imageUrl ?? item.url ?? item.fileUrl ?? item.thumbnailUrl ?? "";
+  const type = item.type ?? "GALLERY";
   return {
     ...item,
     id: imageId,
     imageId,
+    type,
     imageUrl,
     url: imageUrl,
     objectKey: item.objectKey ?? item.key ?? "",
+    sortOrder: Number(item.sortOrder ?? 0),
+    isPrimary: Boolean(item.isPrimary ?? item.primary ?? type === "PROFILE"),
     createdAt: item.createdAt ?? "",
   };
 }
@@ -182,13 +184,14 @@ export async function updateMerchantShopStatus(shopId, nextStatus) {
   return normalizeShop(data);
 }
 
-export async function uploadMerchantShopImage(shopId, file) {
+export async function uploadMerchantShopImage(shopId, file, type = "GALLERY") {
   const resolvedShopId = await resolveMerchantShopId(shopId);
   if (!file) {
     throw new Error("업로드할 가게 사진을 선택해주세요.");
   }
 
   const formData = new FormData();
+  formData.append("type", type);
   formData.append("file", file);
 
   const data = await apiFormRequest(`/merchants/me/shops/${resolvedShopId}/images`, {
