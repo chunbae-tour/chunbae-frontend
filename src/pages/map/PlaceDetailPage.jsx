@@ -8,9 +8,9 @@ import {
   createPlaceReview,
   fetchNearbyPlacesByPlace,
   fetchNearbyStores,
-  fetchPlaceDetail,
   fetchPlaceRecommendations,
   fetchPlaceReviews,
+  fetchTravelSpotDetail,
   normalizePlace,
   removeMarketLike,
   removePlaceLike,
@@ -168,7 +168,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
     setStatus(incomingDetail ? "success" : "loading");
     setError("");
 
-    fetchPlaceDetail(placeId)
+    fetchTravelSpotDetail(incomingDetail ?? placeId)
       .then((data) => {
         if (ignore) return;
         setDetail(data);

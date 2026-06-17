@@ -87,17 +87,21 @@ function normalizeLatLngPair(latValue, lngValue) {
 }
 
 export function normalizePlace(place = {}) {
-  const id = place.placeId ?? place.id;
+  const id = place.placeId ?? place.marketId ?? place.id;
   const { latitude, longitude } = normalizeLatLngPair(place.latitude ?? place.lat, place.longitude ?? place.lng);
   const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
   const category = place.category ?? place.categoryName;
-  const targetType = place.targetType ?? (category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
-  const isMarket = targetType === "TRADITIONAL_MARKET" || category === "TRADITIONAL_MARKET";
+  const targetType = place.targetType
+    ?? (place.marketId != null || place.marketType || category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
+  const isMarket = targetType === "TRADITIONAL_MARKET"
+    || category === "TRADITIONAL_MARKET"
+    || place.marketId != null
+    || Boolean(place.marketType);
   const imageUrls = normalizeImageUrls(place.imageUrls);
   const imageUrl = place.imageUrl ?? place.thumbnailUrl ?? imageUrls[0] ?? "";
-  const name = place.name ?? place.placeName ?? "";
+  const name = place.name ?? place.placeName ?? place.marketName ?? "";
   const address = place.address ?? place.addr ?? place.roadAddressName ?? place.addressName ?? "";
-  const description = place.description ?? place.desc ?? place.categoryName ?? "";
+  const description = place.description ?? place.desc ?? place.marketType ?? place.categoryName ?? "";
   const rawType = place.type;
   const displayType = rawType && !["TOURIST_SPOT", "TRADITIONAL_MARKET"].includes(rawType)
     ? rawType
@@ -109,6 +113,7 @@ export function normalizePlace(place = {}) {
     ...place,
     id,
     placeId: id,
+    marketId: place.marketId ?? (isMarket ? id : undefined),
     targetType,
     latitude,
     longitude,
@@ -304,6 +309,36 @@ export async function fetchPlaceDetail(placeId) {
 
   const data = await apiRequest(`/places/${placeId}`);
   return normalizePlace(data);
+}
+
+export async function fetchTraditionalMarketDetail(marketId) {
+  if (!marketId) {
+    throw new PlaceApiError("전통시장 식별자가 없습니다.", "MARKET_ID_MISSING");
+  }
+
+  const data = await apiRequest(`/traditional-markets/${marketId}`);
+  return normalizePlace({
+    ...data,
+    targetType: "TRADITIONAL_MARKET",
+    category: data?.category ?? "TRADITIONAL_MARKET",
+    type: "전통시장",
+  });
+}
+
+export async function fetchTravelSpotDetail(placeOrId) {
+  const placeId = typeof placeOrId === "object"
+    ? placeOrId?.placeId ?? placeOrId?.marketId ?? placeOrId?.id
+    : placeOrId;
+  const isMarket = typeof placeOrId === "object"
+    && (
+      placeOrId?.targetType === "TRADITIONAL_MARKET"
+      || placeOrId?.category === "TRADITIONAL_MARKET"
+      || placeOrId?.type === "전통시장"
+      || placeOrId?.marketId != null
+      || Boolean(placeOrId?.marketType)
+    );
+
+  return isMarket ? fetchTraditionalMarketDetail(placeId) : fetchPlaceDetail(placeId);
 }
 
 export async function fetchPlaceReviews(placeId) {
