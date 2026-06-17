@@ -143,6 +143,14 @@ export async function fetchFestivalDetail(festivalId) {
   return normalizeFestival(data);
 }
 
+export async function addFestivalLike(festivalId) {
+  await apiRequest(`/festivals/${festivalId}/like`, { method: "POST", auth: true });
+}
+
+export async function removeFestivalLike(festivalId) {
+  await apiRequest(`/festivals/${festivalId}/like`, { method: "DELETE", auth: true });
+}
+
 export async function fetchFestivalCalendar({ year, month }) {
   const params = new URLSearchParams({ year: String(year), month: String(month) });
   try {

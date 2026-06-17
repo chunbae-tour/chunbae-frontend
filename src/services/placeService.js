@@ -374,13 +374,11 @@ export async function removePlaceLike(placeId) {
 }
 
 export async function addMarketLike(marketId) {
-  void marketId;
-  throw new ApiClientError("전통시장 찜 API는 현재 OpenAPI 명세에 없습니다.", "MARKET_LIKE_API_MISSING", 501);
+  await apiRequest(`/traditional-markets/${marketId}/like`, { method: "POST", auth: true });
 }
 
 export async function removeMarketLike(marketId) {
-  void marketId;
-  throw new ApiClientError("전통시장 찜 API는 현재 OpenAPI 명세에 없습니다.", "MARKET_LIKE_API_MISSING", 501);
+  await apiRequest(`/traditional-markets/${marketId}/like`, { method: "DELETE", auth: true });
 }
 
 export async function fetchDirectionLink({ originLat, originLng, destLat, destLng }) {

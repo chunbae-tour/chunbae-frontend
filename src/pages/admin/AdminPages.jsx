@@ -30,10 +30,12 @@ import {
   fetchAdminFaqs,
   fetchAdminFestivals,
   fetchAdminProducts,
+  fetchAdminReportPendingCount,
   fetchAdminReports,
   fetchAdminRefunds,
   fetchAdminSettlements,
   fetchAdminShopDetail,
+  fetchAdminTraditionalMarketDetail,
   fetchAdminSupportMessages,
   fetchAdminSupportRooms,
   fetchAdminUsers,
@@ -44,11 +46,11 @@ import {
   rejectRefund,
   rejectSettlement,
   rejectMerchantApplication,
-  resolveAdminReport,
   suspendAdminUser,
   syncTouristPlaces,
   syncTraditionalMarkets,
   unsuspendAdminUser,
+  updateAdminReportStatus,
   updateAdminBanner,
   updateAdminFaq,
   updateAdminFestival,
@@ -586,15 +588,23 @@ export function AdminReportsPage({ onBack, showToast }) {
   const [reports, setReports] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     let ignore = false;
     setStatus("loading");
     setErrorMessage("");
 
-    fetchAdminReports(tab)
-      .then((data) => {
+    Promise.allSettled([fetchAdminReports(tab), fetchAdminReportPendingCount()])
+      .then(([reportResult, countResult]) => {
         if (ignore) return;
+        if (countResult.status === "fulfilled") {
+          setPendingCount(countResult.value);
+        }
+        if (reportResult.status === "rejected") {
+          throw reportResult.reason;
+        }
+        const data = reportResult.value;
         setReports(data);
         setStatus(data.length > 0 ? "success" : "empty");
       })
@@ -608,11 +618,15 @@ export function AdminReportsPage({ onBack, showToast }) {
     return () => { ignore = true; };
   }, [tab]);
 
-  const handle = async (id, action) => {
+  const handleStatusUpdate = async (id, nextStatus) => {
+    const nextLabel = nextStatus === "DISMISSED" ? "기각" : "처리완료";
     try {
-      await resolveAdminReport(id, action === "삭제" ? "DELETE" : "DISMISS");
-      showToast(action === "삭제" ? "콘텐츠가 삭제되었습니다." : "신고가 무시되었습니다.");
-      setReports(prev => prev.map(r => r.id === id ? { ...r, status: "처리완료" } : r));
+      await updateAdminReportStatus(id, nextStatus);
+      showToast(nextStatus === "DISMISSED" ? "신고를 기각했습니다." : "신고를 처리완료로 변경했습니다.");
+      setReports(prev => prev.map(r => r.id === id ? { ...r, rawStatus: nextStatus, status: nextLabel } : r));
+      if (tab === "미처리") {
+        setPendingCount(prev => Math.max(0, prev - 1));
+      }
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
@@ -627,9 +641,9 @@ export function AdminReportsPage({ onBack, showToast }) {
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>신고 관리</span>
       </div>
       <div style={{ display: "flex", background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-        {["미처리", "처리완료"].map(t => (
+        {["미처리", "처리완료", "기각"].map(t => (
           <div key={t} onClick={() => setTab(t)} style={{ flex: 1, textAlign: "center", padding: "14px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", color: tab === t ? COLORS.primary : COLORS.textMuted, borderBottom: tab === t ? `2px solid ${COLORS.primary}` : "none" }}>
-            {t} {t === "미처리" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, borderRadius: 20, padding: "1px 6px", marginLeft: 4 }}>{reports.filter(r => r.status === "미처리").length}</span>}
+            {t} {t === "미처리" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, borderRadius: 20, padding: "1px 6px", marginLeft: 4 }}>{pendingCount}</span>}
           </div>
         ))}
       </div>
@@ -655,8 +669,8 @@ export function AdminReportsPage({ onBack, showToast }) {
             {r.status === "미처리" && (
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <div onClick={() => showToast("상세 보기")} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>상세보기</div>
-                <div onClick={() => handle(r.id, "삭제")} style={{ flex: 1, background: "#FEE8E8", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: "#A32D2D" }}>삭제</div>
-                <div onClick={() => handle(r.id, "무시")} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.textMuted }}>무시</div>
+                <div onClick={() => handleStatusUpdate(r.id, "RESOLVED")} style={{ flex: 1, background: COLORS.greenBg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.green }}>처리완료</div>
+                <div onClick={() => handleStatusUpdate(r.id, "DISMISSED")} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.textMuted }}>기각</div>
               </div>
             )}
           </div>
@@ -703,6 +717,8 @@ export function AdminContentPage({ onBack, showToast }) {
   const [editingPlaceId, setEditingPlaceId] = useState(null);
   const [placeForm, setPlaceForm] = useState(EMPTY_PLACE_FORM);
   const [savingPlace, setSavingPlace] = useState(false);
+  const [marketDetail, setMarketDetail] = useState(null);
+  const [marketDetailStatus, setMarketDetailStatus] = useState("idle");
 
   const loadContents = () => {
     setStatus("loading");
@@ -876,6 +892,19 @@ export function AdminContentPage({ onBack, showToast }) {
     }
   };
 
+  const openTraditionalMarketDetail = async (market) => {
+    setMarketDetail({ ...market, loadingName: market.name });
+    setMarketDetailStatus("loading");
+    try {
+      const detail = await fetchAdminTraditionalMarketDetail(market.id);
+      setMarketDetail(detail);
+      setMarketDetailStatus("success");
+    } catch (error) {
+      setMarketDetailStatus("error");
+      showToast(getApiErrorHint(error));
+    }
+  };
+
   const filtered = filter === "전체" ? contents : contents.filter(c => c.type === filter);
 
   return (
@@ -924,14 +953,74 @@ export function AdminContentPage({ onBack, showToast }) {
                   {c.readOnly && <span style={{ fontSize: 14, color: COLORS.textMuted }}>· 외부 수집 데이터</span>}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button type="button" onClick={() => openEditPlace(c)} aria-label="관광지 수정" style={{ border: 0, background: "transparent", fontSize: 18, cursor: c.source === "place" ? "pointer" : "not-allowed", opacity: c.source === "place" ? 1 : 0.45 }}>✏️</button>
-                  <button type="button" onClick={() => removePlace(c)} aria-label="관광지 삭제" style={{ border: 0, background: "transparent", fontSize: 18, cursor: c.source === "place" ? "pointer" : "not-allowed", opacity: c.source === "place" ? 1 : 0.45 }}>🗑️</button>
+                  {c.source === "traditional-market" && (
+                    <button
+                      type="button"
+                      onClick={() => openTraditionalMarketDetail(c)}
+                      style={{ border: "1px solid rgba(44,110,73,0.2)", borderRadius: 8, background: COLORS.greenBg, color: COLORS.green, fontSize: 13, fontWeight: 800, cursor: "pointer", padding: "4px 9px" }}
+                    >
+                      상세
+                    </button>
+                  )}
+                  {!c.readOnly && (
+                    <>
+                      <button type="button" onClick={() => openEditPlace(c)} aria-label="관광지 수정" style={{ border: 0, background: "transparent", fontSize: 18, cursor: "pointer" }}>✏️</button>
+                      <button type="button" onClick={() => removePlace(c)} aria-label="관광지 삭제" style={{ border: 0, background: "transparent", fontSize: 18, cursor: "pointer" }}>🗑️</button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+      {marketDetail && (
+        <div className="admin-place-modal-backdrop" onClick={() => setMarketDetail(null)}>
+          <div className="admin-place-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-place-modal-head">
+              <strong>전통시장 상세</strong>
+              <button type="button" onClick={() => setMarketDetail(null)} aria-label="닫기">×</button>
+            </div>
+            <p className="admin-place-form-note">공공데이터로 수집된 전통시장 정보를 확인합니다.</p>
+            {marketDetailStatus === "loading" && <SkeletonList count={3} />}
+            {marketDetailStatus === "error" && (
+              <ErrorState title="전통시장 상세를 불러오지 못했습니다." description="관리자 전통시장 상세 API 연결 상태를 확인해주세요." />
+            )}
+            {marketDetailStatus === "success" && (
+              <dl className="admin-detail-list">
+                <div>
+                  <dt>시장명</dt>
+                  <dd>{marketDetail.name || "-"}</dd>
+                </div>
+                <div>
+                  <dt>유형</dt>
+                  <dd>{marketDetail.marketType || "-"}</dd>
+                </div>
+                <div>
+                  <dt>주소</dt>
+                  <dd>{marketDetail.address || "-"}</dd>
+                </div>
+                <div>
+                  <dt>전화번호</dt>
+                  <dd>{marketDetail.phoneNumber || "-"}</dd>
+                </div>
+                <div>
+                  <dt>개설연도</dt>
+                  <dd>{marketDetail.establishYear || "-"}</dd>
+                </div>
+                <div>
+                  <dt>홈페이지</dt>
+                  <dd>
+                    {marketDetail.homepageUrl ? (
+                      <a href={marketDetail.homepageUrl} target="_blank" rel="noreferrer">{marketDetail.homepageUrl}</a>
+                    ) : "-"}
+                  </dd>
+                </div>
+              </dl>
+            )}
+          </div>
+        </div>
+      )}
       {placeFormMode && (
         <div className="admin-place-modal-backdrop" onClick={closePlaceForm}>
           <div className="admin-place-modal" onClick={(event) => event.stopPropagation()}>

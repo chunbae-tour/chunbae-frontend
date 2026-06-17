@@ -8,11 +8,13 @@ import {
   approveMerchantPaymentRequest,
   deleteMerchantShopNotice,
   deleteMerchantMenu,
+  deleteMerchantShopImage,
   fetchMerchantHome,
   fetchMerchantMenus,
   fetchMerchantPaymentRequests,
   fetchMerchantSettlements,
   fetchMerchantShop,
+  fetchMerchantShopImages,
   fetchMerchantShopNotices,
   fetchMerchantShops,
   fetchMerchantWallet,
@@ -67,9 +69,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const [merchantHome, setMerchantHome] = useState(EMPTY_MERCHANT_HOME);
   const [paymentRequests, setPaymentRequests] = useState([]);
   const [notices, setNotices] = useState([]);
+  const [shopImages, setShopImages] = useState([]);
   const [status, setStatus] = useState("loading");
   const [requestStatus, setRequestStatus] = useState("loading");
   const [noticeStatus, setNoticeStatus] = useState("loading");
+  const [imageStatus, setImageStatus] = useState("loading");
   const [isShopEditorOpen, setIsShopEditorOpen] = useState(false);
   const [shopForm, setShopForm] = useState({
     name: "",
@@ -85,6 +89,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "" });
   const [isSavingNotice, setIsSavingNotice] = useState(false);
   const [isUploadingShopImage, setIsUploadingShopImage] = useState(false);
+  const [deletingShopImageId, setDeletingShopImageId] = useState("");
   const [itemUseToken, setItemUseToken] = useState("");
   const [itemUseStatus, setItemUseStatus] = useState("idle");
   const [itemUseResult, setItemUseResult] = useState(null);
@@ -97,6 +102,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       setStatus("loading");
       setRequestStatus("loading");
       setNoticeStatus("loading");
+      setImageStatus("loading");
 
       const shopList = await fetchMerchantShops();
       if (ignore) return;
@@ -108,9 +114,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         setMerchantHome(EMPTY_MERCHANT_HOME);
         setPaymentRequests([]);
         setNotices([]);
+        setShopImages([]);
         setStatus("empty");
         setRequestStatus("empty");
         setNoticeStatus("empty");
+        setImageStatus("empty");
         return;
       }
 
@@ -130,6 +138,9 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       const noticeResult = await fetchMerchantShopNotices(effectiveShopId)
         .then(value => ({ status: "fulfilled", value }))
         .catch(error => ({ status: "rejected", reason: error }));
+      const imageResult = await fetchMerchantShopImages(effectiveShopId)
+        .then(value => ({ status: "fulfilled", value }))
+        .catch(error => ({ status: "rejected", reason: error }));
 
       if (ignore) return;
       setShop(shopResult.status === "fulfilled" ? shopResult.value : (nextShops.find(item => String(item.id) === String(effectiveShopId)) ?? EMPTY_SHOP));
@@ -137,9 +148,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       setMerchantHome(homeResult.status === "fulfilled" ? homeResult.value : EMPTY_MERCHANT_HOME);
       setPaymentRequests(requestResult.status === "fulfilled" ? requestResult.value : []);
       setNotices(noticeResult.status === "fulfilled" ? noticeResult.value : []);
+      setShopImages(imageResult.status === "fulfilled" ? imageResult.value : []);
       setStatus(shopResult.status === "fulfilled" ? "success" : "error");
       setRequestStatus(requestResult.status === "fulfilled" ? (requestResult.value.length > 0 ? "success" : "empty") : "error");
       setNoticeStatus(noticeResult.status === "fulfilled" ? (noticeResult.value.length > 0 ? "success" : "empty") : "error");
+      setImageStatus(imageResult.status === "fulfilled" ? (imageResult.value.length > 0 ? "success" : "empty") : "error");
     }
 
     loadMerchantDashboard()
@@ -151,9 +164,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         setMerchantHome(EMPTY_MERCHANT_HOME);
         setPaymentRequests([]);
         setNotices([]);
+        setShopImages([]);
         setStatus("error");
         setRequestStatus("error");
         setNoticeStatus("error");
+        setImageStatus("error");
       });
 
     return () => { ignore = true; };
@@ -172,7 +187,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   };
 
   const currentShopId = selectedShopId ?? shop.id ?? "";
-  const shopImagePreview = [shop.thumbnailUrl, ...(Array.isArray(shop.imageUrls) ? shop.imageUrls : [])]
+  const shopImagePreview = [
+    shop.thumbnailUrl,
+    ...(Array.isArray(shop.imageUrls) ? shop.imageUrls : []),
+    ...shopImages.map(item => item.url || item.imageUrl),
+  ]
     .find(value => typeof value === "string" && (/^https?:\/\//.test(value) || value.startsWith("/")));
   const handleShopSelect = (event) => {
     onShopChange?.(event.target.value);
@@ -262,14 +281,37 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     setIsUploadingShopImage(true);
     try {
       await uploadMerchantShopImage(currentShopId, file);
-      const refreshedShop = await fetchMerchantShop(currentShopId);
+      const [refreshedShop, refreshedImages] = await Promise.all([
+        fetchMerchantShop(currentShopId),
+        fetchMerchantShopImages(currentShopId),
+      ]);
       setShop(refreshedShop);
       setShops(prev => prev.map(item => String(item.id) === String(refreshedShop.id) ? { ...item, ...refreshedShop } : item));
+      setShopImages(refreshedImages);
+      setImageStatus(refreshedImages.length > 0 ? "success" : "empty");
       showToast("가게 사진을 업로드했습니다.");
     } catch (error) {
       showToast(getApiErrorHint(error));
     } finally {
       setIsUploadingShopImage(false);
+    }
+  };
+
+  const handleShopImageDelete = async (imageId) => {
+    if (!currentShopId || !imageId || deletingShopImageId) return;
+    if (!window.confirm("이 가게 사진을 삭제할까요?")) return;
+
+    setDeletingShopImageId(String(imageId));
+    try {
+      await deleteMerchantShopImage(currentShopId, imageId);
+      const nextImages = shopImages.filter(item => String(item.imageId ?? item.id) !== String(imageId));
+      setShopImages(nextImages);
+      setImageStatus(nextImages.length > 0 ? "success" : "empty");
+      showToast("가게 사진을 삭제했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    } finally {
+      setDeletingShopImageId("");
     }
   };
 
@@ -462,6 +504,31 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                   disabled={isUploadingShopImage || !currentShopId}
                 />
               </label>
+              {imageStatus === "loading" && <small className="merchant-image-empty">사진 목록을 불러오는 중입니다.</small>}
+              {imageStatus === "error" && <small className="merchant-image-empty">사진 목록을 불러오지 못했습니다.</small>}
+              {imageStatus !== "loading" && imageStatus !== "error" && shopImages.length === 0 && (
+                <small className="merchant-image-empty">등록된 가게 사진이 없습니다.</small>
+              )}
+              {shopImages.length > 0 && (
+                <div className="merchant-image-list">
+                  {shopImages.map(image => {
+                    const imageId = image.imageId ?? image.id;
+                    const imageUrl = image.url || image.imageUrl;
+                    return (
+                      <figure key={imageId || imageUrl}>
+                        {imageUrl ? <img src={imageUrl} alt={`${shop.name || "가게"} 사진`} /> : <span>이미지 URL 없음</span>}
+                        <button
+                          type="button"
+                          onClick={() => handleShopImageDelete(imageId)}
+                          disabled={!imageId || deletingShopImageId === String(imageId)}
+                        >
+                          {deletingShopImageId === String(imageId) ? "삭제 중" : "삭제"}
+                        </button>
+                      </figure>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

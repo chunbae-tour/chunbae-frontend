@@ -8480,6 +8480,67 @@ button:disabled,
   display: none;
 }
 
+.merchant-image-empty {
+  grid-column: 1 / -1;
+  color: #7c7b75;
+  font-size: 13px;
+}
+
+.merchant-image-list {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.merchant-image-list figure {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid rgba(26, 26, 46, 0.08);
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 6px;
+}
+
+.merchant-image-card .merchant-image-list img {
+  grid-column: auto;
+  grid-row: auto;
+  width: 100%;
+  height: 74px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.merchant-image-list span {
+  display: grid;
+  min-height: 74px;
+  place-items: center;
+  border-radius: 8px;
+  background: #f7f5f0;
+  color: #7c7b75;
+  font-size: 12px;
+}
+
+.merchant-image-list button {
+  width: 100%;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(226, 75, 74, 0.12);
+  color: #a32d2d;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 8px;
+}
+
+.merchant-image-list button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .merchant-notice-form {
   display: grid;
   grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.6fr) auto;
@@ -10458,6 +10519,40 @@ button:disabled,
   font-size: 13px;
 }
 
+.admin-detail-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.admin-detail-list div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  border-radius: 8px;
+  background: #f7f5f0;
+  padding: 12px;
+}
+
+.admin-detail-list dt {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-detail-list dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.admin-detail-list a {
+  color: var(--color-success);
+}
+
 .admin-place-modal-actions {
   justify-content: flex-end;
   margin-top: 18px;
@@ -10488,6 +10583,11 @@ button:disabled,
 
   .admin-place-form-grid label.wide {
     grid-column: auto;
+  }
+
+  .admin-detail-list div {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
 
@@ -13870,6 +13970,10 @@ button:disabled,
   .merchant-image-card img {
     width: 100%;
     height: 150px;
+  }
+
+  .merchant-image-card .merchant-image-list img {
+    height: 74px;
   }
 
   .merchant-notice-form button {

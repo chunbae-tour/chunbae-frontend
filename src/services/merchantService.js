@@ -119,6 +119,20 @@ export function normalizeShopImageUpload(data = {}) {
   };
 }
 
+export function normalizeShopImage(item = {}) {
+  const imageId = item.imageId ?? item.id ?? item.objectKey ?? item.imageUrl ?? item.url;
+  const imageUrl = item.imageUrl ?? item.url ?? item.fileUrl ?? item.thumbnailUrl ?? "";
+  return {
+    ...item,
+    id: imageId,
+    imageId,
+    imageUrl,
+    url: imageUrl,
+    objectKey: item.objectKey ?? item.key ?? "",
+    createdAt: item.createdAt ?? "",
+  };
+}
+
 export async function fetchMerchantShops() {
   const data = await apiRequest("/merchants/me/shops", { auth: true, role: "MERCHANT" });
   const shops = Array.isArray(data) ? data : getPageContent(data);
@@ -185,6 +199,22 @@ export async function uploadMerchantShopImage(shopId, file) {
   });
 
   return normalizeShopImageUpload(data);
+}
+
+export async function fetchMerchantShopImages(shopId) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/images`, { auth: true, role: "MERCHANT" });
+  const images = Array.isArray(data) ? data : getPageContent(data);
+  return images.map(normalizeShopImage);
+}
+
+export async function deleteMerchantShopImage(shopId, imageId) {
+  const resolvedShopId = await resolveMerchantShopId(shopId);
+  return apiRequest(`/merchants/me/shops/${resolvedShopId}/images/${imageId}`, {
+    method: "DELETE",
+    auth: true,
+    role: "MERCHANT",
+  });
 }
 
 export async function fetchMerchantShopNotices(shopId) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchFestivalDetail } from "../../services/festivalService.js";
+import { addFestivalLike, fetchFestivalDetail, removeFestivalLike } from "../../services/festivalService.js";
 
 const PROGRESS_LABELS = {
   UPCOMING: "진행 예정",
@@ -15,6 +15,8 @@ export default function FestivalDetailPage({ festival, onBack }) {
   const [detail, setDetail] = useState(festival);
   const [status, setStatus] = useState(festival ? "success" : "loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [liked, setLiked] = useState(Boolean(festival?.isLiked ?? festival?.liked));
+  const [likeSaving, setLikeSaving] = useState(false);
 
   const loadDetail = async () => {
     if (!festivalId) {
@@ -26,7 +28,9 @@ export default function FestivalDetailPage({ festival, onBack }) {
     setStatus("loading");
     setErrorMessage("");
     try {
-      setDetail(await fetchFestivalDetail(festivalId));
+      const nextDetail = await fetchFestivalDetail(festivalId);
+      setDetail(nextDetail);
+      setLiked(Boolean(nextDetail?.isLiked ?? nextDetail?.liked));
       setStatus("success");
       setErrorMessage("");
     } catch (error) {
@@ -44,6 +48,28 @@ export default function FestivalDetailPage({ festival, onBack }) {
   useEffect(() => {
     loadDetail();
   }, [festivalId]);
+
+  const handleToggleLike = async () => {
+    if (!festivalId || likeSaving) return;
+
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikeSaving(true);
+    setErrorMessage("");
+
+    try {
+      if (nextLiked) {
+        await addFestivalLike(festivalId);
+      } else {
+        await removeFestivalLike(festivalId);
+      }
+    } catch (error) {
+      setLiked(!nextLiked);
+      setErrorMessage(getApiErrorHint(error));
+    } finally {
+      setLikeSaving(false);
+    }
+  };
 
   return (
     <div style={S.screen}>
@@ -75,11 +101,21 @@ export default function FestivalDetailPage({ festival, onBack }) {
                 </span>
                 <h1 style={{ color: COLORS.primary, fontSize: 28, margin: 0 }}>{detail.name}</h1>
               </div>
-              {detail.relatedUrl && (
-                <a href={detail.relatedUrl} target="_blank" rel="noreferrer" style={{ flexShrink: 0, background: COLORS.primary, color: "#fff", borderRadius: 6, padding: "10px 14px", textDecoration: "none", fontWeight: 700 }}>
-                  공식 정보
-                </a>
-              )}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={handleToggleLike}
+                  disabled={likeSaving}
+                  style={{ flexShrink: 0, border: `1px solid ${liked ? "#E24B4A" : "rgba(0,0,0,0.12)"}`, background: liked ? "#FCEBEB" : "#fff", color: liked ? "#A32D2D" : COLORS.primary, borderRadius: 6, padding: "10px 14px", fontWeight: 700, cursor: likeSaving ? "wait" : "pointer", fontFamily: "inherit" }}
+                >
+                  {liked ? "♥ 찜 해제" : "♡ 축제 찜"}
+                </button>
+                {detail.relatedUrl && (
+                  <a href={detail.relatedUrl} target="_blank" rel="noreferrer" style={{ flexShrink: 0, background: COLORS.primary, color: "#fff", borderRadius: 6, padding: "10px 14px", textDecoration: "none", fontWeight: 700 }}>
+                    공식 정보
+                  </a>
+                )}
+              </div>
             </div>
             <section style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, padding: 20, marginBottom: 16 }}>
               <dl style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "14px 16px", margin: 0 }}>

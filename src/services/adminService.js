@@ -14,14 +14,15 @@ export function normalizeAdminUser(user = {}) {
 }
 
 export function normalizeReport(report = {}) {
-  const resolved = ["RESOLVED", "DONE", "CLOSED"].includes(report.status);
+  const rawStatus = report.status ?? "PENDING";
   return {
     id: report.reportId ?? report.id,
     type: report.typeLabel ?? report.type ?? "신고",
     reason: report.reason ?? "",
     reporter: report.reporterNickname ?? report.reporter ?? "",
     date: report.createdAt ?? report.date ?? "",
-    status: resolved ? "처리완료" : "미처리",
+    rawStatus,
+    status: REPORT_STATUS_LABELS[rawStatus] ?? rawStatus,
   };
 }
 
@@ -58,10 +59,29 @@ export function normalizeAdminTraditionalMarket(market = {}) {
     name: market.marketName ?? market.name ?? "전통시장",
     status: market.deleted || market.status === "HIDDEN" ? "비공개" : "공개",
     updatedAt: market.updatedAt ?? market.createdAt ?? "",
+    address: market.address ?? "",
+    marketType: market.marketType ?? market.type ?? "",
+    phoneNumber: market.phoneNumber ?? market.phone ?? "",
+    homepageUrl: market.homepageUrl ?? market.homepage ?? "",
+    establishYear: market.establishYear ?? "",
     readOnly: true,
     source: "traditional-market",
   };
 }
+
+const REPORT_STATUS_LABELS = {
+  PENDING: "미처리",
+  RESOLVED: "처리완료",
+  DISMISSED: "기각",
+  DONE: "처리완료",
+  CLOSED: "처리완료",
+};
+
+const REPORT_STATUS_QUERY = {
+  미처리: "PENDING",
+  처리완료: "RESOLVED",
+  기각: "DISMISSED",
+};
 
 export function normalizeAdminFestival(festival = {}) {
   return {
@@ -113,9 +133,25 @@ export async function unsuspendAdminUser(userId) {
 }
 
 export async function fetchAdminReports(status = "미처리") {
-  const apiStatus = status === "처리완료" ? "RESOLVED" : "PENDING";
-  const data = await apiRequest(`/admin/reports?status=${apiStatus}&size=20`, { auth: true, role: "ADMIN" });
+  const params = new URLSearchParams({ size: "20" });
+  const apiStatus = REPORT_STATUS_QUERY[status];
+  if (apiStatus) params.set("status", apiStatus);
+  const data = await apiRequest(`/admin/reports?${params.toString()}`, { auth: true, role: "ADMIN" });
   return getPageContent(data).map(normalizeReport);
+}
+
+export async function fetchAdminReportPendingCount() {
+  const data = await apiRequest("/admin/reports/pending-count", { auth: true, role: "ADMIN" });
+  return Number(data?.count ?? data?.pendingCount ?? data ?? 0);
+}
+
+export async function updateAdminReportStatus(reportId, status) {
+  return apiRequest(`/admin/reports/${reportId}/status`, {
+    method: "PATCH",
+    auth: true,
+    role: "ADMIN",
+    body: { status },
+  });
 }
 
 export async function fetchAdminReportDetail(reportId) {
@@ -174,30 +210,29 @@ export async function rejectMerchantApplication(applicationId, rejectReason = "�
   });
 }
 
-async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, maxItems = 2000 } = {}) {
+export async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, maxItems = 2000 } = {}) {
   const markets = [];
   let cursor = null;
   let hasNext = true;
 
   while (hasNext && markets.length < maxItems) {
-    const params = new URLSearchParams({
-      size: String(size),
-      category: "TRADITIONAL_MARKET",
-    });
+    const params = new URLSearchParams({ size: String(size) });
     if (keyword) params.set("keyword", keyword);
     if (cursor) params.set("cursor", cursor);
 
-    const data = await apiRequest(`/admin/places?${params.toString()}`, { auth: true, role: "ADMIN" });
+    const data = await apiRequest(`/admin/traditional-markets?${params.toString()}`, { auth: true, role: "ADMIN" });
     const pageItems = getPageContent(data);
-    markets.push(...pageItems.map((item) => normalizeAdminPlace({
-      ...item,
-      category: item.category ?? "TRADITIONAL_MARKET",
-    })));
+    markets.push(...pageItems.map(normalizeAdminTraditionalMarket));
     cursor = data?.nextCursor ?? data?.cursor ?? null;
     hasNext = Boolean(data?.hasNext && cursor);
   }
 
   return markets;
+}
+
+export async function fetchAdminTraditionalMarketDetail(marketId) {
+  const data = await apiRequest(`/admin/traditional-markets/${marketId}`, { auth: true, role: "ADMIN" });
+  return normalizeAdminTraditionalMarket(data);
 }
 
 export async function fetchAdminFestivals({ size = 100, maxItems = 1000 } = {}) {
