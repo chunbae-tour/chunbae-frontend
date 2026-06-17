@@ -33,11 +33,20 @@ function getReportStatusStyle(status) {
   return { background: "#FFF3CF", color: "#A36300" };
 }
 
+const WISHLIST_FILTERS = [
+  { value: "ALL", label: "전체" },
+  { value: "PLACE", label: "관광지" },
+  { value: "MARKET", label: "전통시장" },
+  { value: "FESTIVAL", label: "축제" },
+];
+
 // ─── 찜 목록 ─────────────────────────────────────────────────────────
 export function WishlistPage({ onBack, onPlaceClick }) {
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [activeType, setActiveType] = useState("ALL");
+  const [removingKey, setRemovingKey] = useState("");
 
   const loadWishlist = () => {
     setStatus("loading");
@@ -64,13 +73,24 @@ export function WishlistPage({ onBack, onPlaceClick }) {
     return () => { ignore = true; };
   }, []);
 
-  const removeLike = async (id) => {
+  const visibleItems = activeType === "ALL"
+    ? items
+    : items.filter((item) => item.targetType === activeType);
+
+  const getItemKey = (item) => item.wishlistKey ?? `${item.targetType ?? "PLACE"}:${item.id}`;
+
+  const removeLike = async (item) => {
+    const itemKey = getItemKey(item);
+    setRemovingKey(itemKey);
+    setErrorMessage("");
     try {
-      await removeWishlistItem(id);
-    } catch {
-      // TODO: 찜 취소 API 연결 실패 시 현재 화면 상태만 갱신합니다.
+      await removeWishlistItem(item);
+      setItems(prev => prev.filter(p => getItemKey(p) !== itemKey));
+    } catch (error) {
+      setErrorMessage(getApiErrorHint(error) || "찜 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setRemovingKey("");
     }
-    setItems(prev => prev.filter(p => p.id !== id));
   };
 
   return (
@@ -95,25 +115,91 @@ export function WishlistPage({ onBack, onPlaceClick }) {
             <EmptyState
               icon="♡"
               title="찜한 장소가 없어요."
-              description="마음에 드는 시장과 관광지를 발견하면 찜해두고 나중에 다시 볼 수 있습니다."
+              description="마음에 드는 시장, 관광지, 축제를 발견하면 찜해두고 나중에 다시 볼 수 있습니다."
             />
           </div>
         ) : (
           <div style={{ padding: 16 }}>
-            {items.map(p => (
-              <div key={p.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
-                <div onClick={() => onPlaceClick(p)} style={{ fontSize: 36, width: 60, height: 60, background: COLORS.bg, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>{p.emoji}</div>
-                <div style={{ flex: 1, cursor: "pointer" }} onClick={() => onPlaceClick(p)}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>{p.name}</div>
-                  <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 4 }}>{p.addr}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+              {WISHLIST_FILTERS.map((filter) => {
+                const count = filter.value === "ALL"
+                  ? items.length
+                  : items.filter((item) => item.targetType === filter.value).length;
+                const active = activeType === filter.value;
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setActiveType(filter.value)}
+                    style={{
+                      border: active ? `1px solid ${COLORS.primary}` : "0.5px solid rgba(0,0,0,0.08)",
+                      background: active ? COLORS.primary : "#fff",
+                      color: active ? "#fff" : COLORS.textSub,
+                      borderRadius: 999,
+                      padding: "8px 12px",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {filter.label} {count}
+                  </button>
+                );
+              })}
+            </div>
+            {errorMessage && (
+              <div style={{ background: "#FFF0F0", border: "1px solid rgba(226,75,74,0.18)", color: "#A32D2D", borderRadius: 12, padding: 12, fontSize: 13, marginBottom: 12 }}>
+                {errorMessage}
+              </div>
+            )}
+            {visibleItems.length === 0 ? (
+              <EmptyState
+                icon="♡"
+                title={`${WISHLIST_FILTERS.find((filter) => filter.value === activeType)?.label ?? "선택한 항목"} 찜이 없어요.`}
+                description="다른 카테고리를 선택하거나 상세 페이지에서 마음에 드는 항목을 찜해보세요."
+              />
+            ) : visibleItems.map(p => {
+              const itemKey = getItemKey(p);
+              const canOpenDetail = p.targetType !== "FESTIVAL";
+              return (
+              <div key={itemKey} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
+                <div
+                  onClick={() => canOpenDetail && onPlaceClick(p)}
+                  style={{ fontSize: 34, width: 60, height: 60, background: COLORS.bg, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: canOpenDetail ? "pointer" : "default", flexShrink: 0 }}
+                >
+                  {p.emoji}
+                </div>
+                <div style={{ flex: 1, cursor: canOpenDetail ? "pointer" : "default" }} onClick={() => canOpenDetail && onPlaceClick(p)}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.primary }}>{p.name}</div>
+                    <span style={{ background: "#E1F5EE", color: "#0F6E56", borderRadius: 999, padding: "3px 8px", fontSize: 11, fontWeight: 800 }}>
+                      {p.typeLabel}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 4 }}>{p.addr || "위치 정보 없음"}</div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <span style={{ fontSize: 14, color: COLORS.textMuted }}>📍 {p.dist}</span>
                     <span style={{ color: "#E8A020", fontSize: 14, fontWeight: 700 }}>★ {p.rating}</span>
                   </div>
                 </div>
-                <div onClick={() => removeLike(p.id)} style={{ fontSize: 22, cursor: "pointer" }}>❤️</div>
+                <button
+                  type="button"
+                  onClick={() => removeLike(p)}
+                  disabled={removingKey === itemKey}
+                  aria-label={`${p.name} 찜 취소`}
+                  style={{
+                    border: 0,
+                    background: "transparent",
+                    fontSize: 22,
+                    cursor: removingKey === itemKey ? "default" : "pointer",
+                    opacity: removingKey === itemKey ? 0.45 : 1,
+                    padding: 6,
+                  }}
+                >
+                  {removingKey === itemKey ? "…" : "❤️"}
+                </button>
               </div>
-            ))}
+            );})}
           </div>
         )}
       </div>
