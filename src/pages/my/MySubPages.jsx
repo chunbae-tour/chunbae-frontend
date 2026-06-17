@@ -41,7 +41,7 @@ const WISHLIST_FILTERS = [
 ];
 
 // ─── 찜 목록 ─────────────────────────────────────────────────────────
-export function WishlistPage({ onBack, onPlaceClick }) {
+export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
@@ -160,16 +160,23 @@ export function WishlistPage({ onBack, onPlaceClick }) {
               />
             ) : visibleItems.map(p => {
               const itemKey = getItemKey(p);
-              const canOpenDetail = p.targetType !== "FESTIVAL";
+              const canOpenDetail = p.targetType !== "FESTIVAL" || Boolean(onFestivalClick);
+              const openDetail = () => {
+                if (p.targetType === "FESTIVAL") {
+                  onFestivalClick?.(p);
+                  return;
+                }
+                onPlaceClick?.(p);
+              };
               return (
               <div key={itemKey} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
                 <div
-                  onClick={() => canOpenDetail && onPlaceClick(p)}
+                  onClick={() => canOpenDetail && openDetail()}
                   style={{ fontSize: 34, width: 60, height: 60, background: COLORS.bg, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: canOpenDetail ? "pointer" : "default", flexShrink: 0 }}
                 >
                   {p.emoji}
                 </div>
-                <div style={{ flex: 1, cursor: canOpenDetail ? "pointer" : "default" }} onClick={() => canOpenDetail && onPlaceClick(p)}>
+                <div style={{ flex: 1, cursor: canOpenDetail ? "pointer" : "default" }} onClick={() => canOpenDetail && openDetail()}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.primary }}>{p.name}</div>
                     <span style={{ background: "#E1F5EE", color: "#0F6E56", borderRadius: 999, padding: "3px 8px", fontSize: 11, fontWeight: 800 }}>

@@ -159,6 +159,7 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState(storedNavigation?.selectedProduct || null);
   const [selectedShop, setSelectedShop] = useState(storedNavigation?.selectedShop || null);
   const [selectedFestival, setSelectedFestival] = useState(storedNavigation?.selectedFestival || null);
+  const [selectedFestivalBackScreen, setSelectedFestivalBackScreen] = useState(storedNavigation?.selectedFestivalBackScreen || "fest");
   const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(storedNavigation?.selectedMerchantShopId || null);
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [likeChangeCounter, setLikeChangeCounter] = useState(0);
@@ -182,6 +183,7 @@ export default function App() {
     selectedProduct,
     selectedShop,
     selectedFestival,
+    selectedFestivalBackScreen,
     selectedMerchantShopId,
   });
 
@@ -197,6 +199,7 @@ export default function App() {
     setSelectedProduct(state.selectedProduct || null);
     setSelectedShop(state.selectedShop || null);
     setSelectedFestival(state.selectedFestival || null);
+    setSelectedFestivalBackScreen(state.selectedFestivalBackScreen || "fest");
     setSelectedMerchantShopId(state.selectedMerchantShopId || null);
   };
 
@@ -459,7 +462,7 @@ export default function App() {
     }
 
     window.history.pushState(state, "", window.location.href);
-  }, [appState, screen, tab, selectedPlace, selectedRoom, selectedPost, communityTab, communityWriteType, selectedProduct, selectedShop, selectedFestival, selectedMerchantShopId]);
+  }, [appState, screen, tab, selectedPlace, selectedRoom, selectedPost, communityTab, communityWriteType, selectedProduct, selectedShop, selectedFestival, selectedFestivalBackScreen, selectedMerchantShopId]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("comfortable-view", comfortableView);
@@ -584,14 +587,14 @@ export default function App() {
   return (
     <div style={S.app}>
       <AppShell active={tab} screen={screen} onTab={handleTab} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount} onNotificationIntent={requestSystemNotificationPermission}>
-        {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={(festival) => { setSelectedFestival(festival); go("festDetail"); }} onTab={handleTab} onSignup={() => setAppState("signup")} showToast={showToast} user={user} />}
+        {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={(festival) => { setSelectedFestival(festival); setSelectedFestivalBackScreen("home"); go("festDetail"); }} onTab={handleTab} onSignup={() => setAppState("signup")} showToast={showToast} user={user} />}
         {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
         {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} onCompanionMore={() => { setCommunityTab("동행"); go("community"); }} onCompanionWrite={() => { setSelectedPost(null); setCommunityWriteType("동행"); go("communityWrite"); }} />}
         {screen === "direction"        && <DirectionPage place={selectedPlace} onBack={() => go("place")} />}
         {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} />}
-        {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
-        {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} onFestival={(festival) => { setSelectedFestival(festival); go("festDetail"); }} />}
-        {screen === "festDetail"       && <FestivalDetailPage festival={selectedFestival} onBack={() => go("fest")} />}
+        {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} onFestival={(festival) => { setSelectedFestival(festival); setSelectedFestivalBackScreen("fest"); go("festDetail"); }} />}
+        {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} onFestival={(festival) => { setSelectedFestival(festival); setSelectedFestivalBackScreen("festCalendar"); go("festDetail"); }} />}
+        {screen === "festDetail"       && <FestivalDetailPage festival={selectedFestival} onBack={() => go(selectedFestivalBackScreen || "fest")} />}
         {screen === "community"        && <CommunityListPage initialTab={communityTab} onTabChange={setCommunityTab} onPost={(p) => { setSelectedPost(p); setCommunityTab(p.type || communityTab); go("communityPost"); }} onWrite={(type) => { const nextType = type || communityTab; setSelectedPost(null); setCommunityWriteType(nextType); setCommunityTab(nextType); go("communityWrite"); }} onBack={() => go(tab)} />}
         {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => { setCommunityTab(selectedPost?.type || communityTab); go("community"); }} onEdit={(post) => { setSelectedPost(post); setCommunityWriteType(post.type || communityTab); go("communityWrite"); }} onDeleted={() => { const nextType = selectedPost?.type || communityTab; setSelectedPost(null); setCommunityTab(nextType); go("community"); }} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); setTab("chat"); go("chat"); }} onPlaceClick={handlePlaceClick} />}
         {screen === "communityWrite"   && <CommunityWritePage post={selectedPost} initialType={communityWriteType} onBack={() => { if (selectedPost) { go("communityPost"); return; } setCommunityTab(communityWriteType); go("community"); }} onSaved={(post) => { const nextType = post?.type || communityWriteType; setCommunityTab(nextType); setSelectedPost(post); go("communityPost"); }} showToast={showToast} />}
@@ -604,7 +607,17 @@ export default function App() {
         {screen === "storeProduct"     && <StoreProductPage product={selectedProduct} onBack={() => go("store")} showToast={showToast} />}
         {screen === "storeShop"        && <StoreShopDetailPage shop={selectedShop} onBack={() => go(tab)} showToast={showToast} onQrPay={() => go("qrpay")} />}
         {screen === "my"               && <MyPage key={likeChangeCounter} onTab={handleTab} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} onProfileUpdate={setUser} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
-        {screen === "wishlist"         && <WishlistPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} />}
+        {screen === "wishlist"         && (
+          <WishlistPage
+            onBack={() => go("my")}
+            onPlaceClick={handlePlaceClick}
+            onFestivalClick={(festival) => {
+              setSelectedFestival(festival);
+              setSelectedFestivalBackScreen("wishlist");
+              go("festDetail");
+            }}
+          />
+        )}
         {screen === "myReview"         && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
         {screen === "myReports"        && <MyReportsPage onBack={() => go("my")} />}
         {screen === "ownedItems"       && <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />}
