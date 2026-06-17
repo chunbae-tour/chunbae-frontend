@@ -1341,19 +1341,18 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                       background: mine ? COLORS.primary : "#fff", 
                       color: mine ? "#fff" : COLORS.textPrimary, 
                       borderRadius: mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px", 
-                      padding: "11px 15px", 
+                      padding: m.attachments?.some(file => file.previewType === "image") ? 8 : "11px 15px",
                       fontSize: 15, 
                       lineHeight: 1.5,
                       border: mine ? "none" : "1px solid rgba(0,0,0,0.06)",
                       wordBreak: "break-word",
-                      maxWidth: "100%",
+                      maxWidth: m.attachments?.some(file => file.previewType === "image") ? 292 : "100%",
                       width: "fit-content",
                       boxShadow: mine ? "none" : "0 1px 2px rgba(0,0,0,0.04)"
                     }}
                   >
-                    {m.text ?? m.content ?? ""}
                     {m.attachments?.length > 0 && (
-                      <div className="chat-attachment-preview" style={{ marginTop: (m.text ?? m.content) ? 8 : 0, paddingTop: (m.text ?? m.content) ? 8 : 0, borderTop: (m.text ?? m.content) ? `1px solid ${mine ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"}` : "none" }}>
+                      <div className="chat-attachment-preview" style={{ display: "grid", gap: 8 }}>
                         {m.attachments.map(file => (
                           file.previewType === "image" && file.url ? (
                             <a
@@ -1368,16 +1367,14 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                                 alt={file.name}
                                 style={{
                                   display: "block",
-                                  width: "min(260px, 100%)",
-                                  maxHeight: 220,
+                                  width: 260,
+                                  maxWidth: "100%",
+                                  maxHeight: 190,
                                   objectFit: "cover",
                                   borderRadius: 12,
                                   background: "rgba(0,0,0,0.08)",
                                 }}
                               />
-                              <span style={{ display: "block", marginTop: 6, fontSize: 12, opacity: 0.82 }}>
-                                {file.name}
-                              </span>
                             </a>
                           ) : (
                             <a
@@ -1401,6 +1398,16 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                             </a>
                           )
                         ))}
+                      </div>
+                    )}
+                    {(m.text ?? m.content) && (
+                      <div
+                        style={{
+                          marginTop: m.attachments?.length > 0 ? 8 : 0,
+                          padding: m.attachments?.some(file => file.previewType === "image") ? "0 4px 2px" : 0,
+                        }}
+                      >
+                        {m.text ?? m.content ?? ""}
                       </div>
                     )}
                   </div>
