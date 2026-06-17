@@ -1,4 +1,4 @@
-import { apiRequest, getPageContent } from "./apiClient.js";
+import { apiFormRequest, apiRequest, getPageContent } from "./apiClient.js";
 
 export function normalizeSupportRoom(room = {}) {
   return {
@@ -25,7 +25,18 @@ export function normalizeSupportMessage(message = {}) {
     messageType: message.messageType ?? "TEXT",
     content: message.content ?? "",
     fileUrl: message.fileUrl ?? "",
+    fileName: message.fileName ?? "",
+    fileSize: message.fileSize ?? null,
     sentAt: message.sentAt ?? message.createdAt ?? "",
+  };
+}
+
+export function normalizeSupportFileUpload(file = {}) {
+  return {
+    fileUrl: file.fileUrl ?? "",
+    fileName: file.fileName ?? "",
+    fileSize: file.fileSize ?? null,
+    contentType: file.contentType ?? "",
   };
 }
 
@@ -74,4 +85,17 @@ export async function fetchSupportMessages(supportRoomId, { cursor, size = 50 } 
 
   const data = await apiRequest(`/support/rooms/${supportRoomId}/messages?${params.toString()}`, { auth: true });
   return getPageContent(data).map(normalizeSupportMessage);
+}
+
+export async function uploadSupportFile(supportRoomId, file, { role } = {}) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const data = await apiFormRequest(`/support/rooms/${supportRoomId}/files`, {
+    method: "POST",
+    auth: true,
+    role,
+    formData,
+  });
+  return normalizeSupportFileUpload(data);
 }

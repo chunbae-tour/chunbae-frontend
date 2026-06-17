@@ -1,4 +1,4 @@
-import { ApiClientError, apiRequest, getPageContent } from "./apiClient.js";
+import { ApiClientError, apiFormRequest, apiRequest, getPageContent } from "./apiClient.js";
 import { getProductCategoryCode, isProductCategoryCode } from "../constants/productCategories.js";
 
 export function normalizeAdminUser(user = {}) {
@@ -623,6 +623,18 @@ export async function sendAdminSupportMessage(supportRoomId, message) {
   void supportRoomId;
   void message;
   throw new ApiClientError("상담 메시지 전송 API는 현재 OpenAPI 명세에 없습니다.", "SUPPORT_MESSAGE_API_MISSING", 501);
+}
+
+export async function uploadAdminSupportFile(supportRoomId, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiFormRequest(`/admin/support/rooms/${supportRoomId}/files`, {
+    method: "POST",
+    auth: true,
+    role: "ADMIN",
+    formData,
+  });
 }
 
 export async function closeAdminSupportRoom(supportRoomId, summary = "") {

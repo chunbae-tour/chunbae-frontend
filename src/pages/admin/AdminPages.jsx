@@ -58,6 +58,7 @@ import {
   updateAdminShopMarket,
   updateAdminShopPlace,
   updateAdminShopStatus,
+  uploadAdminSupportFile,
 } from "../../services/adminService.js";
 import { mergeSupportMessages } from "../../services/supportService.js";
 import { createSupportRealtimeClient } from "../../services/supportRealtimeService.js";
@@ -143,6 +144,40 @@ function formatDate(value) {
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString();
+}
+
+function formatSupportFileSize(value) {
+  const size = Number(value);
+  if (!Number.isFinite(size) || size <= 0) return "";
+  if (size < 1024 * 1024) return `${Math.ceil(size / 1024)}KB`;
+  return `${(size / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function AdminSupportMessageBody({ message }) {
+  const messageType = String(message?.messageType ?? "").toUpperCase();
+  if (messageType === "IMAGE" && message.fileUrl) {
+    return (
+      <a href={message.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 4, color: COLORS.primary, textDecoration: "none" }}>
+        <img
+          src={message.fileUrl}
+          alt={message.fileName || "상담 이미지"}
+          style={{ display: "block", maxWidth: 240, width: "100%", borderRadius: 10, background: COLORS.bg }}
+        />
+        {message.fileName && <span style={{ display: "block", marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>{message.fileName}</span>}
+      </a>
+    );
+  }
+  if (message.fileUrl) {
+    const fileSize = formatSupportFileSize(message.fileSize);
+    return (
+      <a href={message.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 4, color: COLORS.primary, textDecoration: "none", fontWeight: 700 }}>
+        <span aria-hidden="true">📎</span>
+        <span>{message.fileName || "첨부파일"}</span>
+        {fileSize && <span style={{ color: COLORS.textMuted, fontSize: 12 }}>{fileSize}</span>}
+      </a>
+    );
+  }
+  return <div style={{ marginTop: 4, color: COLORS.text }}>{message.content || "-"}</div>;
 }
 
 function AdminIcon({ name, size = 20 }) {
@@ -1264,6 +1299,7 @@ export function AdminSupportPage({ onBack, showToast }) {
   const [messagesStatus, setMessagesStatus] = useState("idle");
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState("idle");
   const [realtimeClient, setRealtimeClient] = useState(null);
 
@@ -1367,6 +1403,41 @@ export function AdminSupportPage({ onBack, showToast }) {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || uploading) return;
+    if (!selectedRoom?.supportRoomId) {
+      showToast("상담방을 먼저 선택해주세요.");
+      return;
+    }
+    if (selectedRoom.status === "CLOSED") {
+      showToast("종료된 상담방에는 파일을 보낼 수 없습니다.");
+      return;
+    }
+    if (!realtimeClient?.isConnected()) {
+      showToast("상담 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploaded = await uploadAdminSupportFile(selectedRoom.supportRoomId, file);
+      realtimeClient.send({
+        messageType: uploaded.contentType?.startsWith("image/") ? "IMAGE" : "FILE",
+        content: uploaded.fileName,
+        fileUrl: uploaded.fileUrl,
+        fileName: uploaded.fileName,
+        fileSize: uploaded.fileSize,
+      });
+      showToast("첨부파일을 전송했습니다.");
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <AdminShell title="상담 관리" onBack={onBack}>
       <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="상담방이 없습니다." emptyDescription="고객센터 상담방이 생성되면 이곳에서 확인할 수 있습니다." onRetry={reload} />
@@ -1406,20 +1477,46 @@ export function AdminSupportPage({ onBack, showToast }) {
                 {messagesStatus === "success" && messages.map((message) => (
                   <div key={message.messageId} style={{ padding: "10px 0", borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>
                     <div style={{ fontSize: 13, color: COLORS.textMuted }}>{message.senderRole ?? "UNKNOWN"} · {formatDate(message.sentAt)}</div>
-                    <div style={{ marginTop: 4, color: COLORS.text }}>{message.content || message.fileUrl || "-"}</div>
+                    <AdminSupportMessageBody message={message} />
                   </div>
                 ))}
                 <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                  <label
+                    title="이미지/파일 첨부"
+                    style={{
+                      width: 42,
+                      minWidth: 42,
+                      borderRadius: 10,
+                      border: "1px solid rgba(0,0,0,0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: COLORS.primary,
+                      background: "#fff",
+                      cursor: selectedRoom.status === "CLOSED" || uploading ? "not-allowed" : "pointer",
+                      opacity: selectedRoom.status === "CLOSED" || uploading ? 0.45 : 1,
+                      fontWeight: 900,
+                    }}
+                  >
+                    📎
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.txt,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                      disabled={selectedRoom.status === "CLOSED" || uploading}
+                      onChange={handleFileUpload}
+                      style={{ display: "none" }}
+                    />
+                  </label>
                   <input
                     value={reply}
-                    disabled={selectedRoom.status === "CLOSED"}
+                    disabled={selectedRoom.status === "CLOSED" || uploading}
                     onChange={(event) => setReply(event.target.value)}
                     onKeyDown={(event) => event.key === "Enter" && handleSend()}
                     placeholder={selectedRoom.status === "CLOSED" ? "종료된 상담입니다." : "관리자 답장을 입력하세요."}
                     style={{ ...adminInputStyle, flex: 1 }}
                   />
-                  <AdminButton onClick={handleSend} disabled={!reply.trim() || sending || selectedRoom.status === "CLOSED"}>
-                    {sending ? "전송 중" : "답장"}
+                  <AdminButton onClick={handleSend} disabled={!reply.trim() || sending || uploading || selectedRoom.status === "CLOSED"}>
+                    {uploading ? "첨부 중" : sending ? "전송 중" : "답장"}
                   </AdminButton>
                 </div>
               </>

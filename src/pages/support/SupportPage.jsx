@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { createSupportRoom, fetchMySupportRooms, fetchSupportMessages, mergeSupportMessages } from "../../services/supportService.js";
+import { createSupportRoom, fetchMySupportRooms, fetchSupportMessages, mergeSupportMessages, uploadSupportFile } from "../../services/supportService.js";
 import { createSupportRealtimeClient } from "../../services/supportRealtimeService.js";
 
 function formatDate(value) {
@@ -21,6 +21,55 @@ function getRoomLabel(status) {
   return labels[status] ?? status ?? "대기";
 }
 
+function formatFileSize(value) {
+  const size = Number(value);
+  if (!Number.isFinite(size) || size <= 0) return "";
+  if (size < 1024 * 1024) return `${Math.ceil(size / 1024)}KB`;
+  return `${(size / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function isImageMessage(message) {
+  return String(message?.messageType ?? "").toUpperCase() === "IMAGE" && Boolean(message?.fileUrl);
+}
+
+function SupportMessageContent({ message, isCustomer }) {
+  if (isImageMessage(message)) {
+    return (
+      <a href={message.fileUrl} target="_blank" rel="noreferrer" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+        <img
+          src={message.fileUrl}
+          alt={message.fileName || "상담 이미지"}
+          style={{ display: "block", width: "100%", maxWidth: 260, borderRadius: 10, background: "rgba(255,255,255,0.18)" }}
+        />
+        {message.fileName && <span style={{ display: "block", marginTop: 6, fontSize: 12, opacity: 0.72 }}>{message.fileName}</span>}
+      </a>
+    );
+  }
+  if (message.fileUrl) {
+    const fileSize = formatFileSize(message.fileSize);
+    return (
+      <a
+        href={message.fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          color: isCustomer ? "#fff" : COLORS.primary,
+          textDecoration: "none",
+          fontWeight: 700,
+        }}
+      >
+        <span aria-hidden="true">📎</span>
+        <span>{message.fileName || "첨부파일"}</span>
+        {fileSize && <span style={{ fontSize: 12, opacity: 0.7 }}>{fileSize}</span>}
+      </a>
+    );
+  }
+  return <div style={{ fontSize: 14, lineHeight: 1.45 }}>{message.content || "-"}</div>;
+}
+
 export default function SupportPage({ onBack, showToast, user, onLogin }) {
   const [rooms, setRooms] = useState([]);
   const [roomsStatus, setRoomsStatus] = useState("loading");
@@ -30,6 +79,7 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
   const [messagesStatus, setMessagesStatus] = useState("idle");
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState("idle");
   const [realtimeClient, setRealtimeClient] = useState(null);
 
@@ -175,6 +225,41 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || uploading) return;
+    if (!selectedRoom) {
+      showToast?.("먼저 문의 내용을 보내 상담방을 만든 뒤 파일을 첨부해주세요.");
+      return;
+    }
+    if (!canSend) {
+      showToast?.("종료된 상담방에는 파일을 보낼 수 없습니다.");
+      return;
+    }
+    if (!realtimeClient?.isConnected()) {
+      showToast?.("상담 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploaded = await uploadSupportFile(selectedRoom.supportRoomId, file, { role });
+      realtimeClient.send({
+        messageType: uploaded.contentType?.startsWith("image/") ? "IMAGE" : "FILE",
+        content: uploaded.fileName,
+        fileUrl: uploaded.fileUrl,
+        fileName: uploaded.fileName,
+        fileSize: uploaded.fileSize,
+      });
+      showToast?.("첨부파일을 전송했습니다.");
+    } catch (error) {
+      showToast?.(getApiErrorHint(error));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (!user) {
     return (
       <div style={S.screen}>
@@ -260,7 +345,7 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
                   <div key={message.messageId ?? `${message.senderRole}-${message.sentAt}-${message.content}`} style={{ display: "flex", justifyContent: isCustomer ? "flex-end" : "flex-start", marginBottom: 10 }}>
                     <div style={{ maxWidth: "76%", background: isCustomer ? COLORS.primary : COLORS.bg, color: isCustomer ? "#fff" : COLORS.text, borderRadius: 12, padding: "10px 12px" }}>
                       <div style={{ fontSize: 12, opacity: 0.72, marginBottom: 4 }}>{isCustomer ? "나" : "관리자"} · {formatDate(message.sentAt)}</div>
-                      <div style={{ fontSize: 14, lineHeight: 1.45 }}>{message.content || message.fileUrl || "-"}</div>
+                      <SupportMessageContent message={message} isCustomer={isCustomer} />
                     </div>
                   </div>
                 );
@@ -270,9 +355,35 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, padding: 12, background: "#fff", borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
+        <label
+          title={selectedRoom ? "이미지/파일 첨부" : "상담방 생성 후 첨부할 수 있어요."}
+          style={{
+            width: 44,
+            minWidth: 44,
+            borderRadius: 12,
+            border: "1px solid rgba(0,0,0,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: COLORS.primary,
+            background: "#fff",
+            cursor: !selectedRoom || !canSend || uploading ? "not-allowed" : "pointer",
+            opacity: !selectedRoom || !canSend || uploading ? 0.45 : 1,
+            fontWeight: 900,
+          }}
+        >
+          📎
+          <input
+            type="file"
+            accept="image/*,.pdf,.txt,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            disabled={!selectedRoom || !canSend || uploading}
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
+          />
+        </label>
         <input
           value={input}
-          disabled={Boolean(selectedRoom) && !canSend}
+          disabled={(Boolean(selectedRoom) && !canSend) || uploading}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && handleSend()}
           placeholder={selectedRoom ? "상담 메시지를 입력하세요." : "문의 내용을 입력하면 상담방이 생성됩니다."}
@@ -280,11 +391,11 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
         />
         <button
           type="button"
-          disabled={!input.trim() || sending || (Boolean(selectedRoom) && !canSend)}
+          disabled={!input.trim() || sending || uploading || (Boolean(selectedRoom) && !canSend)}
           onClick={handleSend}
-          style={{ border: 0, borderRadius: 12, background: COLORS.primary, color: "#fff", padding: "0 18px", fontWeight: 800, opacity: !input.trim() || sending ? 0.5 : 1, cursor: sending ? "wait" : "pointer" }}
+          style={{ border: 0, borderRadius: 12, background: COLORS.primary, color: "#fff", padding: "0 18px", fontWeight: 800, opacity: !input.trim() || sending || uploading ? 0.5 : 1, cursor: sending || uploading ? "wait" : "pointer" }}
         >
-          {selectedRoom ? "전송" : "문의"}
+          {uploading ? "첨부 중" : selectedRoom ? "전송" : "문의"}
         </button>
       </div>
     </div>

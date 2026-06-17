@@ -90,13 +90,20 @@ export function createSupportRealtimeClient({ supportRoomId, role, onMessage, on
       client = null;
       notifyStatus("closed");
     },
-    send({ content }) {
+    send({ content = "", messageType = "TEXT", fileUrl, fileName, fileSize }) {
       if (!client?.connected) {
         throw new Error("상담 서버에 연결되지 않았습니다.");
       }
+      const payload = {
+        messageType,
+        content,
+        ...(fileUrl ? { fileUrl } : {}),
+        ...(fileName ? { fileName } : {}),
+        ...(fileSize != null ? { fileSize } : {}),
+      };
       client.publish({
         destination: sendDestination,
-        body: JSON.stringify({ content }),
+        body: JSON.stringify(payload),
         headers: { "content-type": "application/json" },
       });
     },
