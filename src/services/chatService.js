@@ -98,6 +98,29 @@ export function normalizeChatRoomDetail(room = {}) {
   };
 }
 
+export function normalizeCompanionDetail(companion = {}) {
+  const participants = Array.isArray(companion.participants)
+    ? companion.participants.map((participant = {}) => ({
+        ...participant,
+        userId: participant.userId,
+        endedAt: participant.endedAt ?? "",
+      }))
+    : [];
+
+  return {
+    ...companion,
+    id: companion.companionId ?? companion.id,
+    companionId: companion.companionId ?? companion.id,
+    chatRoomId: companion.chatRoomId,
+    status: companion.status ?? "",
+    tripStartDate: companion.tripStartDate ?? "",
+    tripEndDate: companion.tripEndDate ?? "",
+    startedAt: companion.startedAt ?? "",
+    endedAt: companion.endedAt ?? "",
+    participants,
+  };
+}
+
 export function normalizeChatMessage(message = {}) {
   const unreadCount = message.unreadCount ?? message.unreadMemberCount ?? message.notReadCount ?? message.unread;
   const messageType = message.messageType ?? message.type ?? "TEXT";
@@ -190,6 +213,19 @@ export async function fetchChatRoomDetail(chatRoomId) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
   const data = await apiRequest(`/chat/rooms/${chatRoomId}`, { auth: true, role: "USER" });
   return normalizeChatRoomDetail(data);
+}
+
+export async function fetchCompanionDetail(chatRoomId) {
+  if (!chatRoomId) return null;
+  try {
+    const data = await apiRequest(`/chat/rooms/${chatRoomId}/companion`, { auth: true, role: "USER" });
+    return normalizeCompanionDetail(data);
+  } catch (error) {
+    if (error?.code === "CR_005" || error?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function fetchChatMessagesPage(chatRoomId, { cursor = "", size = 30 } = {}) {
@@ -389,6 +425,32 @@ export async function fetchJoinRequests(chatRoomId) {
       createdAt: request.createdAt ?? "",
     };
   });
+}
+
+function normalizeMyJoinRequest(request = {}) {
+  return {
+    ...request,
+    id: request.joinRequestId ?? request.id,
+    joinRequestId: request.joinRequestId ?? request.id,
+    chatRoomId: request.chatRoomId,
+    chatRoomTitle: request.chatRoomTitle ?? request.title ?? "채팅방",
+    message: request.message ?? "",
+    status: request.status ?? "PENDING",
+    createdAt: request.createdAt ?? "",
+  };
+}
+
+export async function fetchMyJoinRequests({ cursor = "", size = 20 } = {}) {
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  const data = await apiRequest(`/chat/rooms/join-requests/me?${params.toString()}`, { auth: true, role: "USER" });
+  const list = Array.isArray(data) ? data : getPageContent(data);
+  return {
+    content: list.map(normalizeMyJoinRequest),
+    nextCursor: data?.nextCursor ?? null,
+    hasNext: Boolean(data?.hasNext),
+    size: data?.size ?? size,
+  };
 }
 
 export async function approveJoinRequest({ chatRoomId, joinRequestId }) {
