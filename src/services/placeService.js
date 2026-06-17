@@ -87,13 +87,16 @@ function normalizeLatLngPair(latValue, lngValue) {
 }
 
 export function normalizePlace(place = {}) {
-  const id = place.placeId ?? place.marketId ?? place.id;
+  const id = place.placeId ?? place.marketId ?? place.targetId ?? place.id;
   const { latitude, longitude } = normalizeLatLngPair(place.latitude ?? place.lat, place.longitude ?? place.lng);
   const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
   const category = place.category ?? place.categoryName;
-  const targetType = place.targetType
+  const rawTargetType = place.targetType ?? place.likeTargetType;
+  const normalizedTargetType = rawTargetType === "MARKET" ? "TRADITIONAL_MARKET" : rawTargetType;
+  const targetType = normalizedTargetType
     ?? (place.marketId != null || place.marketType || category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
   const isMarket = targetType === "TRADITIONAL_MARKET"
+    || rawTargetType === "MARKET"
     || category === "TRADITIONAL_MARKET"
     || place.marketId != null
     || Boolean(place.marketType);
@@ -103,7 +106,7 @@ export function normalizePlace(place = {}) {
   const address = place.address ?? place.addr ?? place.roadAddressName ?? place.addressName ?? "";
   const description = place.description ?? place.desc ?? place.marketType ?? place.categoryName ?? "";
   const rawType = place.type;
-  const displayType = rawType && !["TOURIST_SPOT", "TRADITIONAL_MARKET"].includes(rawType)
+  const displayType = rawType && !["TOURIST_SPOT", "TRADITIONAL_MARKET", "PLACE", "MARKET"].includes(rawType)
     ? rawType
     : isMarket
       ? "전통시장"
@@ -154,8 +157,56 @@ function normalizePlaceList(data) {
   return Array.isArray(list) ? list.map(normalizePlace) : [];
 }
 
+function getPlaceIdentity(place = {}) {
+  const id = place.placeId ?? place.marketId ?? place.targetId ?? place.id;
+  if (id == null) return null;
+
+  const category = place.category ?? place.categoryName;
+  const rawTargetType = place.targetType ?? place.likeTargetType;
+  const normalizedTargetType = rawTargetType === "MARKET" ? "TRADITIONAL_MARKET" : rawTargetType;
+  const targetType = normalizedTargetType
+    ?? (place.marketId != null || place.marketType || category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
+
+  return `${targetType}:${id}`;
+}
+
 export function getDefaultLocation() {
   return DEFAULT_LOCATION;
+}
+
+export async function fetchLikedTravelSpots({ size = 100 } = {}) {
+  const fetchByType = async (type) => {
+    const params = new URLSearchParams({ type, size: String(size) });
+    const data = await apiRequest(`/users/me/likes?${params.toString()}`, { auth: true });
+    return normalizePlaceList(data).map((place) => normalizePlace({
+      ...place,
+      targetType: type === "MARKET" ? "TRADITIONAL_MARKET" : "PLACE",
+      category: place.category ?? (type === "MARKET" ? "TRADITIONAL_MARKET" : undefined),
+      isLiked: true,
+    }));
+  };
+
+  const results = await Promise.allSettled([
+    fetchByType("PLACE"),
+    fetchByType("MARKET"),
+  ]);
+  const fulfilled = results
+    .filter((result) => result.status === "fulfilled")
+    .flatMap((result) => result.value);
+
+  if (fulfilled.length === 0 && results[0]?.status === "rejected") {
+    throw results[0].reason;
+  }
+
+  const byIdentity = new Map();
+  fulfilled.forEach((place) => {
+    const key = getPlaceIdentity(place);
+    if (key && !byIdentity.has(key)) {
+      byIdentity.set(key, place);
+    }
+  });
+
+  return Array.from(byIdentity.values());
 }
 
 export async function fetchMapMarkers({ swLat, swLng, neLat, neLng }) {
@@ -283,19 +334,30 @@ export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000,
   // 장소 목록과 찜 목록을 병렬로 가져오기
   const [spotsResult, likesResult] = await Promise.allSettled([
     fetchNearbyTravelSpots({ lat, lng, radius, cursor, cursorDistance, page, size }),
-    apiRequest("/users/me/likes?size=100", { auth: true }).catch(() => ({ content: [] })),
+    fetchLikedTravelSpots({ size: 100 }).catch(() => []),
   ]);
 
   const spots = spotsResult.status === "fulfilled" ? spotsResult.value : [];
 
   if (likesResult.status === "fulfilled") {
+    const likedPlaces = likesResult.value;
     const likedPlaceIds = new Set(
-      getPageContent(likesResult.value).map(item => item.placeId ?? item.id)
+      likedPlaces
+        .map(item => item.placeId ?? item.marketId ?? item.targetId ?? item.id)
+        .filter(id => id != null)
+        .map(String)
+    );
+    const likedPlaceIdentities = new Set(
+      likedPlaces
+        .map(getPlaceIdentity)
+        .filter(Boolean)
     );
 
     return spots.map(spot => ({
       ...spot,
-      isLiked: likedPlaceIds.has(spot.placeId ?? spot.id),
+      isLiked:
+        likedPlaceIds.has(String(spot.placeId ?? spot.marketId ?? spot.id)) ||
+        likedPlaceIdentities.has(getPlaceIdentity(spot)),
     }));
   }
 

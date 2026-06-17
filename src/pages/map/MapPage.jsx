@@ -4,7 +4,7 @@ import { S } from "../../constants/colors";
 import { EmptyState, ErrorState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchMapMarkers, fetchNearbyTraditionalMarkets, fetchNearbyTravelSpotsWithLikes, fetchPlaces, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
+import { fetchLikedTravelSpots, fetchMapMarkers, fetchNearbyTraditionalMarkets, fetchNearbyTravelSpotsWithLikes, fetchPlaces, fetchRegionByCoordinate, getDefaultLocation } from "../../services/placeService.js";
 import {
   getGeolocationErrorMessage,
   getGeolocationSupport,
@@ -168,6 +168,10 @@ export default function MapPage({ onPlaceClick }) {
       const selectedRegion = getRegionQueryValue(normalizedRegion);
       const selectedCategory = getCategoryFilterValue(nextFilter);
       const placesPromise = (() => {
+        if (nextFilter === FAVORITE_FILTER) {
+          return fetchLikedTravelSpots({ size: PLACE_FILTER_PAGE_SIZE });
+        }
+
         if (selectedCategory === "TRADITIONAL_MARKET") {
           return fetchNearbyTraditionalMarkets({ ...location, radius: 50000, size: PLACE_FILTER_PAGE_SIZE })
             .then((markets) => filterPlacesByRegion(markets, normalizedRegion));
@@ -518,7 +522,7 @@ export default function MapPage({ onPlaceClick }) {
           <EmptyState
             icon={filter === "찜한 장소" ? "♥" : "지도"}
             title={filter === "찜한 장소" ? "찜한 장소가 없습니다." : "이 필터에 표시할 장소가 없습니다."}
-            description={filter === "찜한 장소" ? "관광지 상세에서 마음에 드는 장소를 찜하면 여기에서 모아볼 수 있어요." : "다른 필터를 선택하거나 위치를 다시 확인해보세요."}
+            description={filter === "찜한 장소" ? "관광지나 전통시장 상세에서 마음에 드는 장소를 찜하면 여기에서 모아볼 수 있어요." : "다른 필터를 선택하거나 위치를 다시 확인해보세요."}
           />
         )}
         <div className="map-result-grid">
