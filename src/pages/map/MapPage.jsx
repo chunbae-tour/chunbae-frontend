@@ -512,7 +512,6 @@ export default function MapPage({ onPlaceClick }) {
             </div>
             <div className="map-popover-actions">
               <button type="button" onClick={() => onPlaceClick({ ...selectedPlace, imageUrl: getPlaceImageUrl(selectedPlace) })}>상세 보기</button>
-              <button type="button" className="ghost" onClick={() => onPlaceClick({ ...selectedPlace, imageUrl: getPlaceImageUrl(selectedPlace) })}>상세에서 길찾기</button>
             </div>
           </div>
         )}
@@ -578,8 +577,6 @@ export default function MapPage({ onPlaceClick }) {
               }}
               className={`map-result-card ${isActive ? "active" : ""} ${isNew ? "new-item" : ""}`}
               style={isNew ? { animationDelay: `${Math.min(index, 8) * 0.05}s` } : undefined}
-              onMouseEnter={() => focusPlaceOnMap(place)}
-              onMouseLeave={() => setFocusedPlace(null)}
               onClick={() => focusPlaceOnMap(place, { select: true })}
             >
               <div
@@ -607,7 +604,7 @@ export default function MapPage({ onPlaceClick }) {
                   onPlaceClick({ ...place, imageUrl });
                 }}
               >
-                골목 보기
+                상세 보기
               </button>
             </article>
           );
