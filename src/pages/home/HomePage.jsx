@@ -86,9 +86,9 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
 
     const loadNearbyPlaces = async ({ lat, lng }) => {
       try {
-        const places = await fetchNearbyTravelSpots({ lat, lng, size: 10 });
+        const placesPage = await fetchNearbyTravelSpots({ lat, lng, size: 10 });
         if (ignore) return;
-        setNearbyPlaces(places);
+        setNearbyPlaces(placesPage.items ?? []);
       } catch {
         if (ignore) return;
         setNearbyPlaces([]);

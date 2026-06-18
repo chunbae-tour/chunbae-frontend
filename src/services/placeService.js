@@ -157,6 +157,32 @@ function normalizePlaceList(data) {
   return Array.isArray(list) ? list.map(normalizePlace) : [];
 }
 
+function getLastNearbyCursorItem(data) {
+  const items = getPlaceItems(data);
+  return Array.isArray(items) && items.length > 0 ? items[items.length - 1] : null;
+}
+
+function getNearbyPageMeta(data) {
+  const lastItem = getLastNearbyCursorItem(data);
+  return {
+    hasNext: Boolean(data?.hasNext),
+    nextCursor: data?.nextCursor ?? lastItem?.placeId ?? lastItem?.id ?? null,
+    nextCursorDistance: data?.nextCursorDistance
+      ?? data?.cursorDistance
+      ?? lastItem?.distance
+      ?? lastItem?.distanceMeters
+      ?? null,
+  };
+}
+
+function getOffsetPageMeta(data, currentPage = 0) {
+  const hasNext = Boolean(data?.hasNext);
+  return {
+    hasNext,
+    nextPage: hasNext ? Number(currentPage) + 1 : null,
+  };
+}
+
 function getPlaceIdentity(place = {}) {
   const id = place.placeId ?? place.marketId ?? place.targetId ?? place.id;
   if (id == null) return null;
@@ -237,7 +263,10 @@ export async function fetchNearbyPlaces({ lat, lng, radius = 3000, cursor, curso
     params.set("cursorDistance", String(cursorDistance));
   }
   const data = await apiRequest(`/places/nearby?${params.toString()}`);
-  return normalizePlaceList(data);
+  return {
+    items: normalizePlaceList(data),
+    ...getNearbyPageMeta(data),
+  };
 }
 
 export async function fetchPlaces({ keyword = "", category = "", region = "", cursor, cursorRating, size = 20 } = {}) {
@@ -306,28 +335,59 @@ export async function fetchNearbyTraditionalMarkets({ lat, lng, radius = 3000, p
   }));
 }
 
-export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, cursor, cursorDistance, page, size = 20 }) {
-  void page;
+async function fetchNearbyTraditionalMarketsPage({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    radius: String(radius),
+    page: String(page),
+    size: String(size),
+  });
+  const data = await apiRequest(`/traditional-markets/nearby?${params.toString()}`);
+  return {
+    items: normalizePlaceList(data).map(market => ({
+      ...market,
+      targetType: "TRADITIONAL_MARKET",
+      type: "전통시장",
+      rating: market.rating ?? 0,
+      reviews: market.reviews ?? 0,
+    })),
+    ...getOffsetPageMeta(data, page),
+  };
+}
+
+export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, cursor, cursorDistance, page = 0, size = 20 }) {
   const [placesResult, marketsResult] = await Promise.allSettled([
     fetchNearbyPlaces({ lat, lng, radius, cursor, cursorDistance, size }),
-    fetchNearbyTraditionalMarkets({ lat, lng, radius, page: 0, size }),
+    fetchNearbyTraditionalMarketsPage({ lat, lng, radius, page, size }),
   ]);
 
   if (placesResult.status === "rejected" && marketsResult.status === "rejected") {
     throw placesResult.reason;
   }
 
-  const places = placesResult.status === "fulfilled" ? placesResult.value : [];
-  const markets = marketsResult.status === "fulfilled" ? marketsResult.value : [];
+  const placesPage = placesResult.status === "fulfilled" ? placesResult.value : { items: [], hasNext: false };
+  const marketsPage = marketsResult.status === "fulfilled" ? marketsResult.value : { items: [], hasNext: false };
+  const places = placesPage.items;
+  const markets = marketsPage.items;
 
-  return [...places, ...markets]
+  const items = [...places, ...markets]
     .sort((a, b) => {
       const aDistance = Number(a.distanceMeters ?? a.distance ?? Number.POSITIVE_INFINITY);
       const bDistance = Number(b.distanceMeters ?? b.distance ?? Number.POSITIVE_INFINITY);
       if (aDistance !== bDistance) return aDistance - bDistance;
       return String(a.name).localeCompare(String(b.name), "ko");
-    })
-    .slice(0, size);
+    });
+
+  return {
+    items,
+    hasNext: Boolean(placesPage.hasNext || marketsPage.hasNext),
+    nextCursor: placesPage.nextCursor ?? null,
+    nextCursorDistance: placesPage.nextCursorDistance ?? null,
+    nextMarketPage: marketsPage.nextPage ?? null,
+    hasNextPlaces: Boolean(placesPage.hasNext),
+    hasNextMarkets: Boolean(marketsPage.hasNext),
+  };
 }
 
 export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000, cursor, cursorDistance, page, size = 20 }) {
@@ -337,7 +397,8 @@ export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000,
     fetchLikedTravelSpots({ size: 100 }).catch(() => []),
   ]);
 
-  const spots = spotsResult.status === "fulfilled" ? spotsResult.value : [];
+  const spotsPage = spotsResult.status === "fulfilled" ? spotsResult.value : { items: [], hasNext: false };
+  const spots = spotsPage.items;
 
   if (likesResult.status === "fulfilled") {
     const likedPlaces = likesResult.value;
@@ -353,15 +414,18 @@ export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000,
         .filter(Boolean)
     );
 
-    return spots.map(spot => ({
-      ...spot,
-      isLiked:
-        likedPlaceIds.has(String(spot.placeId ?? spot.marketId ?? spot.id)) ||
-        likedPlaceIdentities.has(getPlaceIdentity(spot)),
-    }));
+    return {
+      ...spotsPage,
+      items: spots.map(spot => ({
+        ...spot,
+        isLiked:
+          likedPlaceIds.has(String(spot.placeId ?? spot.marketId ?? spot.id)) ||
+          likedPlaceIdentities.has(getPlaceIdentity(spot)),
+      })),
+    };
   }
 
-  return spots;
+  return spotsPage;
 }
 
 export async function fetchPlaceDetail(placeId) {

@@ -40,6 +40,29 @@ function getMapBoundsPayload(map) {
   };
 }
 
+function getMarkerIdentity(place = {}) {
+  const targetType = place.targetType ?? (place.marketId != null || place.type === "전통시장" ? "TRADITIONAL_MARKET" : "PLACE");
+  const id = place.placeId ?? place.marketId ?? place.id ?? place.name;
+  return `${targetType}:${id}`;
+}
+
+function createMarkerImage(kakao, active = false) {
+  const fill = active ? "#2C6E49" : "#378ADD";
+  const size = active ? 38 : 30;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
+      <path d="M${size / 2} ${size + 6}C${size / 2} ${size + 6} ${size * 0.18} ${size * 0.62} ${size * 0.18} ${size * 0.38}C${size * 0.18} ${size * 0.16} ${size * 0.34} 2 ${size / 2} 2C${size * 0.66} 2 ${size * 0.82} ${size * 0.16} ${size * 0.82} ${size * 0.38}C${size * 0.82} ${size * 0.62} ${size / 2} ${size + 6} ${size / 2} ${size + 6}Z" fill="${fill}" stroke="white" stroke-width="3"/>
+      <circle cx="${size / 2}" cy="${size * 0.38}" r="${active ? 6 : 5}" fill="white"/>
+    </svg>
+  `;
+  const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  return new kakao.maps.MarkerImage(
+    src,
+    new kakao.maps.Size(size, size + 8),
+    { offset: new kakao.maps.Point(size / 2, size + 6) },
+  );
+}
+
 export default function KakaoMap({
   center,
   currentPosition,
@@ -132,9 +155,13 @@ export default function KakaoMap({
       .filter((item) => item.coordinate);
 
     validMarkers.forEach(({ place, coordinate }) => {
+      const markerKey = getMarkerIdentity(place);
+      const isActive = selectedMarkerId != null && String(selectedMarkerId) === markerKey;
       const marker = new kakao.maps.Marker({
         map: mapRef.current,
         position: new kakao.maps.LatLng(coordinate.lat, coordinate.lng),
+        image: createMarkerImage(kakao, isActive),
+        zIndex: isActive ? 10 : 1,
       });
       kakao.maps.event.addListener(marker, "click", () => onMarkerClick?.(place));
       markerInstancesRef.current.push(marker);
@@ -160,7 +187,7 @@ export default function KakaoMap({
         mapRef.current.setLevel(8);
       }
     }
-  }, [markers, currentPosition?.lat, currentPosition?.lng, status, onMarkerClick, fitMarkers]);
+  }, [markers, currentPosition?.lat, currentPosition?.lng, status, onMarkerClick, fitMarkers, selectedMarkerId]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return undefined;
@@ -207,7 +234,7 @@ export default function KakaoMap({
   useEffect(() => {
     if (status !== "ready" || !mapRef.current || selectedMarkerId == null) return;
 
-    const place = markers.find((item) => item.id === selectedMarkerId || item.placeId === selectedMarkerId);
+    const place = markers.find((item) => getMarkerIdentity(item) === String(selectedMarkerId) || item.id === selectedMarkerId || item.placeId === selectedMarkerId);
     const coordinate = getRenderableCoordinate(place?.lat ?? place?.latitude, place?.lng ?? place?.longitude);
     if (!coordinate) return;
 
