@@ -521,7 +521,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
                 </div>
               </div>
               )}
-              {(nearbyCategoryStatus === "loading" || (nearbyCategoryStatus === "success" && nearbyCategoryPlaces.length > 0)) && (
+              {nearbyCategoryStatus !== "idle" && (
               <div className="place-explore-panel">
                 <div className="place-action-head">
                   <span>주변 맛집·카페·숙박</span>
@@ -539,7 +539,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
                   ))}
                 </div>
                 {nearbyCategoryStatus === "loading" && <SkeletonList count={2} />}
-                {nearbyCategoryStatus === "success" && (
+                {nearbyCategoryStatus === "success" && nearbyCategoryPlaces.length > 0 && (
                   <div className="place-external-list">
                     {nearbyCategoryPlaces.map((item) => (
                       <div key={item.id ?? item.placeId ?? `${item.name}-${item.addr}`} className="place-external-card">
@@ -548,6 +548,16 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
                         <small>{item.dist || item.type || "주변 장소"}</small>
                       </div>
                     ))}
+                  </div>
+                )}
+                {nearbyCategoryStatus === "empty" && (
+                  <div className="place-nearby-empty">
+                    선택한 분류의 주변 장소가 아직 없습니다.
+                  </div>
+                )}
+                {nearbyCategoryStatus === "error" && (
+                  <div className="place-nearby-empty error">
+                    주변 장소를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
                   </div>
                 )}
               </div>

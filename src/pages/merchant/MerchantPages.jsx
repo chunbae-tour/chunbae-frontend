@@ -264,10 +264,9 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     if (!currentShopId || shop.status === nextStatus || isUpdatingStatus) return;
     setIsUpdatingStatus(true);
     try {
-      const updatedShop = await updateMerchantShopStatus(currentShopId, nextStatus);
-      const nextShop = { ...updatedShop, status: nextStatus };
-      setShop(nextShop);
-      setShops(prev => prev.map(item => String(item.id) === String(nextShop.id) ? { ...item, ...nextShop } : item));
+      await updateMerchantShopStatus(currentShopId, nextStatus);
+      setShop(prev => ({ ...prev, status: nextStatus }));
+      setShops(prev => prev.map(item => String(item.id) === String(currentShopId) ? { ...item, status: nextStatus } : item));
       showToast(`${SHOP_STATUS_LABELS[nextStatus] ?? nextStatus} 상태로 변경했습니다.`);
     } catch {
       showToast("가게 상태 변경에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");

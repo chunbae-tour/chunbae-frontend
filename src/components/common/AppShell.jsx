@@ -70,6 +70,7 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
   ].includes(screen);
   const isLoggedIn = Boolean(user);
   const isAdmin = String(user?.role || "").toUpperCase() === "ADMIN";
+  const topbarUserLabel = user?.nickname || (isLoggedIn ? "마이" : "로그인");
   const notificationBadgeText = unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
 
   useEffect(() => {
@@ -247,7 +248,7 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
                 {isLoggedIn && unreadNotificationCount > 0 && <span>{notificationBadgeText}</span>}
               </button>
               <button type="button" className="topbar-user" onClick={() => openAuthOrTab("my")}>
-                <span>{user?.nickname || "로그인"}</span>
+                <span>{topbarUserLabel}</span>
                 <b style={{ background: COLORS.accent }}>👤</b>
               </button>
             </div>
