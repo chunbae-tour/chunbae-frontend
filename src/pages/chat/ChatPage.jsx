@@ -310,21 +310,26 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
       });
   };
 
-  useEffect(() => {
-    loadRooms();
-    setMyJoinRequestStatus("loading");
-    fetchMyJoinRequests({ size: 5 })
+  const loadMyJoinRequests = () => {
+    setMyJoinRequestStatus((current) => current === "idle" ? "loading" : current);
+    return fetchMyJoinRequests({ size: 100 })
       .then((data) => {
-        const nextRequests = data.content ?? [];
-        setMyJoinRequests(nextRequests);
-        setMyJoinRequestStatus(nextRequests.length > 0 ? "success" : "empty");
+        const pendingRequests = (data.content ?? []).filter((request) => String(request.status).toUpperCase() === "PENDING");
+        setMyJoinRequests(pendingRequests);
+        setMyJoinRequestStatus(pendingRequests.length > 0 ? "success" : "empty");
       })
       .catch(() => {
         setMyJoinRequestStatus("error");
       });
+  };
+
+  useEffect(() => {
+    loadRooms();
+    loadMyJoinRequests();
 
     const intervalId = window.setInterval(() => {
       loadRooms({ silent: true });
+      loadMyJoinRequests();
     }, 2000);
 
     return () => {
@@ -395,7 +400,7 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
             <section className="chat-my-join-requests" aria-label="내 참여 신청">
               <div>
                 <strong>내 참여 신청</strong>
-                <span>최근 {myJoinRequests.length}건</span>
+                <span>대기 {myJoinRequests.length}건</span>
               </div>
               {myJoinRequests.map(request => (
                 <button

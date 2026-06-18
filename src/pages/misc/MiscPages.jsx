@@ -47,7 +47,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
 
   const tripSummary = [
     { icon: "❤️", label: "찜한 골목", value: homeStatsStatus === "loading" ? "-" : homeStats.likedPlacesCount, action: "wishlist" },
-    { icon: "🧭", label: "동행 대기", value: homeStatsStatus === "loading" ? "-" : homeStats.companionWaitingCount, action: "community" },
+    { icon: "🧭", label: "동행 대기", value: homeStatsStatus === "loading" ? "-" : homeStats.companionWaitingCount, action: "chat" },
     { icon: "✍️", label: "작성 후기", value: homeStatsStatus === "loading" ? "-" : homeStats.reviewCount, action: "myReview" },
   ];
   const activityMenus = [

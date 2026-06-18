@@ -1,4 +1,5 @@
 import { apiRequest, getPageContent } from "./apiClient.js";
+import { fetchMyJoinRequests } from "./chatService.js";
 
 function normalizeImageUrls(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -63,9 +64,12 @@ function normalizeLikeTarget(item = {}, targetType = "PLACE") {
 
 export async function fetchUserHomeStats() {
   // 찜 목록, 리뷰 등을 병렬로 조회하여 카운트 계산
-  const [likesResults, reviewsData] = await Promise.all([
+  const [likesResults, reviewsData, joinRequestsData] = await Promise.all([
     Promise.allSettled(LIKE_TARGET_TYPES.map((type) => fetchLikesByType(type, { size: 1 }))),
     apiRequest("/users/me/reviews?size=1", { auth: true })
+      .then((value) => ({ status: "fulfilled", value }))
+      .catch((reason) => ({ status: "rejected", reason })),
+    fetchMyJoinRequests({ size: 100 })
       .then((value) => ({ status: "fulfilled", value }))
       .catch((reason) => ({ status: "rejected", reason })),
   ]);
@@ -80,9 +84,13 @@ export async function fetchUserHomeStats() {
     ? (reviewsData.value?.totalElements ?? reviewsData.value?.total ?? (Array.isArray(reviewsData.value) ? reviewsData.value.length : 0))
     : 0;
 
+  const companionWaitingCount = joinRequestsData.status === "fulfilled"
+    ? joinRequestsData.value.content.filter((request) => String(request.status).toUpperCase() === "PENDING").length
+    : 0;
+
   return {
     likedPlacesCount,
-    companionWaitingCount: 0, // TODO: 동행 대기 API 추가 필요
+    companionWaitingCount,
     reviewCount,
   };
 }
