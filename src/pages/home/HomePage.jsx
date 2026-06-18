@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { SkeletonList, StarRating } from "../../components/common/index.jsx";
+import { SkeletonList } from "../../components/common/index.jsx";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { fetchFestivals } from "../../services/festivalService.js";
 import { fetchNearbyTravelSpots, getDefaultLocation } from "../../services/placeService.js";
-import { fetchCertifiedStorePromotions } from "../../services/promotionService.js";
+import { searchUnified } from "../../services/searchService.js";
 
 const QUICK_ACTIONS = [
   { icon: "🗺️", tone: "green", label: "지도", desc: "근처 시장·관광지 찾기", tab: "map" },
@@ -13,11 +13,7 @@ const QUICK_ACTIONS = [
   { icon: "🎉", tone: "pink", label: "축제", desc: "야시장 & 지역 일정", tab: "fest" },
 ];
 
-const FALLBACK_SHOPS = [
-  { id: "mock-shop-1", tag: "강추", tagTone: "green", name: "통인시장 기름떡볶이", location: "통인시장", rating: 4.8, visual: "shop-warm" },
-  { id: "mock-shop-2", tag: "전통시장", tagTone: "yellow", name: "광장시장 빈대떡 골목", location: "광장시장", rating: 4.7, visual: "shop-night" },
-  { id: "mock-shop-3", tag: "강추", tagTone: "green", name: "망원시장 로컬 간식", location: "망원시장", rating: 4.6, visual: "shop-local" },
-];
+const RECOMMENDED_SHOP_NAMES = ["원조 모녀김밥", "순희네 빈대떡"];
 
 const FALLBACK_PLACES = [
   { id: "mock-place-1", tag: "관광지", tagTone: "blue", name: "경복궁", location: "종로구", rating: 4.9, visual: "place-palace" },
@@ -59,44 +55,43 @@ function RecommendationCard({ item, onClick }) {
   );
 }
 
-function RecommendationSection({ title, moreLabel, onMore, items, onItemClick }) {
+function RecommendationSection({ title, moreLabel, onMore, items, onItemClick, status = "success", emptyMessage = "추천 정보를 불러오지 못했습니다." }) {
   return (
     <section className="home-landing-section">
       <div className="home-landing-section-head">
         <h2>{title}</h2>
         <button type="button" onClick={onMore}>{moreLabel}</button>
       </div>
-      <div className="home-recommend-scroll">
-        {items.map((item) => (
-          <RecommendationCard key={item.id ?? item.name} item={item} onClick={() => onItemClick(item)} />
-        ))}
-      </div>
+      {status === "loading" ? <SkeletonList count={2} /> : items.length > 0 ? (
+        <div className="home-recommend-scroll">
+          {items.map((item) => (
+            <RecommendationCard key={item.id ?? item.name} item={item} onClick={() => onItemClick(item)} />
+          ))}
+        </div>
+      ) : <div className="home-landing-empty">{emptyMessage}</div>}
     </section>
   );
 }
 
 export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab, onSignup, user }) {
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
-  const [nearbyStatus, setNearbyStatus] = useState("loading");
   const [festivals, setFestivals] = useState([]);
   const [festivalStatus, setFestivalStatus] = useState("loading");
-  const [promotions, setPromotions] = useState([]);
+  const [recommendedShops, setRecommendedShops] = useState([]);
+  const [shopStatus, setShopStatus] = useState("loading");
   const isLoggedIn = Boolean(user);
 
   useEffect(() => {
     let ignore = false;
 
     const loadNearbyPlaces = async ({ lat, lng }) => {
-      setNearbyStatus("loading");
       try {
         const places = await fetchNearbyTravelSpots({ lat, lng, size: 10 });
         if (ignore) return;
         setNearbyPlaces(places);
-        setNearbyStatus(places.length > 0 ? "success" : "empty");
       } catch {
         if (ignore) return;
         setNearbyPlaces([]);
-        setNearbyStatus("error");
       }
     };
 
@@ -117,14 +112,30 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
   useEffect(() => {
     let ignore = false;
 
-    fetchCertifiedStorePromotions()
-      .then((items) => {
+    Promise.all(RECOMMENDED_SHOP_NAMES.map((name) => searchUnified({ query: name, size: 10 })))
+      .then((resultGroups) => {
         if (ignore) return;
-        setPromotions(items);
+        const shops = resultGroups.flatMap((items, index) => {
+          const targetName = RECOMMENDED_SHOP_NAMES[index];
+          const exactMatch = items.find((item) => item.targetType === "SHOP" && item.name?.trim() === targetName);
+          const partialMatch = items.find((item) => item.targetType === "SHOP" && item.name?.includes(targetName));
+          const shop = exactMatch ?? partialMatch;
+          return shop ? [{
+            ...shop,
+            tag: "춘배인증",
+            tagTone: "green",
+            location: shop.placeName || shop.marketName || "광장시장",
+            rating: shop.rating || 4.8,
+            visual: targetName.includes("빈대떡") ? "shop-night" : "shop-warm",
+          }] : [];
+        });
+        setRecommendedShops(shops);
+        setShopStatus(shops.length > 0 ? "success" : "empty");
       })
       .catch(() => {
         if (ignore) return;
-        setPromotions([]);
+        setRecommendedShops([]);
+        setShopStatus("error");
       });
 
     return () => { ignore = true; };
@@ -150,20 +161,6 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
     loadFestivals();
     return () => { ignore = true; };
   }, []);
-
-  const shopRecommendations = useMemo(() => {
-    if (promotions.length === 0) return FALLBACK_SHOPS;
-
-    return promotions.slice(0, 8).map((shop) => ({
-      ...shop,
-      tag: "강추",
-      tagTone: "green",
-      name: shop.shopName,
-      location: shop.marketName || "춘배인증 상점",
-      rating: shop.rating || 4.8,
-      visual: "shop-warm",
-    }));
-  }, [promotions]);
 
   const placeRecommendations = useMemo(() => {
     if (nearbyPlaces.length === 0) return FALLBACK_PLACES;
@@ -272,8 +269,10 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
         title="🎯 춘배 추천 가게"
         moreLabel="더보기 >"
         onMore={() => onTab("store")}
-        items={shopRecommendations}
+        items={recommendedShops}
         onItemClick={handleShopClick}
+        status={shopStatus}
+        emptyMessage={shopStatus === "error" ? "추천 가게를 불러오지 못했습니다." : "추천할 실제 가게 데이터가 아직 없습니다."}
       />
 
       <RecommendationSection
