@@ -77,6 +77,7 @@ function normalizeShop(shop = {}) {
 }
 
 export async function fetchShopDetail(shopId) {
+  // TODO: 공개 ShopInfoResponse에 images와 notices를 포함해야 일반 사용자 상세에서도 상인 등록 콘텐츠를 조회할 수 있습니다.
   const data = await apiRequest(`/shops/${shopId}`);
   return normalizeShop(data);
 }

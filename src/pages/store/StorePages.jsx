@@ -249,6 +249,10 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
     || currentShop.thumbnailUrl
     || (Array.isArray(currentShop.imageUrls) ? currentShop.imageUrls[0] : currentShop.imageUrls)
     || "";
+  const galleryImageUrls = Array.from(new Set(
+    (Array.isArray(currentShop.imageUrls) ? currentShop.imageUrls : [currentShop.imageUrls])
+      .filter((url) => url && url !== heroImageUrl)
+  ));
 
   useEffect(() => {
     let ignore = false;
@@ -271,6 +275,10 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
         setDetail(prev => ({
           ...prev,
           ...data,
+          imageUrl: data.imageUrl || prev?.imageUrl || prev?.thumbnailUrl || "",
+          thumbnailUrl: data.thumbnailUrl || data.imageUrl || prev?.thumbnailUrl || prev?.imageUrl || "",
+          imageUrls: data.imageUrls?.length ? data.imageUrls : (prev?.imageUrls ?? []),
+          notices: data.notices?.length ? data.notices : (prev?.notices ?? []),
           reviewWritable: shop?.reviewWritable ?? data.reviewWritable,
           reviewId: shop?.reviewId ?? data.reviewId,
         }));
@@ -424,6 +432,19 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
               </div>
             )}
           </section>
+          {galleryImageUrls.length > 0 && (
+            <section className="shop-menu-panel">
+              <div className="place-action-head">
+                <span>가게 사진</span>
+                <small>상인이 등록한 소개 사진입니다.</small>
+              </div>
+              <div className="shop-gallery-grid">
+                {galleryImageUrls.map((imageUrl, index) => (
+                  <img key={`${imageUrl}-${index}`} src={imageUrl} alt={`${shopName} 소개 ${index + 1}`} loading="lazy" />
+                ))}
+              </div>
+            </section>
+          )}
           <section className="shop-menu-panel">
             <div className="place-action-head">
               <span>가게 공지</span>
