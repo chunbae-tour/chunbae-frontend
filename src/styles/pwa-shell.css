@@ -1533,6 +1533,19 @@ button:disabled,
   justify-content: flex-start;
 }
 
+.auth-signup-screen::before {
+  background-image: url("../assets/images/signup-journey-hero.png");
+  background-position: center;
+  background-size: cover;
+}
+
+.auth-signup-screen::after {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 253, 248, 0.1), rgba(255, 253, 248, 0) 32%),
+    linear-gradient(90deg, rgba(18, 52, 36, 0.5), rgba(18, 52, 36, 0.16) 42%, rgba(18, 52, 36, 0.16) 58%, rgba(18, 52, 36, 0.5)),
+    linear-gradient(180deg, rgba(18, 52, 36, 0.18), rgba(18, 52, 36, 0.46));
+}
+
 .auth-signup-panel {
   width: min(100%, 560px);
   margin: 24px auto;
@@ -18043,6 +18056,27 @@ body {
   color: #999;
 }
 
+.community-marker-icon {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.community-participant-stack > span.host .community-marker-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.community-participant-stack > span.empty .community-marker-icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.7;
+}
+
 .community-card-stats,
 .community-card-stats > span {
   display: flex;
@@ -18581,6 +18615,35 @@ body {
   color: #633806;
 }
 
+/* Map list card interaction refinements */
+.list-panel .map-result-card {
+  grid-template-columns: 136px minmax(0, 1fr) 92px;
+  min-height: 126px;
+  padding: 12px;
+}
+
+.list-panel .map-result-thumb {
+  height: 92px;
+}
+
+.list-panel .map-result-body p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  margin-top: 6px;
+}
+
+.list-panel .map-result-foot {
+  margin-top: 8px;
+}
+
+.list-panel .map-result-card button {
+  min-width: 86px;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
 @media (max-width: 760px) {
   .community-detail-author {
     flex-wrap: wrap;
@@ -18588,5 +18651,98 @@ body {
 
   .community-detail-author > .community-author-stats {
     margin-left: 42px;
+  }
+}
+
+/* Payment charge page alignment refinements */
+.web-payment-page .web-payment-layout {
+  align-items: start;
+  grid-template-rows: auto auto;
+}
+
+.web-payment-page .web-payment-side,
+.web-payment-page .web-payment-submit.payment-summary-card {
+  align-self: start;
+  position: static;
+  top: auto;
+}
+
+.web-payment-page .web-payment-side .web-payment-balance {
+  position: relative;
+  top: auto;
+  margin: 0 !important;
+}
+
+.web-payment-page .web-payment-amount-section,
+.web-payment-page .web-payment-method-section,
+.web-payment-page .payment-summary-card {
+  align-self: start;
+}
+
+.web-payment-page .payment-summary-card {
+  min-height: 68px;
+}
+
+.web-payment-page .charge-flow-summary {
+  min-height: 150px;
+  padding: 22px 18px;
+}
+
+.web-payment-page .charge-flow-title {
+  margin-bottom: 14px;
+  font-size: 16px;
+}
+
+.web-payment-page .flow-step {
+  gap: 10px;
+  padding: 9px 0;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.web-payment-page .flow-num {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.web-payment-page .pay-logo {
+  width: 58px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.web-payment-page .pay-logo img {
+  display: block;
+  max-width: none;
+  object-fit: contain;
+}
+
+.web-payment-page .pay-logo.kakao img {
+  width: 100%;
+  height: auto;
+}
+
+.web-payment-page .pay-logo.toss img {
+  width: 150%;
+  height: auto;
+}
+
+.web-payment-page .pay-logo.eximbay img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 640px) {
+  .web-payment-page .payment-method-card {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-signup-screen::before {
+    background-image: url("../assets/images/signup-journey-hero.png");
+    background-position: center top;
   }
 }
