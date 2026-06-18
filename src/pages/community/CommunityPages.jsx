@@ -9,7 +9,7 @@ import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { fetchFestivalDetail, searchFestivals } from "../../services/festivalService.js";
 import { fetchWishlist } from "../../services/myService.js";
 import { fetchPlaceDetail, fetchPlaces, fetchTraditionalMarketDetail } from "../../services/placeService.js";
-import { searchPlaces } from "../../services/searchService.js";
+import { searchPlaces, searchUnifiedPage } from "../../services/searchService.js";
 
 function getCompanionJoinErrorMessage(error) {
   const code = String(error?.code ?? "").toUpperCase();
@@ -274,7 +274,11 @@ function wasCommentEdited(comment) {
 
 function isClosedCompanionPost(post) {
   const status = String(post?.status ?? "").toUpperCase();
+  const parsedMeetingDate = parseDateValue(post?.meetingDate ?? post?.date);
+  const meetingDateValue = parsedMeetingDate ? toLocalDateValue(parsedMeetingDate) : "";
+  const isPastMeetingDate = Boolean(meetingDateValue) && meetingDateValue < toLocalDateValue(new Date());
   return ["CLOSED", "HIDDEN", "DELETED"].includes(status)
+    || isPastMeetingDate
     || (Number(post?.max) > 0 && Number(post?.current) >= Number(post?.max));
 }
 
@@ -1420,7 +1424,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                     </button>
                     <button type="button" className="community-detail-action" onClick={openTargetDetail} disabled={!companionTarget.id}>
                       <DetailIcon type="info" />
-                      {companionTarget.type === "FESTIVAL" ? "축제 상세 보기" : "장소 상세 보기"}
+                      {companionTarget.type === "FESTIVAL" ? "축제 상세 보기" : companionTarget.type === "MARKET" ? "시장 상세 보기" : "장소 상세 보기"}
                     </button>
                   </div>
                 </div>
@@ -1490,8 +1494,10 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
   const [placeSearchStatus, setPlaceSearchStatus] = useState("idle");
   const [likedPlaces, setLikedPlaces] = useState([]);
   const [festivalResults, setFestivalResults] = useState([]);
+  const [marketResults, setMarketResults] = useState([]);
   const [likedStatus, setLikedStatus] = useState("idle");
   const [festivalSearchStatus, setFestivalSearchStatus] = useState("idle");
+  const [marketSearchStatus, setMarketSearchStatus] = useState("idle");
   const [submitting, setSubmitting] = useState(false);
   const [pendingImages, setPendingImages] = useState([]);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -1580,6 +1586,46 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
   }, [placeQuery, placeSource, type]);
 
   useEffect(() => {
+    if (type !== "동행" || placeSource !== "market") {
+      setMarketResults([]);
+      if (placeSource !== "market") setMarketSearchStatus("idle");
+      return;
+    }
+
+    const query = placeQuery.trim();
+    if (query.length < 2) {
+      setMarketResults([]);
+      setMarketSearchStatus(query ? "too-short" : "idle");
+      return;
+    }
+
+    let ignore = false;
+    setMarketSearchStatus("loading");
+    const timer = setTimeout(() => {
+      searchUnifiedPage({ query, size: 20 })
+        .then((page) => {
+          if (ignore) return;
+          const markets = (page.content ?? [])
+            .filter(item => item.targetType === "MARKET" || item.type === "전통시장" || item.marketId != null)
+            .slice(0, 8);
+          setMarketResults(markets);
+          setMarketSearchStatus(markets.length > 0 ? "success" : "empty");
+        })
+        .catch((error) => {
+          if (ignore) return;
+          setMarketResults([]);
+          setMarketSearchStatus("error");
+          console.error("Failed to search markets for companion post", error);
+        });
+    }, 260);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [placeQuery, placeSource, type]);
+
+  useEffect(() => {
     if (type !== "동행" || placeSource !== "liked") return;
 
     let ignore = false;
@@ -1626,8 +1672,10 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     setPlaceQuery(placeName);
     setPlaceResults([]);
     setFestivalResults([]);
+    setMarketResults([]);
     setPlaceSearchStatus("selected");
     setFestivalSearchStatus("selected");
+    setMarketSearchStatus("selected");
   };
 
   const handleTypeChange = (nextType) => {
@@ -1649,8 +1697,10 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
       setPlaceQuery("");
       setPlaceResults([]);
       setFestivalResults([]);
+      setMarketResults([]);
       setPlaceSearchStatus("idle");
       setFestivalSearchStatus("idle");
+      setMarketSearchStatus("idle");
     }
   };
 
@@ -1779,11 +1829,12 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
           </div>
           {type === "동행" && (
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>관광지</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>만나는 곳</div>
               <div className="community-place-search">
                 <div className="community-place-source-tabs" aria-label="장소 선택 방식">
                   {[
                     { key: "search", label: "관광지 검색" },
+                    { key: "market", label: "전통시장 검색" },
                     { key: "liked", label: "찜한 관광지" },
                     { key: "festival", label: "축제 검색" },
                   ].map(option => (
@@ -1795,8 +1846,10 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                         setPlaceSource(option.key);
                         setPlaceResults([]);
                         setFestivalResults([]);
+                        setMarketResults([]);
                         setPlaceSearchStatus("idle");
                         setFestivalSearchStatus("idle");
+                        setMarketSearchStatus("idle");
                       }}
                     >
                       {option.label}
@@ -1810,7 +1863,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                       setPlaceQuery(e.target.value);
                       setForm(f => ({ ...f, place: "", placeId: null, targetType: null, targetId: null, targetName: "", region: "" }));
                     }}
-                    placeholder={placeSource === "festival" ? "축제 이름을 2자 이상 검색하세요" : "관광지 이름을 2자 이상 검색하세요"}
+                    placeholder={placeSource === "festival" ? "축제 이름을 2자 이상 검색하세요" : placeSource === "market" ? "전통시장 이름을 2자 이상 검색하세요" : "관광지 이름을 2자 이상 검색하세요"}
                     style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
                   />
                 )}
@@ -1818,7 +1871,16 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                   <div className="community-selected-place">
                     <span>선택됨</span>
                     <strong>{form.place}</strong>
-                    <button type="button" onClick={() => { setForm(f => ({ ...f, place: "", placeId: null, targetType: null, targetId: null, targetName: "", festivalStartDate: "", festivalEndDate: "" })); setPlaceQuery(""); }}>변경</button>
+                    <button type="button" onClick={() => {
+                      setForm(f => ({ ...f, place: "", placeId: null, targetType: null, targetId: null, targetName: "", festivalStartDate: "", festivalEndDate: "" }));
+                      setPlaceQuery("");
+                      setPlaceResults([]);
+                      setFestivalResults([]);
+                      setMarketResults([]);
+                      setPlaceSearchStatus("idle");
+                      setFestivalSearchStatus("idle");
+                      setMarketSearchStatus("idle");
+                    }}>변경</button>
                     {form.festivalEndDate && (
                       <em className="community-selected-festival-period">
                         축제 기간 {formatFestivalRange(form.festivalStartDate, form.festivalEndDate)}
@@ -1836,6 +1898,10 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                 {placeSource === "festival" && festivalSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
                 {placeSource === "festival" && festivalSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 이름으로 검색해보세요.</div>}
                 {placeSource === "festival" && festivalSearchStatus === "error" && <div className="community-place-search-note error">축제 검색을 불러오지 못했습니다.</div>}
+                {placeSource === "market" && marketSearchStatus === "loading" && <div className="community-place-search-note">전통시장을 검색하는 중입니다.</div>}
+                {placeSource === "market" && marketSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
+                {placeSource === "market" && marketSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 시장 이름으로 검색해보세요.</div>}
+                {placeSource === "market" && marketSearchStatus === "error" && <div className="community-place-search-note error">전통시장 검색을 불러오지 못했습니다.</div>}
                 {placeSource === "liked" && likedStatus === "loading" && <div className="community-place-search-note">찜한 관광지를 불러오는 중입니다.</div>}
                 {placeSource === "liked" && likedStatus === "empty" && <div className="community-place-search-note">아직 찜한 관광지가 없습니다.</div>}
                 {placeSource === "liked" && likedStatus === "error" && <div className="community-place-search-note error">찜한 관광지를 불러오지 못했습니다.</div>}
@@ -1855,6 +1921,16 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                       <button key={place.placeId ?? place.id} type="button" onClick={() => handleSelectPlace(place)}>
                         <strong>{place.name}</strong>
                         <span>{place.addr || place.address || place.type || "찜한 관광지"}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {placeSource === "market" && marketResults.length > 0 && (
+                  <div className="community-place-result-list">
+                    {marketResults.map((market) => (
+                      <button key={market.marketId ?? market.placeId ?? market.id} type="button" onClick={() => handleSelectPlace(market, "market")}>
+                        <strong>{market.name}</strong>
+                        <span>{market.address || market.location || market.type || "전통시장"}</span>
                       </button>
                     ))}
                   </div>

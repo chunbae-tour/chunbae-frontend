@@ -2,20 +2,28 @@ import { apiRequest, getPageContent } from "./apiClient.js";
 import { normalizePlace } from "./placeService.js";
 
 function normalizeUnifiedPlaceResult(place) {
+  const isMarket = place.targetType === "TRADITIONAL_MARKET"
+    || place.targetType === "MARKET"
+    || place.category === "TRADITIONAL_MARKET"
+    || place.type === "전통시장"
+    || place.marketId != null;
   return {
     ...place,
-    targetType: "PLACE",
-    targetLabel: "장소",
+    targetType: isMarket ? "MARKET" : "PLACE",
+    targetLabel: isMarket ? "전통시장" : "장소",
     placeId: place.placeId ?? place.id,
+    marketId: place.marketId ?? (isMarket ? place.id : undefined),
     placeName: place.name,
   };
 }
 
 function normalizeTargetType(item = {}) {
   const rawType = String(item.targetType ?? item.resultType ?? item.type ?? item.categoryType ?? "").toUpperCase();
-  if (["PLACE", "TOURIST_SPOT", "TRADITIONAL_MARKET"].includes(rawType)) return "PLACE";
+  if (["TRADITIONAL_MARKET", "MARKET"].includes(rawType)) return "MARKET";
+  if (["PLACE", "TOURIST_SPOT"].includes(rawType)) return "PLACE";
   if (["SHOP", "STORE", "MERCHANT_SHOP"].includes(rawType)) return "SHOP";
   if (["MENU", "PRODUCT", "SHOP_MENU"].includes(rawType)) return "MENU";
+  if (item.marketId || item.marketName || item.marketType) return "MARKET";
   if (item.menuId || item.price != null) return "MENU";
   if (item.shopId || item.shopName) return "SHOP";
   return "PLACE";
@@ -24,10 +32,12 @@ function normalizeTargetType(item = {}) {
 function normalizeUnifiedSearchResult(item = {}) {
   const targetType = normalizeTargetType(item);
 
-  if (targetType === "PLACE") {
+  if (targetType === "PLACE" || targetType === "MARKET") {
     return normalizeUnifiedPlaceResult(normalizePlace({
       ...item,
       id: item.placeId ?? item.id,
+      marketId: item.marketId ?? (targetType === "MARKET" ? item.id : undefined),
+      targetType: targetType === "MARKET" ? "TRADITIONAL_MARKET" : item.targetType,
       name: item.placeName ?? item.name,
       type: item.placeType ?? item.category ?? item.type,
       dist: item.distanceText ?? item.dist,
