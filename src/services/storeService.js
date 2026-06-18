@@ -15,6 +15,8 @@ function normalizeProduct(product = {}) {
     category: categoryCode,
     categoryCode,
     categoryLabel: product.categoryName ?? product.categoryLabel ?? getProductCategoryLabel(product.category),
+    imageUrl: product.imageUrl ?? (Array.isArray(product.imageUrls) ? product.imageUrls[0] : ""),
+    imageUrls: Array.isArray(product.imageUrls) ? product.imageUrls : [],
     desc: product.description ?? product.desc ?? "",
     validDays: product.validDays ?? product.expireDays ?? 30,
   };

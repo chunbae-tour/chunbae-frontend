@@ -7,10 +7,93 @@ import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { createShopReview, fetchShopDetail, fetchShopReviews } from "../../services/shopService.js";
 import { fetchStoreOrders, fetchStoreProduct, fetchStoreProducts, purchaseStoreProduct } from "../../services/storeService.js";
 import { PRODUCT_CATEGORIES } from "../../constants/productCategories.js";
+import { getPlaceholderByCategory } from "../../utils/productPlaceholder.js";
 
 function formatStoreDate(value) {
   if (!value) return "";
   return String(value).replace("T", " ").slice(0, 16);
+}
+
+function ProductPlaceholderIcon({ type = "gift" }) {
+  const commonProps = {
+    width: 34,
+    height: 34,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    "aria-hidden": true,
+  };
+
+  if (type === "castle") {
+    return (
+      <svg {...commonProps}>
+        <path d="M4 21h16" />
+        <path d="M6 21v-8" />
+        <path d="M18 21v-8" />
+        <path d="M8 21v-5h8v5" />
+        <path d="M6 13h12" />
+        <path d="M6 9h12" />
+        <path d="M8 9V5l2 2 2-2 2 2 2-2v4" />
+      </svg>
+    );
+  }
+
+  if (type === "map") {
+    return (
+      <svg {...commonProps}>
+        <path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z" />
+        <path d="M9 3v15" />
+        <path d="M15 6v15" />
+        <circle cx="17.5" cy="10.5" r="1.5" />
+      </svg>
+    );
+  }
+
+  if (type === "hanger") {
+    return (
+      <svg {...commonProps}>
+        <path d="M12 7a2 2 0 1 0-2-2" />
+        <path d="M12 7v2" />
+        <path d="M6.5 14.5 12 9l5.5 5.5" />
+        <path d="M5 15.5A2.5 2.5 0 0 0 7.5 18h9a2.5 2.5 0 0 0 2.5-2.5" />
+      </svg>
+    );
+  }
+
+  if (type === "ticket") {
+    return (
+      <svg {...commonProps}>
+        <path d="M4 9V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z" />
+        <path d="M13 5v2" />
+        <path d="M13 17v2" />
+        <path d="M13 11v2" />
+      </svg>
+    );
+  }
+
+  if (type === "ticket-off") {
+    return (
+      <svg {...commonProps} width={22} height={22}>
+        <path d="M4 9V7a2 2 0 0 1 2-2h3" />
+        <path d="M15 5h3a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2" />
+        <path d="M6 19h12" />
+        <path d="M3 3l18 18" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...commonProps}>
+      <path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7" />
+      <path d="M2 7h20v5H2z" />
+      <path d="M12 22V7" />
+      <path d="M12 7H8.5a2.5 2.5 0 1 1 2.1-3.85L12 7z" />
+      <path d="M12 7h3.5a2.5 2.5 0 1 0-2.1-3.85L12 7z" />
+    </svg>
+  );
 }
 
 // ─── 스토어 목록 ──────────────────────────────────────────────────────
@@ -63,17 +146,18 @@ export function StorePage({ onProduct }) {
 
   return (
     <div style={S.screen} className="web-store-page">
-      <div className="web-page-hero" style={{ background: COLORS.primary, padding: "44px 20px 20px" }}>
-        <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>🏪 스토어</div>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginTop: 4 }}>엽전으로 투어권과 쿠폰을 구매하세요</div>
-      </div>
-      <div style={{ display: "flex", gap: 8, padding: "12px 16px", background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-        {categories.map(category => (
-          <div key={category.value || "ALL"} onClick={() => setTab(category.value)} style={{ padding: "6px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: tab === category.value ? COLORS.primary : COLORS.bg, color: tab === category.value ? "#fff" : COLORS.textMuted }}>{category.label}</div>
-        ))}
-      </div>
       <div style={S.scrollArea} className="web-detail-scroll">
-        <div className="web-product-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10, padding: 16 }}>
+        <div className="store-page-wrapper">
+          <div className="store-hero">
+            <div>🏪 스토어</div>
+            <span>엽전으로 투어권과 쿠폰을 구매하세요</span>
+          </div>
+          <div className="store-tab-row">
+            {categories.map(category => (
+              <button key={category.value || "ALL"} type="button" onClick={() => setTab(category.value)} className={tab === category.value ? "active" : ""}>{category.label}</button>
+            ))}
+          </div>
+        <div className="web-product-grid store-product-grid">
           {status === "loading" && <div style={{ gridColumn: "1 / -1" }}><SkeletonList count={4} variant="card" /></div>}
           {status === "error" && (
             <div style={{ gridColumn: "1 / -1" }}>
@@ -105,21 +189,32 @@ export function StorePage({ onProduct }) {
               {order.orderedAt && <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 13 }}>{formatStoreDate(order.orderedAt)}</div>}
             </div>
           ))}
-          {tab !== "MY_ORDERS" && products.map(p => (
-            <div key={p.id} className="web-product-card" onClick={() => p.stock > 0 && onProduct(p)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "0.5px solid rgba(0,0,0,0.06)", cursor: p.stock > 0 ? "pointer" : "default", opacity: p.stock === 0 ? 0.6 : 1, position: "relative" }}>
-              {p.stock === 0 && (
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 16, zIndex: 1 }}>
-                  <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>SOLD OUT</span>
+          {tab !== "MY_ORDERS" && products.map(p => {
+            const placeholder = getPlaceholderByCategory(p.categoryCode ?? p.category);
+            const isSoldOut = p.stock === 0;
+            return (
+              <button key={p.id} type="button" className={`web-product-card store-product-card ${isSoldOut ? "disabled" : ""}`} onClick={() => !isSoldOut && onProduct(p)} disabled={isSoldOut}>
+                <div
+                  className={`product-thumb ${p.imageUrl ? "has-image" : ""}`}
+                  style={p.imageUrl ? { "--product-image": `url(${JSON.stringify(p.imageUrl)})` } : { "--product-placeholder-bg": placeholder.gradient, "--product-placeholder-color": placeholder.color }}
+                >
+                  {!p.imageUrl && <ProductPlaceholderIcon type={placeholder.icon} />}
+                  {isSoldOut && (
+                    <div className="sold-out-overlay">
+                      <ProductPlaceholderIcon type="ticket-off" />
+                      <span>품절</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              <div style={{ height: 100, background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>{p.emoji}</div>
-              <div style={{ padding: "12px 12px 14px" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>{p.name}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.accent }}>🪙 {p.price.toLocaleString()}</div>
-                <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>재고 {p.stock}개</div>
-              </div>
-            </div>
-          ))}
+                <div className="product-card-body">
+                  <strong className="product-name">{p.name}</strong>
+                  <span className="product-price">🪙 {p.price.toLocaleString()} 엽전</span>
+                  <small className={`product-stock ${isSoldOut ? "zero" : ""}`}>재고 {p.stock}개</small>
+                </div>
+              </button>
+            );
+          })}
+        </div>
         </div>
       </div>
     </div>
