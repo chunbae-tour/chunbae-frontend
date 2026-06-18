@@ -245,6 +245,10 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
   const shopMenus = Array.isArray(currentShop.menus) ? currentShop.menus : [];
   const shopNotices = Array.isArray(currentShop.notices) ? currentShop.notices : [];
   const canWriteReview = currentShop.reviewWritable !== false;
+  const heroImageUrl = currentShop.imageUrl
+    || currentShop.thumbnailUrl
+    || (Array.isArray(currentShop.imageUrls) ? currentShop.imageUrls[0] : currentShop.imageUrls)
+    || "";
 
   useEffect(() => {
     let ignore = false;
@@ -336,7 +340,7 @@ export function StoreShopDetailPage({ shop, onBack, showToast, onQrPay }) {
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>춘배인증 상점</span>
       </div>
       <div style={S.scrollArea} className="web-detail-scroll">
-        <div className="shop-detail-hero" style={{ "--shop-hero-image": currentShop.imageUrl ? `url("${currentShop.imageUrl}")` : undefined }}>
+        <div className="shop-detail-hero" style={{ "--shop-hero-image": heroImageUrl ? `url(${JSON.stringify(heroImageUrl)})` : undefined }}>
           <span>춘배인증 상점</span>
           <strong>{shopName}</strong>
           <p>{currentShop.description || currentShop.headline || "현장에서 QR 엽전 결제를 사용할 수 있는 인증 상점입니다."}</p>

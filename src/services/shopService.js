@@ -4,6 +4,32 @@ function getShopId(shop) {
   return shop?.shopId ?? shop?.id;
 }
 
+function getShopImageUrl(image) {
+  if (typeof image === "string") return image.trim();
+  return image?.imageUrl ?? image?.url ?? image?.fileUrl ?? image?.thumbnailUrl ?? "";
+}
+
+function normalizeShopImages(shop = {}) {
+  const rawImages = Array.isArray(shop.images)
+    ? shop.images
+    : Array.isArray(shop.shopImages)
+      ? shop.shopImages
+      : [];
+  const primaryImage = rawImages.find((image) => image?.type === "PROFILE" || image?.isPrimary || image?.primary);
+  const rawImageUrls = Array.isArray(shop.imageUrls)
+    ? shop.imageUrls
+    : typeof shop.imageUrls === "string"
+      ? [shop.imageUrls]
+      : [];
+  const imageUrls = [
+    getShopImageUrl(primaryImage),
+    ...rawImageUrls.map(getShopImageUrl),
+    ...rawImages.map(getShopImageUrl),
+  ].filter(Boolean);
+
+  return Array.from(new Set(imageUrls));
+}
+
 function normalizeShop(shop = {}) {
   const shopId = getShopId(shop);
   const shopName = shop.shopName || shop.name || "춘배인증 상점";
@@ -25,6 +51,8 @@ function normalizeShop(shop = {}) {
     createdAt: notice.createdAt ?? notice.createdDate ?? notice.date ?? "",
   })) : [];
   const mainMenu = shop.menu || shop.mainMenu || shop.representativeMenu || menus.find(menu => menu.available !== false)?.name || "";
+  const imageUrls = normalizeShopImages(shop);
+  const imageUrl = shop.imageUrl ?? shop.thumbnailUrl ?? imageUrls[0] ?? "";
 
   return {
     ...shop,
@@ -37,6 +65,9 @@ function normalizeShop(shop = {}) {
     menu: mainMenu,
     menus,
     notices,
+    imageUrl,
+    thumbnailUrl: shop.thumbnailUrl ?? imageUrl,
+    imageUrls,
     benefit: shop.benefit || shop.event?.label || "현장 혜택 확인",
     acceptsYeopjeon: shop.acceptsYeopjeon ?? true,
     certified: shop.certified ?? shop.verified ?? true,
