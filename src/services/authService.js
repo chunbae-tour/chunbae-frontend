@@ -1,4 +1,4 @@
-import { apiRequest, ApiClientError, getAccessToken, isAuthError } from "./apiClient.js";
+import { apiFormRequest, apiRequest, ApiClientError, getAccessToken, isAuthError } from "./apiClient.js";
 
 const ROLE_CONFIG = {
   USER: {
@@ -355,6 +355,7 @@ export async function fetchCurrentUser() {
 
 export async function updateCurrentUserProfile({ nickname, language, profileImageUrl }) {
   const accessToken = getAccessToken("USER");
+  const currentUser = readSession("USER");
   const body = {};
   if (nickname !== undefined) body.nickname = nickname;
   if (language !== undefined) body.language = language;
@@ -368,8 +369,37 @@ export async function updateCurrentUserProfile({ nickname, language, profileImag
   });
 
   const authData = normalizeAuthData({ ...data, accessToken, role: "USER" }, "USER");
-  saveSession(authData);
-  return authData;
+  const mergedAuthData = {
+    ...authData,
+    profileImageUrl: authData.profileImageUrl ?? currentUser?.profileImageUrl,
+  };
+  saveSession(mergedAuthData);
+  return mergedAuthData;
+}
+
+export async function uploadCurrentUserProfileImage(file) {
+  const accessToken = getAccessToken("USER");
+  if (!accessToken) {
+    throw new ApiClientError("로그인이 필요한 기능입니다.", "AUTH_REQUIRED", 401);
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const data = await apiFormRequest("/users/me/profile-image", {
+    method: "POST",
+    auth: true,
+    role: "USER",
+    formData,
+  });
+
+  const previewUrl = data.previewUrl ?? data.profileImageUrl ?? "";
+  const currentUser = readSession("USER");
+  if (currentUser && previewUrl) {
+    saveSession({ ...currentUser, profileImageUrl: previewUrl });
+  }
+
+  return { ...data, previewUrl };
 }
 
 export function shouldClearSessionForError(error) {

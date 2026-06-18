@@ -6,7 +6,7 @@ import { fetchFestivals, searchFestivals } from "../../services/festivalService.
 import { fetchFaqs, fetchFaqTranslation } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
 import { deleteAllNotifications, deleteNotification, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
-import { updateCurrentUserProfile } from "../../services/authService.js";
+import { updateCurrentUserProfile, uploadCurrentUserProfileImage } from "../../services/authService.js";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
@@ -37,7 +37,14 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
   const [balanceError, setBalanceError] = useState("");
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [profileForm, setProfileForm] = useState({ nickname: "", language: "ko", profileImageUrl: "" });
+  const [profileForm, setProfileForm] = useState({
+    nickname: "",
+    language: "ko",
+    profileImageUrl: "",
+    profileImagePreview: "",
+    profileImageFile: null,
+    profileImageFileName: "",
+  });
   const [profileError, setProfileError] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [homeStats, setHomeStats] = useState({ likedPlacesCount: 0, companionWaitingCount: 0, reviewCount: 0 });
@@ -115,22 +122,51 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
       nickname: user?.nickname || "",
       language: normalizeProfileLanguage(user?.language),
       profileImageUrl: user?.profileImageUrl || "",
+      profileImagePreview: user?.profileImageUrl || "",
+      profileImageFile: null,
+      profileImageFileName: "",
     });
     setProfileError("");
     setProfileModalOpen(true);
   };
 
-  const saveProfile = async () => {
-    const nickname = profileForm.nickname.trim();
-    const profileImageUrl = profileForm.profileImageUrl.trim();
+  const handleProfileImageSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    if (!NICKNAME_PATTERN.test(nickname)) {
-      setProfileError("닉네임은 2~20자의 한글, 영문, 숫자, _, -만 사용할 수 있습니다.");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setProfileError("프로필 이미지는 JPG, PNG, WebP 파일만 선택할 수 있습니다.");
+      event.target.value = "";
       return;
     }
 
-    if (profileImageUrl && !/^https?:\/\/\S+$/i.test(profileImageUrl)) {
-      setProfileError("프로필 이미지는 http 또는 https URL만 입력할 수 있습니다.");
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError("프로필 이미지는 5MB 이하 파일만 선택할 수 있습니다.");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfileForm(prev => ({
+        ...prev,
+        profileImagePreview: String(reader.result || ""),
+        profileImageFile: file,
+        profileImageFileName: file.name,
+      }));
+      setProfileError("");
+    };
+    reader.onerror = () => {
+      setProfileError("이미지를 미리보기로 불러오지 못했습니다. 다른 파일을 선택해주세요.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveProfile = async () => {
+    const nickname = profileForm.nickname.trim();
+
+    if (!NICKNAME_PATTERN.test(nickname)) {
+      setProfileError("닉네임은 2~20자의 한글, 영문, 숫자, _, -만 사용할 수 있습니다.");
       return;
     }
 
@@ -138,12 +174,17 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
     setProfileError("");
 
     try {
+      const uploadedImage = profileForm.profileImageFile
+        ? await uploadCurrentUserProfileImage(profileForm.profileImageFile)
+        : null;
       const updatedUser = await updateCurrentUserProfile({
         nickname,
         language: profileForm.language || "ko",
-        profileImageUrl: profileImageUrl || undefined,
       });
-      onProfileUpdate(updatedUser);
+      onProfileUpdate({
+        ...updatedUser,
+        profileImageUrl: uploadedImage?.previewUrl || updatedUser.profileImageUrl,
+      });
       setProfileModalOpen(false);
       showToast("프로필을 수정했습니다.");
     } catch (error) {
@@ -369,14 +410,46 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
                 <option value="zh-CN">中文</option>
               </select>
             </label>
-            <label className="profile-edit-field">
-              <span>프로필 이미지 URL</span>
-              <input
-                value={profileForm.profileImageUrl}
-                onChange={(event) => setProfileForm(prev => ({ ...prev, profileImageUrl: event.target.value }))}
-                placeholder="https://..."
-              />
-            </label>
+            <div className="profile-edit-field profile-image-upload-field">
+              <span>프로필 이미지</span>
+              <label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleProfileImageSelect}
+                />
+                <div className="profile-image-picker">
+                  <div className="profile-image-preview">
+                    {profileForm.profileImagePreview ? (
+                      <img src={profileForm.profileImagePreview} alt="선택한 프로필 미리보기" />
+                    ) : (
+                      "👤"
+                    )}
+                  </div>
+                  <div>
+                    <strong>이미지 파일 선택</strong>
+                    <small>{profileForm.profileImageFileName || "JPG, PNG, WebP · 최대 5MB"}</small>
+                  </div>
+                </div>
+              </label>
+              {profileForm.profileImageFile && (
+                <button
+                  type="button"
+                  className="profile-image-clear"
+                  onClick={() => {
+                    setProfileForm(prev => ({
+                      ...prev,
+                      profileImagePreview: prev.profileImageUrl,
+                      profileImageFile: null,
+                      profileImageFileName: "",
+                    }));
+                    setProfileError("");
+                  }}
+                >
+                  선택한 이미지 취소
+                </button>
+              )}
+            </div>
             {profileError && <div className="profile-edit-error">{profileError}</div>}
             <div className="confirm-dialog-actions">
               <button type="button" className="secondary" disabled={profileSaving} onClick={() => setProfileModalOpen(false)}>취소</button>
