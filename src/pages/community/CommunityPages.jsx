@@ -4,7 +4,7 @@ import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, fetchMyChatRooms, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
-import { createCommunityComment, createCommunityPost, deleteComment, deleteCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, fetchReplies, updateComment, updateCommunityPost } from "../../services/communityService.js";
+import { createCommunityComment, createCommunityPost, deleteComment, deleteCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, fetchReplies, updateComment, updateCommunityPost, uploadFreePostImage } from "../../services/communityService.js";
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { fetchFestivalDetail, searchFestivals } from "../../services/festivalService.js";
 import { fetchWishlist } from "../../services/myService.js";
@@ -424,6 +424,18 @@ function ParticipantAvatarStack({ current = 1, max = 4, hostLabel = "방장", de
       {safeMax > visibleSlots && detailed && <small>+{safeMax - visibleSlots}</small>}
     </div>
   );
+}
+
+const FREE_POST_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const FREE_POST_IMAGE_MAX_SIZE = 10 * 1024 * 1024;
+
+function createFreePostImagePreview(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 // ─── 커뮤니티 목록 ────────────────────────────────────────────────────
@@ -1185,6 +1197,13 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                 </div>
               </div>
               <p className="community-detail-content">{post.content}</p>
+              {!isCompanion && post.imageUrls?.length > 0 && (
+                <div className="community-detail-images">
+                  {post.imageUrls.map((imageUrl, index) => (
+                    <img key={`${imageUrl}-${index}`} src={imageUrl} alt={`게시글 첨부 이미지 ${index + 1}`} loading="lazy" />
+                  ))}
+                </div>
+              )}
             </section>
 
             {isCompanion ? (
@@ -1465,7 +1484,10 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
   const [likedStatus, setLikedStatus] = useState("idle");
   const [festivalSearchStatus, setFestivalSearchStatus] = useState("idle");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingImages, setPendingImages] = useState([]);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const existingImageUrls = Array.isArray(form.imageUrls) ? form.imageUrls : [];
+  const totalImageCount = existingImageUrls.length + pendingImages.length;
   const quickMeetingDates = [
     { label: "오늘", value: todayValue },
     { label: "내일", value: toLocalDateValue(addLocalDays(new Date(), 1)) },
@@ -1623,6 +1645,56 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     }
   };
 
+  const handleFreePostImageSelect = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (files.length === 0) return;
+
+    const availableSlots = Math.max(0, 5 - totalImageCount);
+    if (availableSlots === 0) {
+      showToast("자유게시글 이미지는 최대 5장까지 첨부할 수 있습니다.");
+      return;
+    }
+
+    const accepted = [];
+    for (const file of files.slice(0, availableSlots)) {
+      if (!FREE_POST_IMAGE_TYPES.includes(file.type)) {
+        showToast("이미지는 JPG, PNG, WebP 파일만 추가할 수 있습니다.");
+        continue;
+      }
+      if (file.size > FREE_POST_IMAGE_MAX_SIZE) {
+        showToast("이미지는 장당 10MB 이하만 추가할 수 있습니다.");
+        continue;
+      }
+      try {
+        accepted.push({
+          id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(16).slice(2)}`,
+          file,
+          name: file.name,
+          previewUrl: await createFreePostImagePreview(file),
+        });
+      } catch {
+        showToast("이미지를 미리보기로 불러오지 못했습니다.");
+      }
+    }
+
+    if (files.length > availableSlots) {
+      showToast("자유게시글 이미지는 최대 5장까지 첨부할 수 있습니다.");
+    }
+
+    if (accepted.length > 0) {
+      setPendingImages(current => [...current, ...accepted]);
+    }
+  };
+
+  const removeExistingImage = (imageUrl) => {
+    set("imageUrls", existingImageUrls.filter(item => item !== imageUrl));
+  };
+
+  const removePendingImage = (imageId) => {
+    setPendingImages(current => current.filter(item => item.id !== imageId));
+  };
+
   const handleSubmit = async () => {
     if (submitting) return;
     if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
@@ -1632,15 +1704,22 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
       if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
       if (form.date < todayValue) { showToast("오늘 이후 날짜를 선택해주세요."); return; }
     }
-    const submitForm = type === "동행"
-      ? form
-      : {
-          title: form.title,
-          content: form.content,
-          imageUrls: form.imageUrls ?? [],
-        };
     setSubmitting(true);
     try {
+      const uploadedImageKeys = type === "자유" && pendingImages.length > 0
+        ? await Promise.all(pendingImages.map(async (image) => {
+            const uploaded = await uploadFreePostImage(image.file);
+            if (!uploaded.key) throw new Error("이미지 업로드 응답에 저장 키가 없습니다.");
+            return uploaded.key;
+          }))
+        : [];
+      const submitForm = type === "동행"
+        ? form
+        : {
+            title: form.title,
+            content: form.content,
+            imageUrls: [...existingImageUrls, ...uploadedImageKeys].filter(Boolean).slice(0, 5),
+          };
       const responsePost = isEditing
         ? await updateCommunityPost(initialPost.id, type, submitForm)
         : await createCommunityPost({ type, ...submitForm });
@@ -1826,13 +1905,41 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
               </div>
             </>
           )}
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>사진 추가 (0/5)</div>
-            <div onClick={() => showToast("사진 업로드 기능 (준비 중)")} style={{ background: "#fff", border: "1.5px dashed rgba(0,0,0,0.15)", borderRadius: 12, padding: "20px 0", textAlign: "center", cursor: "pointer" }}>
-              <div style={{ fontSize: 28, marginBottom: 4 }}>??</div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted }}>사진을 추가하세요</div>
+          {type === "자유" && (
+            <div className="community-free-image-field">
+              <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>사진 추가 ({totalImageCount}/5)</div>
+              <label className={totalImageCount >= 5 || submitting ? "disabled" : ""}>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  disabled={totalImageCount >= 5 || submitting}
+                  onChange={handleFreePostImageSelect}
+                />
+                <div>
+                  <span>📷</span>
+                  <strong>이미지 파일 선택</strong>
+                  <small>JPG, PNG, WebP · 장당 10MB · 최대 5장</small>
+                </div>
+              </label>
+              {totalImageCount > 0 && (
+                <div className="community-free-image-list">
+                  {existingImageUrls.map((imageUrl, index) => (
+                    <figure key={`${imageUrl}-${index}`}>
+                      <img src={imageUrl} alt={`기존 첨부 이미지 ${index + 1}`} />
+                      <button type="button" onClick={() => removeExistingImage(imageUrl)} disabled={submitting}>삭제</button>
+                    </figure>
+                  ))}
+                  {pendingImages.map((image, index) => (
+                    <figure key={image.id}>
+                      <img src={image.previewUrl} alt={`새 첨부 이미지 ${index + 1}`} />
+                      <button type="button" onClick={() => removePendingImage(image.id)} disabled={submitting}>삭제</button>
+                    </figure>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          )}
           <div className="community-write-actions">
             <button type="button" onClick={handleSubmit} disabled={submitting}>
               {submitting ? (isEditing ? "수정 중..." : "등록 중...") : (isEditing ? "수정 완료" : "게시글 등록")}

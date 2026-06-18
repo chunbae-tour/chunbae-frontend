@@ -1,4 +1,4 @@
-import { apiRequest, getPageContent } from "./apiClient.js";
+import { apiFormRequest, apiRequest, getPageContent } from "./apiClient.js";
 
 function getCommunityPostTypePath(type) {
   return type === "동행" || type === "companions" || type === "COMPANION" ? "companions" : "free";
@@ -106,6 +106,24 @@ export async function createCommunityPost(payload) {
   return normalizeFreePost(data);
 }
 
+export async function uploadFreePostImage(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const data = await apiFormRequest("/community/posts/free/images", {
+    method: "POST",
+    auth: true,
+    role: "USER",
+    formData,
+  });
+
+  return {
+    ...data,
+    key: data.objectKey ?? data.imageKey ?? data.key ?? data.imageUrl ?? data.url ?? "",
+    previewUrl: data.previewUrl ?? data.presignedUrl ?? data.imageUrl ?? data.url ?? "",
+  };
+}
+
 export async function createCommunityComment({ postId, postType = "free", text, parentCommentId = null }) {
   const typePath = getCommunityPostTypePath(postType);
   const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments`, {
@@ -152,6 +170,7 @@ function normalizeCompanionPost(post = {}) {
 
 function normalizeFreePost(post = {}) {
   const createdAt = post.createdAt ?? post.createdDate ?? post.date ?? "";
+  const imageUrls = Array.isArray(post.imageUrls) ? post.imageUrls : [];
   return {
     ...post,
     id: post.postId ?? post.freePostId ?? post.id,
@@ -167,6 +186,7 @@ function normalizeFreePost(post = {}) {
     views: post.viewCount ?? post.views ?? 0,
     place: post.placeName ?? post.place ?? "자유게시판",
     content: post.content ?? "",
+    imageUrls,
   };
 }
 
