@@ -62,6 +62,8 @@ export function normalizeFestival(festival = {}) {
   const dayNumber = festival.dayNumber ?? (Number.parseInt(festival.day, 10) || startParts[2] || null);
   const imageUrl = festival.imageUrl ?? festival.thumbnailUrl ?? "";
   const address = festival.address ?? festival.location ?? "";
+  const latitude = festival.latitude ?? festival.lat ?? null;
+  const longitude = festival.longitude ?? festival.lng ?? null;
 
   return {
     ...festival,
@@ -72,6 +74,10 @@ export function normalizeFestival(festival = {}) {
     thumbnailUrl: festival.thumbnailUrl ?? imageUrl,
     address,
     location: address,
+    latitude,
+    longitude,
+    lat: latitude,
+    lng: longitude,
     date: festival.date ?? (startDate && festival.endDate ? `${startDate} ~ ${festival.endDate}` : startDate),
     dday: festival.dday ?? festival.progressStatus ?? "",
     month: festival.month ?? (monthNumber ? `${monthNumber}월` : ""),

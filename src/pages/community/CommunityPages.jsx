@@ -6,8 +6,9 @@ import { getApiErrorHint } from "../../services/apiClient.js";
 import { createChatRoom, fetchMyChatRooms, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
 import { createCommunityComment, createCommunityPost, deleteComment, deleteCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, fetchReplies, updateComment, updateCommunityPost } from "../../services/communityService.js";
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
-import { searchFestivals } from "../../services/festivalService.js";
+import { fetchFestivalDetail, searchFestivals } from "../../services/festivalService.js";
 import { fetchWishlist } from "../../services/myService.js";
+import { fetchPlaceDetail, fetchTraditionalMarketDetail } from "../../services/placeService.js";
 import { searchPlaces } from "../../services/searchService.js";
 
 function getCompanionJoinErrorMessage(error) {
@@ -343,6 +344,47 @@ function DetailIcon({ type }) {
   );
 }
 
+function normalizeCompanionTarget(post = {}) {
+  const legacyPlaceId = post.placeId ?? post.place?.placeId ?? null;
+  const rawType = post.targetType ?? (legacyPlaceId != null ? "PLACE" : null);
+  const type = rawType === "TRADITIONAL_MARKET" ? "MARKET" : rawType;
+  return {
+    type,
+    id: post.targetId ?? legacyPlaceId,
+    name: post.targetName ?? post.placeName ?? (typeof post.place === "string" ? post.place : post.place?.name) ?? "",
+  };
+}
+
+async function fetchCompanionTarget(target) {
+  if (!target?.id) return null;
+  if (target.type === "MARKET") return fetchTraditionalMarketDetail(target.id);
+  if (target.type === "FESTIVAL") return fetchFestivalDetail(target.id);
+  return fetchPlaceDetail(target.id);
+}
+
+function StaticMeetingMap({ name, position, onOpen }) {
+  const hasPosition = Number.isFinite(position?.lat) && Number.isFinite(position?.lng);
+  return (
+    <button
+      type="button"
+      className="community-static-map"
+      onClick={onOpen}
+      aria-label={`${name || "만나는 곳"} 지도 열기`}
+    >
+      <span className="community-map-road road-one" />
+      <span className="community-map-road road-two" />
+      <span className="community-map-block block-one" />
+      <span className="community-map-block block-two" />
+      <span className="community-map-pin" aria-hidden="true"><LocationIcon /></span>
+      <span className="community-map-caption">
+        <strong>{name || "만나는 곳"}</strong>
+        <small>{hasPosition ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}` : "상세 위치 확인"}</small>
+      </span>
+      <span className="community-map-expand">지도 크게 보기 ↗</span>
+    </button>
+  );
+}
+
 function ParticipantAvatarStack({ current = 1, max = 4, hostLabel = "방장", detailed = false }) {
   const safeCurrent = Math.max(1, Number(current) || 1);
   const safeMax = Math.max(safeCurrent, Number(max) || 4);
@@ -578,7 +620,7 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
 }
 
 // ─── 게시글 상세 ──────────────────────────────────────────────────────
-export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted, showToast, user, onChatRoom, onPlaceClick }) {
+export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted, showToast, user, onChatRoom, onPlaceClick, onFestivalClick }) {
   const [post, setPost] = useState(initialPost);
   const [comments, setComments] = useState([]);
   const [input, setInput] = useState("");
@@ -596,6 +638,8 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
   const [replyTarget, setReplyTarget] = useState(null);
   const [replyInput, setReplyInput] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+  const [targetDetail, setTargetDetail] = useState(null);
+  const [targetStatus, setTargetStatus] = useState("idle");
 
   useEffect(() => {
     const resetScroll = () => {
@@ -632,6 +676,31 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
 
     return () => { ignore = true; };
   }, [initialPost?.id, initialPost?.type]);
+
+  const targetLookup = normalizeCompanionTarget(post);
+
+  useEffect(() => {
+    if (post?.type !== "동행" || !targetLookup.id) return undefined;
+
+    let ignore = false;
+    Promise.resolve().then(() => {
+      if (ignore) return;
+      setTargetDetail(null);
+      setTargetStatus("loading");
+    });
+    fetchCompanionTarget({ type: targetLookup.type, id: targetLookup.id })
+      .then((detail) => {
+        if (ignore) return;
+        setTargetDetail(detail);
+        setTargetStatus(detail ? "success" : "empty");
+      })
+      .catch(() => {
+        if (ignore) return;
+        setTargetDetail(null);
+        setTargetStatus("error");
+    });
+    return () => { ignore = true; };
+  }, [post?.id, post?.type, targetLookup.type, targetLookup.id]);
 
   useEffect(() => {
     if (!post?.id) {
@@ -1023,31 +1092,38 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     setJoinState("idle");
   };
 
-  const handlePlaceMap = async () => {
-    const placeId = post?.placeId ?? post?.place?.placeId;
-    if (!placeId) {
-      showToast?.("연결된 관광지 정보를 찾지 못했습니다.");
+  const companionTarget = normalizeCompanionTarget(post);
+  const rawTargetLatitude = targetDetail?.latitude ?? targetDetail?.lat;
+  const rawTargetLongitude = targetDetail?.longitude ?? targetDetail?.lng;
+  const targetPosition = {
+    lat: rawTargetLatitude == null ? Number.NaN : Number(rawTargetLatitude),
+    lng: rawTargetLongitude == null ? Number.NaN : Number(rawTargetLongitude),
+  };
+  const hasTargetPosition = Number.isFinite(targetPosition.lat) && Number.isFinite(targetPosition.lng);
+  const openDirections = () => {
+    const name = targetDetail?.name ?? companionTarget.name;
+    const url = hasTargetPosition
+      ? `https://map.kakao.com/link/to/${encodeURIComponent(name)},${targetPosition.lat},${targetPosition.lng}`
+      : `https://map.kakao.com/?q=${encodeURIComponent(name)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+  const openTargetDetail = () => {
+    if (!companionTarget.id) {
+      showToast?.("연결된 장소 정보를 찾지 못했습니다.");
       return;
     }
-    const basePlace = {
-      placeId,
-      id: placeId,
-      name: post.placeName ?? post.place,
+    const detail = targetDetail ?? {
+      id: companionTarget.id,
+      placeId: companionTarget.id,
+      festivalId: companionTarget.id,
+      name: companionTarget.name,
+      targetType: companionTarget.type === "MARKET" ? "TRADITIONAL_MARKET" : companionTarget.type,
     };
-
-    try {
-      const results = await searchPlaces({
-        query: basePlace.name,
-        size: 8,
-        track: false,
-        source: "community-place-link",
-      });
-      const matchedPlace = results.find((item) => String(item.placeId ?? item.id) === String(placeId))
-        ?? results.find((item) => item.name === basePlace.name);
-      onPlaceClick?.({ ...matchedPlace, ...basePlace });
-    } catch {
-      onPlaceClick?.(basePlace);
+    if (companionTarget.type === "FESTIVAL") {
+      onFestivalClick?.(detail);
+      return;
     }
+    onPlaceClick?.(detail);
   };
 
   return (
@@ -1288,12 +1364,21 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
             <section className="community-detail-card community-meeting-card">
               <div className="community-section-title">{isCompanion ? "만나는 곳" : "게시글 안내"}</div>
               {isCompanion ? (
-                <div className="community-meeting-place-row">
-                  <p className="community-meeting-point"><LocationIcon />{post.meetingPoint ?? `${post.place} 입구`}</p>
-                  <button type="button" className="community-map-action" onClick={handlePlaceMap}>
-                    <LocationIcon type="map" />
-                    지도에서 보기
-                  </button>
+                <div className="community-meeting-content">
+                  <p className="community-meeting-point"><LocationIcon />{post.meetingPoint ?? `${companionTarget.name || post.place} 입구`}</p>
+                  <StaticMeetingMap name={companionTarget.name} position={targetPosition} onOpen={openDirections} />
+                  {targetStatus === "loading" && <p className="community-map-status">위치 정보를 불러오는 중입니다.</p>}
+                  {targetStatus === "error" && <p className="community-map-status">좌표를 불러오지 못해 장소명으로 지도를 엽니다.</p>}
+                  <div className="community-meeting-actions">
+                    <button type="button" className="community-direction-action" onClick={openDirections} disabled={!companionTarget.name}>
+                      <DetailIcon type="route" />
+                      길찾기
+                    </button>
+                    <button type="button" className="community-detail-action" onClick={openTargetDetail} disabled={!companionTarget.id}>
+                      <DetailIcon type="info" />
+                      {companionTarget.type === "FESTIVAL" ? "축제 상세 보기" : "장소 상세 보기"}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <p>장소 리뷰는 관광지/가게 상세 페이지에서 작성하고 확인하는 흐름으로 분리합니다.</p>
@@ -1347,6 +1432,9 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     content: initialPost?.content ?? "",
     place: initialPost?.place ?? initialPost?.placeName ?? "",
     placeId: initialPost?.placeId ?? null,
+    targetType: initialPost?.targetType ?? (initialPost?.placeId ? "PLACE" : null),
+    targetId: initialPost?.targetId ?? initialPost?.placeId ?? null,
+    targetName: initialPost?.targetName ?? initialPost?.placeName ?? initialPost?.place ?? "",
     region: initialPost?.region ?? "",
     date: initialPost?.meetingDate ?? initialPost?.date ?? "",
     maxPeople: String(initialPost?.maxMembers ?? initialPost?.max ?? 4),
@@ -1474,10 +1562,16 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
   const handleSelectPlace = (place, source = "place") => {
     const placeName = place.name || place.placeName || "";
     const isFestival = source === "festival";
+    const isMarket = !isFestival && (place.targetType === "MARKET" || place.targetType === "TRADITIONAL_MARKET" || place.marketId != null);
+    const targetType = isFestival ? "FESTIVAL" : isMarket ? "MARKET" : "PLACE";
+    const targetId = isFestival ? (place.festivalId ?? place.id) : isMarket ? (place.marketId ?? place.id) : (place.placeId ?? place.id);
     setForm(f => ({
       ...f,
       place: placeName,
-      placeId: isFestival ? null : (place.placeId ?? place.id),
+      placeId: targetType === "PLACE" ? targetId : null,
+      targetType,
+      targetId,
+      targetName: placeName,
       region: getPlaceRegion(place),
       festivalStartDate: isFestival ? (place.startDate ?? "") : "",
       festivalEndDate: isFestival ? (place.endDate ?? "") : "",
@@ -1497,6 +1591,9 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
         ...f,
         place: "",
         placeId: null,
+        targetType: null,
+        targetId: null,
+        targetName: "",
         region: "",
         date: "",
         festivalStartDate: "",
@@ -1515,6 +1612,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
     if (type === "동행") {
       if (!form.place) { showToast("동행할 장소나 축제를 선택해주세요."); return; }
+      if (!form.targetType || !form.targetId) { showToast("검색 결과에서 만나는 곳을 다시 선택해주세요."); return; }
       if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
       if (form.date < todayValue) { showToast("오늘 이후 날짜를 선택해주세요."); return; }
     }
@@ -1606,7 +1704,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                     value={placeQuery}
                     onChange={(e) => {
                       setPlaceQuery(e.target.value);
-                      setForm(f => ({ ...f, place: "", placeId: null, region: "" }));
+                      setForm(f => ({ ...f, place: "", placeId: null, targetType: null, targetId: null, targetName: "", region: "" }));
                     }}
                     placeholder={placeSource === "festival" ? "축제 이름을 2자 이상 검색하세요" : "관광지 이름을 2자 이상 검색하세요"}
                     style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
@@ -1616,7 +1714,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                   <div className="community-selected-place">
                     <span>선택됨</span>
                     <strong>{form.place}</strong>
-                    <button type="button" onClick={() => { setForm(f => ({ ...f, place: "", placeId: null, festivalStartDate: "", festivalEndDate: "" })); setPlaceQuery(""); }}>변경</button>
+                    <button type="button" onClick={() => { setForm(f => ({ ...f, place: "", placeId: null, targetType: null, targetId: null, targetName: "", festivalStartDate: "", festivalEndDate: "" })); setPlaceQuery(""); }}>변경</button>
                     {form.festivalEndDate && (
                       <em className="community-selected-festival-period">
                         축제 기간 {formatFestivalRange(form.festivalStartDate, form.festivalEndDate)}

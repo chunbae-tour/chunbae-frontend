@@ -83,6 +83,10 @@ export async function createCommunityPost(payload) {
       body: {
         title: payload.title,
         content: payload.content,
+        targetType: payload.targetType ?? (payload.placeId ? "PLACE" : undefined),
+        targetId: payload.targetId ?? payload.placeId,
+        targetName: payload.targetName ?? payload.place,
+        // TODO: 구 백엔드 배포 종료 후 placeId/placeName 호환 필드를 제거합니다.
         placeId: payload.placeId,
         placeName: payload.place,
         region: payload.region ?? "",
@@ -116,6 +120,11 @@ export async function createCommunityComment({ postId, postType = "free", text, 
 function normalizeCompanionPost(post = {}) {
   const meetingDate = post.meetingDate ?? post.date ?? "";
   const createdAt = post.createdAt ?? post.createdDate ?? "";
+  const legacyPlaceId = post.placeId ?? post.place?.placeId ?? null;
+  const rawTargetType = post.targetType ?? (legacyPlaceId != null ? "PLACE" : null);
+  const targetType = rawTargetType === "TRADITIONAL_MARKET" ? "MARKET" : rawTargetType;
+  const targetId = post.targetId ?? legacyPlaceId;
+  const targetName = post.targetName ?? post.placeName ?? (typeof post.place === "string" ? post.place : post.place?.name) ?? "";
   return {
     ...post,
     id: post.postId ?? post.companionPostId ?? post.id,
@@ -131,7 +140,12 @@ function normalizeCompanionPost(post = {}) {
     max: post.maxMembers ?? post.max ?? 4,
     comments: post.commentCount ?? post.comments ?? 0,
     views: post.viewCount ?? post.views ?? 0,
-    place: post.placeName ?? post.place ?? "",
+    targetType,
+    targetId,
+    targetName,
+    placeId: legacyPlaceId ?? (targetType === "PLACE" ? targetId : null),
+    placeName: targetName,
+    place: targetName,
     content: post.content ?? "",
   };
 }
@@ -162,6 +176,10 @@ export async function updateCommunityPost(postId, postType, payload) {
     ? {
         title: payload.title,
         content: payload.content,
+        targetType: payload.targetType ?? (payload.placeId ? "PLACE" : undefined),
+        targetId: payload.targetId ?? payload.placeId,
+        targetName: payload.targetName ?? payload.place ?? payload.placeName,
+        // TODO: 구 백엔드 배포 종료 후 placeId/placeName 호환 필드를 제거합니다.
         placeId: payload.placeId,
         placeName: payload.place ?? payload.placeName,
         region: payload.region ?? "",

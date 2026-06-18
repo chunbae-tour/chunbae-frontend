@@ -17001,6 +17001,215 @@ body {
   margin-bottom: 0;
 }
 
+.community-meeting-content {
+  display: grid;
+  gap: 10px;
+}
+
+.community-meeting-card .community-meeting-content .community-meeting-point {
+  padding-top: 13px;
+  border-top: 0.5px solid rgba(26, 61, 43, 0.14);
+}
+
+.community-meeting-card .community-static-map {
+  position: relative;
+  width: 100%;
+  min-height: 150px;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 0;
+  border: 1px solid rgba(44, 110, 73, 0.18);
+  border-radius: 12px;
+  background:
+    linear-gradient(31deg, transparent 0 34%, rgba(255, 255, 255, 0.82) 35% 42%, transparent 43%),
+    linear-gradient(112deg, transparent 0 48%, rgba(255, 255, 255, 0.74) 49% 57%, transparent 58%),
+    #eaf2e6;
+  color: #1a3d2b;
+  text-align: left;
+  cursor: pointer;
+}
+
+.community-static-map::before,
+.community-static-map::after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  border-radius: 28px;
+  background: rgba(174, 211, 162, 0.46);
+}
+
+.community-static-map::before {
+  inset: 14px 58% 54px -18px;
+}
+
+.community-static-map::after {
+  inset: 72px -16px -20px 52%;
+}
+
+.community-map-road,
+.community-map-block {
+  position: absolute;
+  pointer-events: none;
+}
+
+.community-map-road {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0 0 1px rgba(180, 191, 175, 0.32);
+}
+
+.community-map-road.road-one {
+  width: 68%;
+  top: 42px;
+  left: -14px;
+  transform: rotate(13deg);
+}
+
+.community-map-road.road-two {
+  width: 72%;
+  right: -18px;
+  bottom: 45px;
+  transform: rotate(-17deg);
+}
+
+.community-map-block {
+  width: 28px;
+  height: 18px;
+  border: 1px solid rgba(104, 142, 99, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 253, 238, 0.82);
+}
+
+.community-map-block.block-one {
+  top: 20px;
+  right: 24px;
+  transform: rotate(8deg);
+}
+
+.community-map-block.block-two {
+  right: 64px;
+  bottom: 18px;
+  transform: rotate(-12deg);
+}
+
+.community-map-pin {
+  position: absolute;
+  top: 44%;
+  left: 52%;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 8px;
+  background: #2c6e49;
+  box-shadow: 0 5px 13px rgba(26, 61, 43, 0.28);
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.community-map-pin svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.8;
+  transform: rotate(45deg);
+}
+
+.community-map-caption {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 14px rgba(26, 61, 43, 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.community-map-caption strong {
+  overflow: hidden;
+  color: #1a3d2b;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.community-map-caption small {
+  flex: 0 0 auto;
+  color: #768078;
+  font-size: 9px;
+}
+
+.community-map-expand {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2c6e49;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.community-meeting-card .community-map-status {
+  margin: -2px 0 0;
+  color: #7b817c;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.community-meeting-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.community-meeting-card .community-meeting-actions button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 8px;
+  font-size: 12px;
+}
+
+.community-meeting-actions svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.community-meeting-card .community-direction-action {
+  background: #2c6e49;
+}
+
+.community-meeting-card .community-detail-action {
+  border: 1px solid rgba(44, 110, 73, 0.26);
+  background: #f0faf4;
+  color: #1f6042;
+}
+
+@media (max-width: 380px) {
+  .community-map-caption small {
+    display: none;
+  }
+}
+
 .community-side-panel.companion-confirmation {
   border-color: #fac775;
   background: #faeeda;
