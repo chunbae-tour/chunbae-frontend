@@ -1,14 +1,30 @@
 import { useEffect, useState } from "react";
+import MapPreview from "../../components/MapPreview.jsx";
 import { ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { addFestivalLike, fetchFestivalDetail, removeFestivalLike } from "../../services/festivalService.js";
+import { getFestivalProgress } from "../../utils/festivalProgress.js";
 
 const PROGRESS_LABELS = {
-  UPCOMING: "진행 예정",
+  UPCOMING: "예정",
   IN_PROGRESS: "진행 중",
   ENDED: "종료",
 };
+
+function ExternalLinkIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 3h7v7" />
+      <path d="M10 14 21 3" />
+      <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+    </svg>
+  );
+}
+
+function getFestivalStatus(detail = {}) {
+  return String(detail.progressStatus ?? detail.dday ?? "").trim().toUpperCase().replace(/-/g, "_");
+}
 
 export default function FestivalDetailPage({ festival, onBack }) {
   const festivalId = festival?.festivalId ?? festival?.id;
@@ -71,68 +87,100 @@ export default function FestivalDetailPage({ festival, onBack }) {
     }
   };
 
+  const progressStatus = getFestivalStatus(detail);
+  const progress = getFestivalProgress(detail?.startDate, detail?.endDate, progressStatus);
+  const heroStyle = detail?.imageUrl
+    ? { "--festival-hero-image": `url(${JSON.stringify(detail.imageUrl)})` }
+    : {};
+
   return (
-    <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 20px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button type="button" onClick={onBack} aria-label="뒤로 가기" style={{ border: 0, background: "transparent", color: "#fff", fontSize: 22, cursor: "pointer" }}>←</button>
-        <strong style={{ color: "#fff", fontSize: 18 }}>축제 상세</strong>
+    <div style={S.screen} className="festival-detail-page">
+      <div className="festival-detail-topbar">
+        <button type="button" onClick={onBack} aria-label="뒤로 가기">←</button>
+        <strong>축제 상세</strong>
       </div>
       <div style={S.scrollArea}>
         {status === "loading" ? (
-          <div style={{ padding: 20 }}><SkeletonList count={4} /></div>
+          <div className="festival-detail-loading"><SkeletonList count={4} /></div>
         ) : status === "error" ? (
-          <div style={{ padding: 20 }}>
+          <div className="festival-detail-loading">
             <ErrorState title="축제 상세 정보를 불러오지 못했습니다." description={errorMessage} onRetry={loadDetail} />
           </div>
         ) : (
-          <article style={{ maxWidth: 960, margin: "0 auto", padding: 20 }}>
+          <article className="festival-detail-layout">
             {errorMessage && (
-              <div style={{ background: "#FFF3D0", color: "#B87800", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 14, fontWeight: 700 }}>
+              <div className="festival-detail-warning">
                 최신 상세 정보는 불러오지 못해 목록에서 받은 정보를 표시합니다. {errorMessage}
               </div>
             )}
-            {detail.imageUrl && (
-              <img src={detail.imageUrl} alt={detail.name} style={{ width: "100%", maxHeight: 420, objectFit: "cover", borderRadius: 8, marginBottom: 20 }} />
-            )}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
+
+            <section className={`festival-detail-hero ${detail?.imageUrl ? "has-image" : ""}`} style={heroStyle}>
+              <span className={`festival-hero-status ${String(progressStatus).toLowerCase()}`}>
+                {PROGRESS_LABELS[progressStatus] ?? progressStatus}
+              </span>
+              <button
+                type="button"
+                className={`festival-hero-like ${liked ? "liked" : ""}`}
+                onClick={handleToggleLike}
+                disabled={likeSaving}
+                aria-label={liked ? "축제 찜 해제" : "축제 찜하기"}
+              >
+                {liked ? "♥" : "♡"}
+              </button>
+            </section>
+
+            <header className="festival-detail-title-row">
               <div>
-                <span style={{ display: "inline-block", background: "#FFF3D0", color: "#B87800", padding: "5px 10px", borderRadius: 6, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
-                  {PROGRESS_LABELS[detail.progressStatus] ?? detail.progressStatus}
-                </span>
-                <h1 style={{ color: COLORS.primary, fontSize: 28, margin: 0 }}>{detail.name}</h1>
+                <span>{detail?.region || "지역 정보 없음"}</span>
+                <h1>{detail?.name}</h1>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={handleToggleLike}
-                  disabled={likeSaving}
-                  style={{ flexShrink: 0, border: `1px solid ${liked ? "#E24B4A" : "rgba(0,0,0,0.12)"}`, background: liked ? "#FCEBEB" : "#fff", color: liked ? "#A32D2D" : COLORS.primary, borderRadius: 6, padding: "10px 14px", fontWeight: 700, cursor: likeSaving ? "wait" : "pointer", fontFamily: "inherit" }}
-                >
-                  {liked ? "♥ 찜 해제" : "♡ 축제 찜"}
-                </button>
-                {detail.relatedUrl && (
-                  <a href={detail.relatedUrl} target="_blank" rel="noreferrer" style={{ flexShrink: 0, background: COLORS.primary, color: "#fff", borderRadius: 6, padding: "10px 14px", textDecoration: "none", fontWeight: 700 }}>
-                    공식 정보
-                  </a>
-                )}
+              {detail?.relatedUrl && (
+                <a className="festival-official-btn" href={detail.relatedUrl} target="_blank" rel="noreferrer">
+                  공식 정보 <ExternalLinkIcon />
+                </a>
+              )}
+            </header>
+
+            <section className="festival-info-card">
+              <div className="festival-progress-head">
+                <strong>행사 진행 상황</strong>
+                <span>{progress.label}</span>
               </div>
-            </div>
-            <section style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, padding: 20, marginBottom: 16 }}>
-              <dl style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "14px 16px", margin: 0 }}>
-                <dt style={{ color: COLORS.textMuted }}>기간</dt>
-                <dd style={{ margin: 0, color: COLORS.primary, fontWeight: 600 }}>{detail.startDate} ~ {detail.endDate}</dd>
-                <dt style={{ color: COLORS.textMuted }}>지역</dt>
-                <dd style={{ margin: 0 }}>{detail.region || "지역 정보 없음"}</dd>
-                <dt style={{ color: COLORS.textMuted }}>주소</dt>
-                <dd style={{ margin: 0 }}>{detail.address || "주소 정보 없음"}</dd>
+              <div className="festival-progress-bar" aria-label={`행사 진행률 ${progress.percent}%`}>
+                <i className={progress.isEnded ? "ended" : ""} style={{ width: `${progress.percent}%` }} />
+              </div>
+              <div className="festival-progress-dates">
+                <span>{detail?.startDate || "시작일 미정"} 시작</span>
+                <span>{detail?.endDate || "종료일 미정"} 종료</span>
+              </div>
+              <dl className="festival-info-list">
+                <div>
+                  <dt>지역</dt>
+                  <dd>{detail?.region || "지역 정보 없음"}</dd>
+                </div>
+                <div>
+                  <dt>주소</dt>
+                  <dd>{detail?.address || "주소 정보 없음"}</dd>
+                </div>
               </dl>
             </section>
-            <section style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, padding: 20 }}>
-              <h2 style={{ color: COLORS.primary, fontSize: 18, margin: "0 0 12px" }}>축제 소개</h2>
-              <p style={{ color: COLORS.textSub, lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>
-                {detail.description || "등록된 축제 소개가 없습니다."}
-              </p>
+
+            <section className="festival-detail-card">
+              <h2>축제 소개</h2>
+              <p>{detail?.description || "등록된 축제 소개가 없습니다."}</p>
             </section>
+
+            {(detail?.latitude != null || detail?.lat != null) && (detail?.longitude != null || detail?.lng != null) && (
+              <section className="festival-detail-card festival-location-card">
+                <h2>위치</h2>
+                <MapPreview
+                  name={detail?.name}
+                  address={detail?.address}
+                  latitude={detail?.latitude ?? detail?.lat}
+                  longitude={detail?.longitude ?? detail?.lng}
+                />
+              </section>
+            )}
           </article>
         )}
       </div>
