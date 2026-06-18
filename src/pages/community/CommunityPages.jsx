@@ -8,7 +8,7 @@ import { createCommunityComment, createCommunityPost, deleteComment, deleteCommu
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { fetchFestivalDetail, searchFestivals } from "../../services/festivalService.js";
 import { fetchWishlist } from "../../services/myService.js";
-import { fetchPlaceDetail, fetchTraditionalMarketDetail } from "../../services/placeService.js";
+import { fetchPlaceDetail, fetchPlaces, fetchTraditionalMarketDetail } from "../../services/placeService.js";
 import { searchPlaces } from "../../services/searchService.js";
 
 function getCompanionJoinErrorMessage(error) {
@@ -359,11 +359,28 @@ async function fetchCompanionTarget(target) {
   if (!target?.id) return null;
   if (target.type === "MARKET") return fetchTraditionalMarketDetail(target.id);
   if (target.type === "FESTIVAL") return fetchFestivalDetail(target.id);
-  return fetchPlaceDetail(target.id);
+
+  const [detail, candidates] = await Promise.all([
+    fetchPlaceDetail(target.id),
+    target.name
+      ? fetchPlaces({ keyword: target.name, size: 10 }).catch(() => [])
+      : Promise.resolve([]),
+  ]);
+  const listPlace = candidates.find((place) => String(place.placeId ?? place.id) === String(target.id))
+    ?? candidates.find((place) => place.name === target.name);
+
+  if (!listPlace) return detail;
+
+  return {
+    ...listPlace,
+    ...detail,
+    imageUrl: detail.imageUrl || listPlace.imageUrl,
+    thumbnailUrl: detail.thumbnailUrl || listPlace.thumbnailUrl,
+    imageUrls: detail.imageUrls?.length ? detail.imageUrls : listPlace.imageUrls,
+  };
 }
 
-function StaticMeetingMap({ name, position, onOpen }) {
-  const hasPosition = Number.isFinite(position?.lat) && Number.isFinite(position?.lng);
+function StaticMeetingMap({ name, onOpen }) {
   return (
     <button
       type="button"
@@ -378,7 +395,6 @@ function StaticMeetingMap({ name, position, onOpen }) {
       <span className="community-map-pin" aria-hidden="true"><LocationIcon /></span>
       <span className="community-map-caption">
         <strong>{name || "만나는 곳"}</strong>
-        <small>{hasPosition ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}` : "상세 위치 확인"}</small>
       </span>
       <span className="community-map-expand">지도 크게 보기 ↗</span>
     </button>
@@ -688,7 +704,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
       setTargetDetail(null);
       setTargetStatus("loading");
     });
-    fetchCompanionTarget({ type: targetLookup.type, id: targetLookup.id })
+    fetchCompanionTarget(targetLookup)
       .then((detail) => {
         if (ignore) return;
         setTargetDetail(detail);
@@ -1366,7 +1382,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
               {isCompanion ? (
                 <div className="community-meeting-content">
                   <p className="community-meeting-point"><LocationIcon />{post.meetingPoint ?? `${companionTarget.name || post.place} 입구`}</p>
-                  <StaticMeetingMap name={companionTarget.name} position={targetPosition} onOpen={openDirections} />
+                  <StaticMeetingMap name={companionTarget.name} onOpen={openDirections} />
                   {targetStatus === "loading" && <p className="community-map-status">위치 정보를 불러오는 중입니다.</p>}
                   {targetStatus === "error" && <p className="community-map-status">좌표를 불러오지 못해 장소명으로 지도를 엽니다.</p>}
                   <div className="community-meeting-actions">

@@ -1,15 +1,10 @@
 ﻿import { useEffect, useState } from "react";
 import { KakaoMap } from "../../components/map";
 import { COLORS, S } from "../../constants/colors";
-import { EmptyState, ErrorState } from "../../components/common";
-import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchDirectionLink, getDefaultLocation, normalizePlace } from "../../services/placeService.js";
 
 export default function DirectionPage({ place, onBack }) {
-  const [mode, setMode] = useState("transit");
   const [direction, setDirection] = useState(null);
-  const [status, setStatus] = useState("idle");
-  const [error, setError] = useState("");
   const destination = place ? normalizePlace(place) : null;
   const destLat = destination?.lat;
   const destLng = destination?.lng;
@@ -23,13 +18,8 @@ export default function DirectionPage({ place, onBack }) {
 
     const loadDirection = async (origin) => {
       if (destLat == null || destLng == null) {
-        setStatus("empty");
-        setError("목적지 좌표 정보가 없습니다.");
         return;
       }
-
-      setStatus("loading");
-      setError("");
 
       try {
         const result = await fetchDirectionLink({
@@ -40,11 +30,8 @@ export default function DirectionPage({ place, onBack }) {
         });
         if (ignore) return;
         setDirection(result);
-        setStatus(result.redirectUrl ? "success" : "empty");
-      } catch (err) {
-        if (ignore) return;
-        setError(getApiErrorHint(err) || err.message || "길찾기 링크를 불러오지 못했습니다.");
-        setStatus("error");
+      } catch {
+        // API 링크를 불러오지 못해도 기본 카카오맵 URL을 사용합니다.
       }
     };
 
@@ -64,14 +51,8 @@ export default function DirectionPage({ place, onBack }) {
 
   const openMap = () => {
     const url = direction?.redirectUrl || fallbackKakaoUrl;
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
   };
-
-  const modes = [
-    { key: "transit", label: "대중교통", icon: "🚌" },
-    { key: "walk",    label: "도보",    icon: "🚶" },
-    { key: "car",     label: "자동차",  icon: "🚗" },
-  ];
 
   return (
     <div style={S.screen}>
@@ -104,60 +85,17 @@ export default function DirectionPage({ place, onBack }) {
             level={4}
             style={{ height: 200 }}
           />
-          <button type="button" className="direction-map-open" onClick={openMap}>
-            🗺️ 카카오맵으로 열기
-          </button>
         </div>
 
-        {/* 이동수단 선택 */}
         <div style={{ padding: 16 }}>
-          {status === "loading" && (
-            <div style={{ background: "#fff", borderRadius: 14, padding: 14, color: COLORS.textMuted, fontSize: 14, marginBottom: 12 }}>
-              길찾기 링크를 준비하는 중입니다.
+          <div style={{ background: "#fff", borderRadius: 16, padding: 20, border: "0.5px solid rgba(0,0,0,0.06)" }}>
+            <div style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center", marginBottom: 16 }}>
+              상세 소요시간과 경로는 카카오맵에서 확인할 수 있습니다.
             </div>
-          )}
-          {status === "error" && (
-            <ErrorState
-              title="길찾기 API 연결을 확인해주세요."
-              description={`${error} 기본 카카오맵 링크로 연결할 수 있습니다.`}
-              actionLabel="카카오맵으로 열기"
-              onRetry={openMap}
-            />
-          )}
-          {status === "empty" && (
-            <EmptyState
-              icon="길"
-              title={destLat == null || destLng == null ? "목적지 좌표 정보가 없습니다." : "길찾기 링크가 없습니다."}
-              description="기본 카카오맵 링크로 목적지를 열 수 있습니다."
-              actionLabel="카카오맵으로 열기"
-              onAction={openMap}
-            />
-          )}
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {modes.map(m => (
-              <div key={m.key} onClick={() => setMode(m.key)} style={{ flex: 1, background: mode === m.key ? COLORS.primary : "#fff", borderRadius: 12, padding: "10px 0", textAlign: "center", cursor: "pointer", border: `1.5px solid ${mode === m.key ? COLORS.primary : "rgba(0,0,0,0.08)"}` }}>
-                <div style={{ fontSize: 20 }}>{m.icon}</div>
-                <div style={{ fontSize: 14, color: mode === m.key ? "#fff" : COLORS.textMuted, fontWeight: 600, marginTop: 4 }}>{m.label}</div>
-              </div>
-            ))}
+            <button type="button" onClick={openMap} style={{ width: "100%", border: 0, background: "#FEE500", borderRadius: 14, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: "pointer", color: "#1A1A2E", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span aria-hidden="true">🗺️</span> 카카오맵으로 길찾기
+            </button>
           </div>
-
-          {/* 경로 요약 */}
-          {modes.filter(m2 => m2.key === mode).map(m => (
-            <div key={m.key} style={{ background: "#fff", borderRadius: 16, padding: 20, border: "0.5px solid rgba(0,0,0,0.06)", marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>{m.label} 길찾기</span>
-                <span style={{ fontSize: 14, background: COLORS.greenBg, color: COLORS.green, borderRadius: 20, padding: "4px 12px", fontWeight: 700 }}>외부 지도 연결</span>
-              </div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted }}>상세 소요시간과 경로는 카카오맵에서 확인할 수 있습니다.</div>
-            </div>
-          ))}
-
-          {/* 카카오맵 연결 버튼 */}
-          <div onClick={openMap} style={{ background: "#FEE500", borderRadius: 14, padding: "15px 0", textAlign: "center", fontWeight: 700, fontSize: 15, cursor: "pointer", color: "#1A1A2E", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <span>🗺️</span> {direction?.provider ? `${direction.provider}으로 길찾기` : "카카오맵으로 길찾기"}
-          </div>
-          <div style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center", marginTop: 8 }}>카카오맵 앱에서 상세 경로를 확인하세요</div>
         </div>
       </div>
     </div>
