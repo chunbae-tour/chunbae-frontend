@@ -124,6 +124,7 @@ export function normalizeCompanionDetail(companion = {}) {
 export function normalizeChatMessage(message = {}) {
   const unreadCount = message.unreadCount ?? message.unreadMemberCount ?? message.notReadCount ?? message.unread;
   const messageType = message.messageType ?? message.type ?? "TEXT";
+  const profileImageUrl = message.senderProfileImageUrl ?? message.profileImageUrl ?? "";
   const inlineAttachment = message.fileUrl
     ? [{
         id: message.fileUrl,
@@ -155,7 +156,8 @@ export function normalizeChatMessage(message = {}) {
     id: message.messageId ?? message.id,
     userId: message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId,
     user: message.senderNickname ?? message.user ?? "여행자",
-    avatar: message.senderProfileImageUrl ?? message.profileImageUrl ?? message.avatar ?? "👤",
+    profileImageUrl,
+    avatar: profileImageUrl || message.avatar || "👤",
     messageType,
     text: message.content ?? message.text ?? "",
     time: message.sentAt ?? message.time ?? "",
@@ -182,7 +184,8 @@ export function normalizeChatParticipant(participant = {}) {
     score: participant.companionScore ?? participant.score ?? 0,
     language: participant.language ?? participant.preferredLanguage ?? "",
     joinedAt: participant.joinedAt ?? participant.createdAt ?? "",
-    avatar: participant.avatar ?? "👤",
+    profileImageUrl: participant.profileImageUrl ?? participant.avatarUrl ?? "",
+    avatar: participant.profileImageUrl ?? participant.avatarUrl ?? participant.avatar ?? "👤",
   };
 }
 

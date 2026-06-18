@@ -184,6 +184,17 @@ function isSameUser(a, b) {
   return a != null && b != null && String(a) === String(b);
 }
 
+function isImageUrl(value) {
+  return /^https?:\/\/\S+$/i.test(String(value || ""));
+}
+
+function ChatAvatar({ value, name = "사용자" }) {
+  if (isImageUrl(value)) {
+    return <img src={value} alt={`${name || "사용자"} 프로필`} />;
+  }
+  return value || "👤";
+}
+
 function getReadReceiptText(message = {}) {
   if (typeof message.unreadCount === "number") {
     if (message.unreadCount <= 0) return "읽음";
@@ -1220,7 +1231,8 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       ...matchedParticipant,
       userId: matchedParticipant?.userId ?? userId,
       nickname: matchedParticipant?.nickname ?? message.user ?? "상대방",
-      avatar: matchedParticipant?.avatar ?? "👤",
+      profileImageUrl: matchedParticipant?.profileImageUrl ?? message.profileImageUrl ?? message.senderProfileImageUrl ?? "",
+      avatar: matchedParticipant?.profileImageUrl ?? message.profileImageUrl ?? message.senderProfileImageUrl ?? matchedParticipant?.avatar ?? message.avatar ?? "👤",
       language: matchedParticipant?.language,
       score: matchedParticipant?.score,
       role: matchedParticipant?.role,
@@ -1400,6 +1412,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                   {showProfile && (
                     <button 
                       type="button" 
+                      className="chat-message-avatar"
                       onClick={() => openProfile(messageProfile)} 
                       style={{ 
                         width: 32, 
@@ -1414,7 +1427,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                         cursor: "pointer" 
                       }}
                     >
-                      {messageProfile?.avatar ?? "👤"}
+                      <ChatAvatar value={messageProfile?.avatar} name={messageProfile?.nickname} />
                     </button>
                   )}
                 </div>
@@ -1771,7 +1784,9 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         <div className="chat-profile-modal" role="dialog" aria-modal="true">
           <div className="chat-profile-card">
             <button type="button" className="chat-profile-close" onClick={() => setProfileTarget(null)} aria-label="닫기">×</button>
-            <div className="chat-profile-avatar">{profileTarget.avatar ?? "👤"}</div>
+            <div className="chat-profile-avatar">
+              <ChatAvatar value={profileTarget.profileImageUrl || profileTarget.avatar} name={profileTarget.nickname} />
+            </div>
             <strong>{profileTarget.nickname ?? "상대방"}</strong>
             <span>{profileTarget.role === "HOST" ? "방장" : "참여자"}</span>
             <p>{profileTarget.language || "언어 미설정"} · 동행지수 {profileTarget.score || "-"}</p>
@@ -1826,7 +1841,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
               {participants.map((participant) => (
                 <div key={participant.userId} className="chat-management-card">
                   <button type="button" className="chat-participant-profile" onClick={() => openProfile(participant)}>
-                    <b>{participant.avatar}</b>
+                    <b><ChatAvatar value={participant.profileImageUrl || participant.avatar} name={participant.nickname} /></b>
                     <div>
                       <strong>
                         {participant.nickname}

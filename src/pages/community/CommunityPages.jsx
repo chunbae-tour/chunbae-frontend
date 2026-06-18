@@ -293,6 +293,15 @@ function isPostAuthor(post, user) {
   return Boolean(post.author && user.nickname && post.author === user.nickname);
 }
 
+function CommunityProfileAvatar({ imageUrl, name = "여행자", className = "" }) {
+  const label = String(name || "여").slice(0, 1);
+  return (
+    <div className={`community-profile-avatar ${className}`}>
+      {imageUrl ? <img src={imageUrl} alt={`${name || "작성자"} 프로필`} /> : label}
+    </div>
+  );
+}
+
 function CommunityStatIcon({ type }) {
   if (type === "comments") {
     return (
@@ -1183,7 +1192,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
               </div>
               <h1>{post.title}</h1>
               <div className="community-detail-author">
-                <div className="community-author-avatar">{String(post.author || "여").slice(0, 1)}</div>
+                <CommunityProfileAvatar imageUrl={post.profileImageUrl} name={post.author} className="community-author-avatar" />
                 <div className="community-author-copy">
                   <strong>{post.author}</strong>
                   <span>
@@ -1255,7 +1264,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                   <div key={c.id} className="community-comment-thread">
                     <div className="community-comment-card">
                       <div className="community-comment-head">
-                        <div>??</div>
+                        <CommunityProfileAvatar imageUrl={c.profileImageUrl} name={c.author} />
                         <strong>{c.author}</strong>
                         <span>{formatRelativeTime(c.time ?? c.createdAt) || "방금"}{wasCommentEdited(c) ? " · 수정됨" : ""}</span>
                         <div className="community-comment-actions">
@@ -1304,7 +1313,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                             <div key={reply.id} className="community-reply-thread">
                               <div className="community-comment-card community-reply-card">
                                 <div className="community-comment-head">
-                                  <div>?</div>
+                                  <CommunityProfileAvatar imageUrl={reply.profileImageUrl} name={reply.author} />
                                   <strong>{reply.author}</strong>
                                   <span>{formatRelativeTime(reply.time ?? reply.createdAt) || "방금"}{wasCommentEdited(reply) ? " · 수정됨" : ""}</span>
                                   <div className="community-comment-actions">
