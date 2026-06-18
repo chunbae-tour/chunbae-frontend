@@ -1579,7 +1579,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
               <div key={`${p.targetType}-${p.id}`} onClick={() => handleSearchResultClick(p)} className={`search-result-card ${p.targetType?.toLowerCase() || "place"}`}>
                 <div
                   className={p.type === "전통시장" ? "search-result-thumb market has-image" : "search-result-thumb has-image"}
-                  style={{ "--place-card-image": p.targetType === "PLACE" && placeImage ? `url("${placeImage}")` : undefined }}
+                  style={{ "--place-card-image": ["PLACE", "MARKET"].includes(p.targetType) && placeImage ? `url("${placeImage}")` : undefined }}
                 >
                   {p.targetType === "SHOP" ? "가게" : p.targetType === "MENU" ? "메뉴" : !placeImage && p.emoji}
                 </div>
@@ -1589,7 +1589,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
                   <span>{getResultMeta(p)}</span>
                   <small>{getResultDescription(p)}</small>
                 </div>
-                <button type="button">{p.targetType === "PLACE" ? "장소 보기" : "가게 보기"}</button>
+                <button type="button">{p.targetType === "SHOP" || p.targetType === "MENU" ? "가게 보기" : "장소 보기"}</button>
               </div>
             );})}
             {hasNextResults && activeResultType === "ALL" && (
