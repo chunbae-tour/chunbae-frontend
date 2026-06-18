@@ -339,6 +339,37 @@ function LocationIcon({ type = "pin" }) {
   );
 }
 
+function CommunityMarkerIcon({ type = "participant" }) {
+  if (type === "empty") {
+    return (
+      <svg className="community-marker-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 8v8" />
+        <path d="M8 12h8" />
+      </svg>
+    );
+  }
+
+  if (type === "host") {
+    return (
+      <svg className="community-marker-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 21s6.5-4.8 6.5-10.4A6.5 6.5 0 1 0 5.5 10.6C5.5 16.2 12 21 12 21z" />
+        <path d="M8.7 11.6h6.6" />
+        <path d="M9.7 14.3h4.6" />
+        <path d="M10 9.2h4l-1-2h-2l-1 2z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="community-marker-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 21s6.5-4.8 6.5-10.4A6.5 6.5 0 1 0 5.5 10.6C5.5 16.2 12 21 12 21z" />
+      <circle cx="12" cy="9.3" r="2.1" />
+      <path d="M8.7 15.1c.7-2 5.9-2 6.6 0" />
+    </svg>
+  );
+}
+
 function DetailIcon({ type }) {
   if (type === "route") {
     return (
@@ -424,13 +455,14 @@ function ParticipantAvatarStack({ current = 1, max = 4, hostLabel = "방장", de
       {Array.from({ length: visibleSlots }, (_, index) => {
         const occupied = index < safeCurrent;
         const isHost = index === 0;
+        const markerType = !occupied ? "empty" : isHost ? "host" : "participant";
         return (
           <span
             key={`${occupied ? "participant" : "empty"}-${index}`}
             className={`${occupied ? "occupied" : "empty"} ${isHost ? "host" : ""}`}
             title={isHost ? hostLabel : occupied ? `참여자 ${index + 1}` : "빈 자리"}
           >
-            {occupied ? (isHost ? "방" : "여") : "+"}
+            <CommunityMarkerIcon type={markerType} />
           </span>
         );
       })}
@@ -469,6 +501,10 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
       return scope === "마감" ? closed : !closed;
     })
     .sort((a, b) => {
+      if (tab === "동행" && scope !== "마감") {
+        const closedOrder = Number(isClosedCompanionPost(a)) - Number(isClosedCompanionPost(b));
+        if (closedOrder !== 0) return closedOrder;
+      }
       if (sort === "popular") {
         return (Number(b.views) + Number(b.comments)) - (Number(a.views) + Number(a.comments));
       }
