@@ -10,6 +10,7 @@ import { fetchFestivalDetail, searchFestivals } from "../../services/festivalSer
 import { fetchWishlist } from "../../services/myService.js";
 import { fetchPlaceDetail, fetchPlaces, fetchTraditionalMarketDetail } from "../../services/placeService.js";
 import { searchPlaces, searchUnifiedPage } from "../../services/searchService.js";
+import { getPlaceImageUrl } from "../../constants/placeImages.js";
 
 function getCompanionJoinErrorMessage(error) {
   const code = String(error?.code ?? "").toUpperCase();
@@ -293,8 +294,34 @@ function getMeetingDateParts(value) {
 
 function isPostAuthor(post, user) {
   if (!post || !user) return false;
-  if (post.writerId && user.userId) return String(post.writerId) === String(user.userId);
-  return Boolean(post.author && user.nickname && post.author === user.nickname);
+  if (post.isAuthor || post.mine || post.isMine || post.ownedByMe) return true;
+
+  const postUserIds = [
+    post.writerId,
+    post.authorId,
+    post.userId,
+    post.accountId,
+    post.writer?.userId,
+    post.writer?.id,
+    post.author?.userId,
+    post.author?.id,
+  ].filter(value => value != null && value !== "");
+  const currentUserIds = [
+    user.userId,
+    user.id,
+    user.accountId,
+    user.memberId,
+  ].filter(value => value != null && value !== "");
+
+  if (postUserIds.some(postId => currentUserIds.some(userId => String(postId) === String(userId)))) {
+    return true;
+  }
+
+  const authorName = typeof post.author === "string"
+    ? post.author
+    : post.author?.nickname ?? post.author?.name ?? post.writer?.nickname ?? post.writer?.name;
+  const currentNames = [user.nickname, user.name, user.username].filter(Boolean);
+  return Boolean(authorName && currentNames.some(name => String(authorName) === String(name)));
 }
 
 function CommunityProfileAvatar({ imageUrl, name = "여행자", className = "" }) {
@@ -418,8 +445,8 @@ async function fetchCompanionTarget(target) {
   return {
     ...listPlace,
     ...detail,
-    imageUrl: detail.imageUrl || listPlace.imageUrl,
-    thumbnailUrl: detail.thumbnailUrl || listPlace.thumbnailUrl,
+    imageUrl: detail.imageUrl || detail.thumbnailUrl || listPlace.imageUrl || listPlace.thumbnailUrl || "",
+    thumbnailUrl: detail.thumbnailUrl || detail.imageUrl || listPlace.thumbnailUrl || listPlace.imageUrl || "",
     imageUrls: detail.imageUrls?.length ? detail.imageUrls : listPlace.imageUrls,
   };
 }
@@ -1196,11 +1223,16 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
       name: companionTarget.name,
       targetType: companionTarget.type === "MARKET" ? "TRADITIONAL_MARKET" : companionTarget.type,
     };
+    const detailWithImage = {
+      ...detail,
+      imageUrl: detail.imageUrl || detail.thumbnailUrl || getPlaceImageUrl(detail),
+      thumbnailUrl: detail.thumbnailUrl || detail.imageUrl || getPlaceImageUrl(detail),
+    };
     if (companionTarget.type === "FESTIVAL") {
-      onFestivalClick?.(detail);
+      onFestivalClick?.(detailWithImage);
       return;
     }
-    onPlaceClick?.(detail);
+    onPlaceClick?.(detailWithImage);
   };
 
   return (
@@ -1414,11 +1446,11 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                 <button
                   type="button"
                   onClick={handleCompanionAction}
-                  disabled={!isAuthor && (isClosed || joinState === "pending")}
+                  disabled={isAuthor ? creatingRoom : (isClosed || joinState === "pending")}
                 >
                   {isAuthor
                     ? existingRoom
-                      ? "채팅방으로 이동"
+                      ? "채팅방 가기"
                       : (creatingRoom ? "채팅방 생성 중..." : "채팅방 생성")
                     : isClosed ? "모집 마감" : companionAction.label}
                 </button>
