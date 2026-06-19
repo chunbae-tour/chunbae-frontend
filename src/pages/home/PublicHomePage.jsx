@@ -11,12 +11,6 @@ const fadeUp = {
   }),
 };
 
-const float = {
-  animate: {
-    y: [0, -12, 0],
-    transition: { duration: 3.2, ease: "easeInOut", repeat: Infinity },
-  },
-};
 
 export default function PublicHomePage({ onLogin, onSignup, onExplore }) {
   const explore = (target) => () => onExplore(target);

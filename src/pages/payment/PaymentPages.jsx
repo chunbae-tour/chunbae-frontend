@@ -534,7 +534,7 @@ export function PayChargePage({ onBack, onDone, showToast }) {
   );
 }
 
-export function PayHistoryPage({ onBack, onPlaceClick, onShopClick, showToast }) {
+export function PayHistoryPage({ onBack, onShopClick, showToast }) {
   const [activeHistoryTab, setActiveHistoryTab] = useState("yeopjeon");
   const [history, setHistory] = useState([]);
   const [chargeRefundHistory, setChargeRefundHistory] = useState([]);

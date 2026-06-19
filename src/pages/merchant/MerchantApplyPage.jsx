@@ -5,7 +5,7 @@ import { getApiErrorHint } from "../../services/apiClient.js";
 import { applyMerchant } from "../../services/merchantService.js";
 import { geocodeAddress } from "../../services/placeService.js";
 
-export function MerchantApplyPage({ onBack, showToast, onLogin }) {
+export function MerchantApplyPage({ onBack, showToast }) {
   const scrollAreaRef = useRef(null);
   const [form, setForm] = useState({
     shopName: "",

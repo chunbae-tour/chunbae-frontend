@@ -205,7 +205,7 @@ export default function QRPayPage({ onBack, showToast }) {
                   borderColor: COLORS.primary,
                   borderStyle: "solid",
                   borderWidth: 0,
-                  ...Object.fromEntries(Object.entries(pos).map(([k, v]) => [k, -3])),
+                  ...Object.fromEntries(Object.entries(pos).map(([k]) => [k, -3])),
                   ...(pos.top !== undefined ? { borderTopWidth: 4 } : { borderBottomWidth: 4 }),
                   ...(pos.left !== undefined ? { borderLeftWidth: 4 } : { borderRightWidth: 4 }),
                   borderRadius: 4,

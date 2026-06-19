@@ -736,7 +736,7 @@ export function MyReportsPage({ onBack }) {
   );
 }
 // ─── 보유 아이템 ─────────────────────────────────────────────────────
-export function OwnedItemsPage({ onBack, showToast }) {
+export function OwnedItemsPage({ onBack }) {
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");

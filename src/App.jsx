@@ -474,7 +474,7 @@ export default function App() {
     setSelectedShop(shop);
     go("storeShop");
   };
-  const handleLikeChange = (placeId, isLiked) => {
+  const handleLikeChange = (_placeId, _isLiked) => {
     // 찜 상태가 변경되면 마이페이지를 갱신하도록 카운터 증가
     setLikeChangeCounter((prev) => prev + 1);
   };
