@@ -2,10 +2,6 @@
 
 > 전국 관광·커뮤니티·결제를 하나로 묶은 React 기반 모바일 PWA
 
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
-[![PWA](https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
-[![Playwright](https://img.shields.io/badge/E2E-Playwright-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev)
 
 장소 탐색부터 길찾기, 동행 모집, 축제 정보, QR 결제, 상인 가게 관리까지 — 여행객과 지역 상인을 잇는 모바일 우선(mobile-first) 서비스입니다.
 
