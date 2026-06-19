@@ -157,7 +157,7 @@ npm run dev
 | --- | --- |
 | `pnpm dev` | 로컬 개발 서버 |
 | `pnpm dev:mobile` | 모바일 실기기 테스트용 (`--host`, HTTPS) |
-| `pnpm dev:ec2` | ECS 환경 연동 개발 서버 |
+| `pnpm dev:ecs` | ECS 배포 백엔드 연동 개발 서버 |
 | `pnpm build` | 프로덕션 빌드 |
 | `pnpm preview` | 빌드 결과 미리보기 |
 | `pnpm lint` | ESLint 검사 |
@@ -189,6 +189,6 @@ VITE_KAKAO_MAP_JS_KEY=    # Kakao Map JavaScript 키
 
 ## 📚 관련 문서
 
-- API 명세: [docs/api-spec.json](docs/api-spec.json)
+- OpenAPI 명세: [docs/api-spec.json](docs/api-spec.json)
 - 프론트 연동 기준: [docs/frontend/api-contract.md](docs/frontend/api-contract.md)
 - 화면-API 매핑: [docs/frontend/screen-map.md](docs/frontend/screen-map.md)

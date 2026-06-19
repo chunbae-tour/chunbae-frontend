@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:ec2": "vite --mode ec2",
+    "dev:ecs": "vite --mode ecs",
     "dev:mobile": "vite --host --mode mobile",
     "build": "vite build",
-    "build:ec2": "vite build --mode ec2",
+    "build:ecs": "vite build --mode ecs",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,css}\"",
