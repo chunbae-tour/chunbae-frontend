@@ -12,10 +12,14 @@ class ChatApiError extends Error {
 }
 
 function getPostId(postOrId) {
-  return typeof postOrId === "object" ? postOrId?.id ?? postOrId?.postId : postOrId;
+  return typeof postOrId === "object" ? (postOrId?.id ?? postOrId?.postId) : postOrId;
 }
 
-export function registerCompanionChatRoom({ post, room = {}, user = getStoredAuthSession("USER") }) {
+export function registerCompanionChatRoom({
+  post,
+  room = {},
+  user = getStoredAuthSession("USER"),
+}) {
   const postId = getPostId(post);
   if (!postId) return normalizeChatRoom(room);
 
@@ -37,7 +41,11 @@ export function getCompanionJoinState({ postId, user = getStoredAuthSession("USE
   return "idle";
 }
 
-export async function submitCompanionJoinRequest({ post, user = getStoredAuthSession("USER"), message = "참여 신청합니다." }) {
+export async function submitCompanionJoinRequest({
+  post,
+  user = getStoredAuthSession("USER"),
+  message = "참여 신청합니다.",
+}) {
   let chatRoomId = post?.chatRoomId ?? post?.roomId ?? post?.chatRoom?.chatRoomId;
 
   if (!chatRoomId) {
@@ -63,9 +71,10 @@ export function getCompanionRoomForPost({ postId, user = getStoredAuthSession("U
 export function normalizeChatRoom(room = {}) {
   const id = room.chatRoomId ?? room.id;
   const lastMessage = room.lastMessage ?? room.lastMsg ?? room.latestMessage ?? room.recentMessage;
-  const lastMessageText = typeof lastMessage === "object" && lastMessage !== null
-    ? lastMessage.content ?? lastMessage.text ?? lastMessage.message ?? ""
-    : lastMessage;
+  const lastMessageText =
+    typeof lastMessage === "object" && lastMessage !== null
+      ? (lastMessage.content ?? lastMessage.text ?? lastMessage.message ?? "")
+      : lastMessage;
   const unreadCount = room.unreadCount ?? room.unread;
 
   return {
@@ -122,18 +131,21 @@ export function normalizeCompanionDetail(companion = {}) {
 }
 
 export function normalizeChatMessage(message = {}) {
-  const unreadCount = message.unreadCount ?? message.unreadMemberCount ?? message.notReadCount ?? message.unread;
+  const unreadCount =
+    message.unreadCount ?? message.unreadMemberCount ?? message.notReadCount ?? message.unread;
   const messageType = message.messageType ?? message.type ?? "TEXT";
   const profileImageUrl = message.senderProfileImageUrl ?? message.profileImageUrl ?? "";
   const inlineAttachment = message.fileUrl
-    ? [{
-        id: message.fileUrl,
-        url: message.fileUrl,
-        name: message.fileName ?? "첨부 파일",
-        size: message.fileSize ?? 0,
-        contentType: message.contentType ?? "",
-        previewType: messageType === "IMAGE" ? "image" : "file",
-      }]
+    ? [
+        {
+          id: message.fileUrl,
+          url: message.fileUrl,
+          name: message.fileName ?? "첨부 파일",
+          size: message.fileSize ?? 0,
+          contentType: message.contentType ?? "",
+          previewType: messageType === "IMAGE" ? "image" : "file",
+        },
+      ]
     : [];
   const attachments = Array.isArray(message.attachments)
     ? message.attachments.map((file = {}) => {
@@ -146,7 +158,8 @@ export function normalizeChatMessage(message = {}) {
           name: file.fileName ?? file.originalName ?? file.name ?? "첨부 파일",
           size: file.fileSize ?? file.size ?? 0,
           contentType,
-          previewType: contentType.startsWith("image/") || file.messageType === "IMAGE" ? "image" : "file",
+          previewType:
+            contentType.startsWith("image/") || file.messageType === "IMAGE" ? "image" : "file",
         };
       })
     : inlineAttachment;
@@ -171,9 +184,10 @@ export function normalizeChatMessage(message = {}) {
 export function normalizeChatParticipant(participant = {}) {
   const userId = participant.userId ?? participant.memberId ?? participant.id;
   const memberState = participant.memberState ?? participant.state ?? "";
-  const role = memberState === "OWNER_ACTIVE"
-    ? "HOST"
-    : participant.role ?? participant.participantRole ?? "MEMBER";
+  const role =
+    memberState === "OWNER_ACTIVE"
+      ? "HOST"
+      : (participant.role ?? participant.participantRole ?? "MEMBER");
 
   return {
     ...participant,
@@ -221,7 +235,10 @@ export async function fetchChatRoomDetail(chatRoomId) {
 export async function fetchCompanionDetail(chatRoomId) {
   if (!chatRoomId) return null;
   try {
-    const data = await apiRequest(`/chat/rooms/${chatRoomId}/companion`, { auth: true, role: "USER" });
+    const data = await apiRequest(`/chat/rooms/${chatRoomId}/companion`, {
+      auth: true,
+      role: "USER",
+    });
     return normalizeCompanionDetail(data);
   } catch (error) {
     if (error?.code === "CR_005" || error?.status === 404) {
@@ -235,7 +252,10 @@ export async function fetchChatMessagesPage(chatRoomId, { cursor = "", size = 30
   if (!chatRoomId) return { messages: [], nextCursor: null, hasNext: false };
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/chat/rooms/${chatRoomId}/messages?${params.toString()}`, { auth: true, role: "USER" });
+  const data = await apiRequest(`/chat/rooms/${chatRoomId}/messages?${params.toString()}`, {
+    auth: true,
+    role: "USER",
+  });
   const messages = getPageContent(data).map(normalizeChatMessage);
   return {
     messages,
@@ -257,7 +277,7 @@ export async function sendChatMessage({ chatRoomId, content, attachmentIds = [] 
   throw new ChatApiError(
     "채팅 메시지 전송은 STOMP /pub/chat/rooms/{chatRoomId}/messages 로만 지원됩니다.",
     "CHAT_REST_SEND_UNSUPPORTED",
-    501
+    501,
   );
 }
 
@@ -280,7 +300,11 @@ export async function leaveChatRoom(chatRoomId) {
 
 export async function transferChatRoomOwner({ chatRoomId, newOwnerId }) {
   if (!chatRoomId || !newOwnerId) {
-    throw new ChatApiError("채팅방 또는 새 방장 ID가 없습니다.", "MISSING_OWNER_TRANSFER_TARGET", 400);
+    throw new ChatApiError(
+      "채팅방 또는 새 방장 ID가 없습니다.",
+      "MISSING_OWNER_TRANSFER_TARGET",
+      400,
+    );
   }
   await apiRequest(`/chat/rooms/${chatRoomId}/owner`, {
     method: "PATCH",
@@ -301,7 +325,10 @@ export async function closeChatRoom(chatRoomId) {
   return true;
 }
 
-export async function createCompanion(chatRoomId, { participantUserIds = [], tripStartDate, tripEndDate } = {}) {
+export async function createCompanion(
+  chatRoomId,
+  { participantUserIds = [], tripStartDate, tripEndDate } = {},
+) {
   if (!chatRoomId) throw new ChatApiError("채팅방 ID가 없습니다.", "MISSING_CHAT_ROOM_ID", 400);
   if (!tripStartDate || !tripEndDate) {
     throw new ChatApiError("동행 여행 기간을 입력해주세요.", "MISSING_COMPANION_TRIP_DATES", 400);
@@ -325,18 +352,28 @@ export async function cancelCompanion(chatRoomId) {
 }
 
 function normalizeCompanionUserIds(userIds = []) {
-  const normalized = [...new Set(
-    userIds
-      .map((userId) => Number(userId))
-      .filter((userId) => Number.isInteger(userId) && userId > 0),
-  )];
+  const normalized = [
+    ...new Set(
+      userIds
+        .map((userId) => Number(userId))
+        .filter((userId) => Number.isInteger(userId) && userId > 0),
+    ),
+  ];
 
   if (normalized.length === 0) {
-    throw new ChatApiError("추가할 동행 참여자를 선택해주세요.", "COMPANION_PARTICIPANTS_REQUIRED", 400);
+    throw new ChatApiError(
+      "추가할 동행 참여자를 선택해주세요.",
+      "COMPANION_PARTICIPANTS_REQUIRED",
+      400,
+    );
   }
 
   if (normalized.length > 50) {
-    throw new ChatApiError("동행 참여자는 한 번에 최대 50명까지 추가할 수 있습니다.", "COMPANION_PARTICIPANTS_TOO_MANY", 400);
+    throw new ChatApiError(
+      "동행 참여자는 한 번에 최대 50명까지 추가할 수 있습니다.",
+      "COMPANION_PARTICIPANTS_TOO_MANY",
+      400,
+    );
   }
 
   return normalized;
@@ -375,7 +412,8 @@ export async function reportChatRoom({ chatRoomId }) {
 }
 
 export async function reportChatMessage({ chatRoomId, messageId }) {
-  if (!chatRoomId || !messageId) throw new ChatApiError("채팅방 또는 메시지 ID가 없습니다.", "MISSING_REPORT_TARGET", 400);
+  if (!chatRoomId || !messageId)
+    throw new ChatApiError("채팅방 또는 메시지 ID가 없습니다.", "MISSING_REPORT_TARGET", 400);
   throw new ChatApiError(
     "현재 신고 API는 채팅 메시지 대상 타입을 지원하지 않습니다. ReportTargetType에 CHAT_MESSAGE 추가가 필요합니다.",
     "REPORT_TARGET_TYPE_UNSUPPORTED",
@@ -383,7 +421,11 @@ export async function reportChatMessage({ chatRoomId, messageId }) {
   );
 }
 
-export async function reportChatParticipant({ userId, reason = DEFAULT_REPORT_REASON, description = "" }) {
+export async function reportChatParticipant({
+  userId,
+  reason = DEFAULT_REPORT_REASON,
+  description = "",
+}) {
   if (!userId) throw new ChatApiError("사용자 ID가 없습니다.", "MISSING_USER_ID", 400);
   await createReport({
     targetType: "USER",
@@ -395,7 +437,8 @@ export async function reportChatParticipant({ userId, reason = DEFAULT_REPORT_RE
 }
 
 export async function kickChatParticipant({ chatRoomId, userId }) {
-  if (!chatRoomId || !userId) throw new ChatApiError("채팅방 또는 사용자 ID가 없습니다.", "MISSING_KICK_TARGET", 400);
+  if (!chatRoomId || !userId)
+    throw new ChatApiError("채팅방 또는 사용자 ID가 없습니다.", "MISSING_KICK_TARGET", 400);
   await apiRequest(`/chat/rooms/${chatRoomId}/members/${userId}`, {
     method: "DELETE",
     auth: true,
@@ -412,9 +455,12 @@ export async function fetchChatParticipants(chatRoomId) {
 
 export async function fetchJoinRequests(chatRoomId) {
   if (!chatRoomId) return [];
-  const data = await apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, { auth: true, role: "USER" });
+  const data = await apiRequest(`/chat/rooms/${chatRoomId}/join-requests`, {
+    auth: true,
+    role: "USER",
+  });
   const list = Array.isArray(data) ? data : getPageContent(data);
-  return list.map(request => {
+  return list.map((request) => {
     const applicant = request.applicant ?? request.writer ?? {};
     return {
       id: request.joinRequestId ?? request.id,
@@ -446,7 +492,10 @@ function normalizeMyJoinRequest(request = {}) {
 export async function fetchMyJoinRequests({ cursor = "", size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/chat/rooms/join-requests/me?${params.toString()}`, { auth: true, role: "USER" });
+  const data = await apiRequest(`/chat/rooms/join-requests/me?${params.toString()}`, {
+    auth: true,
+    role: "USER",
+  });
   const list = Array.isArray(data) ? data : getPageContent(data);
   return {
     content: list.map(normalizeMyJoinRequest),

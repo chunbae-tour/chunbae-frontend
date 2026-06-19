@@ -88,29 +88,39 @@ function normalizeLatLngPair(latValue, lngValue) {
 
 export function normalizePlace(place = {}) {
   const id = place.placeId ?? place.marketId ?? place.targetId ?? place.id;
-  const { latitude, longitude } = normalizeLatLngPair(place.latitude ?? place.lat, place.longitude ?? place.lng);
-  const distanceText = place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
+  const { latitude, longitude } = normalizeLatLngPair(
+    place.latitude ?? place.lat,
+    place.longitude ?? place.lng,
+  );
+  const distanceText =
+    place.distanceText ?? place.dist ?? formatDistance(place.distanceMeters ?? place.distance);
   const category = place.category ?? place.categoryName;
   const rawTargetType = place.targetType ?? place.likeTargetType;
   const normalizedTargetType = rawTargetType === "MARKET" ? "TRADITIONAL_MARKET" : rawTargetType;
-  const targetType = normalizedTargetType
-    ?? (place.marketId != null || place.marketType || category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
-  const isMarket = targetType === "TRADITIONAL_MARKET"
-    || rawTargetType === "MARKET"
-    || category === "TRADITIONAL_MARKET"
-    || place.marketId != null
-    || Boolean(place.marketType);
+  const targetType =
+    normalizedTargetType ??
+    (place.marketId != null || place.marketType || category === "TRADITIONAL_MARKET"
+      ? "TRADITIONAL_MARKET"
+      : "PLACE");
+  const isMarket =
+    targetType === "TRADITIONAL_MARKET" ||
+    rawTargetType === "MARKET" ||
+    category === "TRADITIONAL_MARKET" ||
+    place.marketId != null ||
+    Boolean(place.marketType);
   const imageUrls = normalizeImageUrls(place.imageUrls);
   const imageUrl = place.imageUrl ?? place.thumbnailUrl ?? imageUrls[0] ?? "";
   const name = place.name ?? place.placeName ?? place.marketName ?? "";
   const address = place.address ?? place.addr ?? place.roadAddressName ?? place.addressName ?? "";
-  const description = place.description ?? place.desc ?? place.marketType ?? place.categoryName ?? "";
+  const description =
+    place.description ?? place.desc ?? place.marketType ?? place.categoryName ?? "";
   const rawType = place.type;
-  const displayType = rawType && !["TOURIST_SPOT", "TRADITIONAL_MARKET", "PLACE", "MARKET"].includes(rawType)
-    ? rawType
-    : isMarket
-      ? "전통시장"
-      : "관광지";
+  const displayType =
+    rawType && !["TOURIST_SPOT", "TRADITIONAL_MARKET", "PLACE", "MARKET"].includes(rawType)
+      ? rawType
+      : isMarket
+        ? "전통시장"
+        : "관광지";
 
   return {
     ...place,
@@ -143,13 +153,15 @@ export function normalizePlace(place = {}) {
 function getPlaceItems(data) {
   if (Array.isArray(data)) return data;
 
-  return data?.markers
-    ?? data?.places
-    ?? data?.markets
-    ?? data?.content
-    ?? data?.items
-    ?? data?.list
-    ?? [];
+  return (
+    data?.markers ??
+    data?.places ??
+    data?.markets ??
+    data?.content ??
+    data?.items ??
+    data?.list ??
+    []
+  );
 }
 
 function normalizePlaceList(data) {
@@ -167,11 +179,12 @@ function getNearbyPageMeta(data) {
   return {
     hasNext: Boolean(data?.hasNext),
     nextCursor: data?.nextCursor ?? lastItem?.placeId ?? lastItem?.id ?? null,
-    nextCursorDistance: data?.nextCursorDistance
-      ?? data?.cursorDistance
-      ?? lastItem?.distance
-      ?? lastItem?.distanceMeters
-      ?? null,
+    nextCursorDistance:
+      data?.nextCursorDistance ??
+      data?.cursorDistance ??
+      lastItem?.distance ??
+      lastItem?.distanceMeters ??
+      null,
   };
 }
 
@@ -190,8 +203,11 @@ function getPlaceIdentity(place = {}) {
   const category = place.category ?? place.categoryName;
   const rawTargetType = place.targetType ?? place.likeTargetType;
   const normalizedTargetType = rawTargetType === "MARKET" ? "TRADITIONAL_MARKET" : rawTargetType;
-  const targetType = normalizedTargetType
-    ?? (place.marketId != null || place.marketType || category === "TRADITIONAL_MARKET" ? "TRADITIONAL_MARKET" : "PLACE");
+  const targetType =
+    normalizedTargetType ??
+    (place.marketId != null || place.marketType || category === "TRADITIONAL_MARKET"
+      ? "TRADITIONAL_MARKET"
+      : "PLACE");
 
   return `${targetType}:${id}`;
 }
@@ -204,18 +220,17 @@ export async function fetchLikedTravelSpots({ size = 100 } = {}) {
   const fetchByType = async (type) => {
     const params = new URLSearchParams({ type, size: String(size) });
     const data = await apiRequest(`/users/me/likes?${params.toString()}`, { auth: true });
-    return normalizePlaceList(data).map((place) => normalizePlace({
-      ...place,
-      targetType: type === "MARKET" ? "TRADITIONAL_MARKET" : "PLACE",
-      category: place.category ?? (type === "MARKET" ? "TRADITIONAL_MARKET" : undefined),
-      isLiked: true,
-    }));
+    return normalizePlaceList(data).map((place) =>
+      normalizePlace({
+        ...place,
+        targetType: type === "MARKET" ? "TRADITIONAL_MARKET" : "PLACE",
+        category: place.category ?? (type === "MARKET" ? "TRADITIONAL_MARKET" : undefined),
+        isLiked: true,
+      }),
+    );
   };
 
-  const results = await Promise.allSettled([
-    fetchByType("PLACE"),
-    fetchByType("MARKET"),
-  ]);
+  const results = await Promise.allSettled([fetchByType("PLACE"), fetchByType("MARKET")]);
   const fulfilled = results
     .filter((result) => result.status === "fulfilled")
     .flatMap((result) => result.value);
@@ -251,7 +266,14 @@ export async function fetchMapMarkers({ swLat, swLng, neLat, neLng }) {
   };
 }
 
-export async function fetchNearbyPlaces({ lat, lng, radius = 3000, cursor, cursorDistance, size = 20 }) {
+export async function fetchNearbyPlaces({
+  lat,
+  lng,
+  radius = 3000,
+  cursor,
+  cursorDistance,
+  size = 20,
+}) {
   const params = new URLSearchParams({
     lat: String(lat),
     lng: String(lng),
@@ -269,7 +291,14 @@ export async function fetchNearbyPlaces({ lat, lng, radius = 3000, cursor, curso
   };
 }
 
-export async function fetchPlaces({ keyword = "", category = "", region = "", cursor, cursorRating, size = 20 } = {}) {
+export async function fetchPlaces({
+  keyword = "",
+  category = "",
+  region = "",
+  cursor,
+  cursorRating,
+  size = 20,
+} = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (keyword) params.set("keyword", keyword);
   if (category) params.set("category", category);
@@ -313,11 +342,18 @@ export async function fetchRegionByCoordinate({ lat, lng }) {
     depth1: data.depth1 ?? "",
     depth2: data.depth2 ?? "",
     depth3: data.depth3 ?? "",
-    fullAddress: data.fullAddress ?? [data.depth1, data.depth2, data.depth3].filter(Boolean).join(" "),
+    fullAddress:
+      data.fullAddress ?? [data.depth1, data.depth2, data.depth3].filter(Boolean).join(" "),
   };
 }
 
-export async function fetchNearbyTraditionalMarkets({ lat, lng, radius = 3000, page = 0, size = 20 }) {
+export async function fetchNearbyTraditionalMarkets({
+  lat,
+  lng,
+  radius = 3000,
+  page = 0,
+  size = 20,
+}) {
   const params = new URLSearchParams({
     lat: String(lat),
     lng: String(lng),
@@ -326,7 +362,7 @@ export async function fetchNearbyTraditionalMarkets({ lat, lng, radius = 3000, p
     size: String(size),
   });
   const data = await apiRequest(`/traditional-markets/nearby?${params.toString()}`);
-  return normalizePlaceList(data).map(market => ({
+  return normalizePlaceList(data).map((market) => ({
     ...market,
     targetType: "TRADITIONAL_MARKET",
     type: "전통시장",
@@ -345,7 +381,7 @@ async function fetchNearbyTraditionalMarketsPage({ lat, lng, radius = 3000, page
   });
   const data = await apiRequest(`/traditional-markets/nearby?${params.toString()}`);
   return {
-    items: normalizePlaceList(data).map(market => ({
+    items: normalizePlaceList(data).map((market) => ({
       ...market,
       targetType: "TRADITIONAL_MARKET",
       type: "전통시장",
@@ -356,7 +392,15 @@ async function fetchNearbyTraditionalMarketsPage({ lat, lng, radius = 3000, page
   };
 }
 
-export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, cursor, cursorDistance, page = 0, size = 20 }) {
+export async function fetchNearbyTravelSpots({
+  lat,
+  lng,
+  radius = 3000,
+  cursor,
+  cursorDistance,
+  page = 0,
+  size = 20,
+}) {
   const [placesResult, marketsResult] = await Promise.allSettled([
     fetchNearbyPlaces({ lat, lng, radius, cursor, cursorDistance, size }),
     fetchNearbyTraditionalMarketsPage({ lat, lng, radius, page, size }),
@@ -366,18 +410,19 @@ export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, cursor, 
     throw placesResult.reason;
   }
 
-  const placesPage = placesResult.status === "fulfilled" ? placesResult.value : { items: [], hasNext: false };
-  const marketsPage = marketsResult.status === "fulfilled" ? marketsResult.value : { items: [], hasNext: false };
+  const placesPage =
+    placesResult.status === "fulfilled" ? placesResult.value : { items: [], hasNext: false };
+  const marketsPage =
+    marketsResult.status === "fulfilled" ? marketsResult.value : { items: [], hasNext: false };
   const places = placesPage.items;
   const markets = marketsPage.items;
 
-  const items = [...places, ...markets]
-    .sort((a, b) => {
-      const aDistance = Number(a.distanceMeters ?? a.distance ?? Number.POSITIVE_INFINITY);
-      const bDistance = Number(b.distanceMeters ?? b.distance ?? Number.POSITIVE_INFINITY);
-      if (aDistance !== bDistance) return aDistance - bDistance;
-      return String(a.name).localeCompare(String(b.name), "ko");
-    });
+  const items = [...places, ...markets].sort((a, b) => {
+    const aDistance = Number(a.distanceMeters ?? a.distance ?? Number.POSITIVE_INFINITY);
+    const bDistance = Number(b.distanceMeters ?? b.distance ?? Number.POSITIVE_INFINITY);
+    if (aDistance !== bDistance) return aDistance - bDistance;
+    return String(a.name).localeCompare(String(b.name), "ko");
+  });
 
   return {
     items,
@@ -390,33 +435,38 @@ export async function fetchNearbyTravelSpots({ lat, lng, radius = 3000, cursor, 
   };
 }
 
-export async function fetchNearbyTravelSpotsWithLikes({ lat, lng, radius = 3000, cursor, cursorDistance, page, size = 20 }) {
+export async function fetchNearbyTravelSpotsWithLikes({
+  lat,
+  lng,
+  radius = 3000,
+  cursor,
+  cursorDistance,
+  page,
+  size = 20,
+}) {
   // 장소 목록과 찜 목록을 병렬로 가져오기
   const [spotsResult, likesResult] = await Promise.allSettled([
     fetchNearbyTravelSpots({ lat, lng, radius, cursor, cursorDistance, page, size }),
     fetchLikedTravelSpots({ size: 100 }).catch(() => []),
   ]);
 
-  const spotsPage = spotsResult.status === "fulfilled" ? spotsResult.value : { items: [], hasNext: false };
+  const spotsPage =
+    spotsResult.status === "fulfilled" ? spotsResult.value : { items: [], hasNext: false };
   const spots = spotsPage.items;
 
   if (likesResult.status === "fulfilled") {
     const likedPlaces = likesResult.value;
     const likedPlaceIds = new Set(
       likedPlaces
-        .map(item => item.placeId ?? item.marketId ?? item.targetId ?? item.id)
-        .filter(id => id != null)
-        .map(String)
+        .map((item) => item.placeId ?? item.marketId ?? item.targetId ?? item.id)
+        .filter((id) => id != null)
+        .map(String),
     );
-    const likedPlaceIdentities = new Set(
-      likedPlaces
-        .map(getPlaceIdentity)
-        .filter(Boolean)
-    );
+    const likedPlaceIdentities = new Set(likedPlaces.map(getPlaceIdentity).filter(Boolean));
 
     return {
       ...spotsPage,
-      items: spots.map(spot => ({
+      items: spots.map((spot) => ({
         ...spot,
         isLiked:
           likedPlaceIds.has(String(spot.placeId ?? spot.marketId ?? spot.id)) ||
@@ -452,17 +502,17 @@ export async function fetchTraditionalMarketDetail(marketId) {
 }
 
 export async function fetchTravelSpotDetail(placeOrId) {
-  const placeId = typeof placeOrId === "object"
-    ? placeOrId?.placeId ?? placeOrId?.marketId ?? placeOrId?.id
-    : placeOrId;
-  const isMarket = typeof placeOrId === "object"
-    && (
-      placeOrId?.targetType === "TRADITIONAL_MARKET"
-      || placeOrId?.category === "TRADITIONAL_MARKET"
-      || placeOrId?.type === "전통시장"
-      || placeOrId?.marketId != null
-      || Boolean(placeOrId?.marketType)
-    );
+  const placeId =
+    typeof placeOrId === "object"
+      ? (placeOrId?.placeId ?? placeOrId?.marketId ?? placeOrId?.id)
+      : placeOrId;
+  const isMarket =
+    typeof placeOrId === "object" &&
+    (placeOrId?.targetType === "TRADITIONAL_MARKET" ||
+      placeOrId?.category === "TRADITIONAL_MARKET" ||
+      placeOrId?.type === "전통시장" ||
+      placeOrId?.marketId != null ||
+      Boolean(placeOrId?.marketType));
 
   return isMarket ? fetchTraditionalMarketDetail(placeId) : fetchPlaceDetail(placeId);
 }
@@ -497,7 +547,7 @@ export async function fetchNearbyStores(placeId) {
   if (!placeId) return [];
 
   const data = await apiRequest(`/places/${placeId}/nearby-shops?limit=5`);
-  return (Array.isArray(data) ? data : getPageContent(data)).map(shop => ({
+  return (Array.isArray(data) ? data : getPageContent(data)).map((shop) => ({
     ...shop,
     id: shop.shopId ?? shop.id,
     name: shop.name ?? shop.shopName ?? "",
@@ -510,7 +560,10 @@ export async function fetchNearbyStores(placeId) {
   }));
 }
 
-export async function fetchNearbyPlacesByPlace(placeId, { category = "RESTAURANT", radius = 1000, size = 10 } = {}) {
+export async function fetchNearbyPlacesByPlace(
+  placeId,
+  { category = "RESTAURANT", radius = 1000, size = 10 } = {},
+) {
   if (!placeId) return [];
   void size;
 

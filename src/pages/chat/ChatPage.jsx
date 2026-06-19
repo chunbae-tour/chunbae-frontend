@@ -1,6 +1,12 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
-import { ConfirmDialog, EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
+import {
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  ReportDialog,
+  SkeletonList,
+} from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { uploadChatAttachments } from "../../services/attachmentService.js";
 import {
@@ -25,7 +31,10 @@ import {
   transferChatRoomOwner,
 } from "../../services/chatService.js";
 import { getStoredAuthSession } from "../../services/authService.js";
-import { createCompanionReview, fetchUserCompanionReviews } from "../../services/companionReviewService.js";
+import {
+  createCompanionReview,
+  fetchUserCompanionReviews,
+} from "../../services/companionReviewService.js";
 import { createChatRealtimeClient } from "../../services/chatRealtimeService.js";
 import { REPORT_REASONS } from "../../services/reportService.js";
 import { normalizeTranslationLanguage, translateText } from "../../services/translationService.js";
@@ -87,42 +96,58 @@ function formatPlainDate(value) {
 }
 
 function getCompanionStatusLabel(status) {
-  return {
-    ONGOING: "진행 중",
-    ENDED: "종료",
-  }[status] ?? (status || "상태 없음");
+  return (
+    {
+      ONGOING: "진행 중",
+      ENDED: "종료",
+    }[status] ??
+    (status || "상태 없음")
+  );
 }
 
 function getJoinRequestStatusLabel(status) {
-  return {
-    PENDING: "대기",
-    APPROVED: "수락",
-    REJECTED: "거절",
-  }[status] ?? (status || "확인 중");
+  return (
+    {
+      PENDING: "대기",
+      APPROVED: "수락",
+      REJECTED: "거절",
+    }[status] ??
+    (status || "확인 중")
+  );
 }
 
 function shouldShowDate(currentMessage, prevMessage) {
   if (!prevMessage) return true;
-  
-  const currentRaw = currentMessage.sentAt ?? currentMessage.createdAt ?? currentMessage.timestamp ?? currentMessage.time;
-  const prevRaw = prevMessage.sentAt ?? prevMessage.createdAt ?? prevMessage.timestamp ?? prevMessage.time;
-  
+
+  const currentRaw =
+    currentMessage.sentAt ??
+    currentMessage.createdAt ??
+    currentMessage.timestamp ??
+    currentMessage.time;
+  const prevRaw =
+    prevMessage.sentAt ?? prevMessage.createdAt ?? prevMessage.timestamp ?? prevMessage.time;
+
   const currentDate = new Date(Date.parse(currentRaw));
   const prevDate = new Date(Date.parse(prevRaw));
-  
+
   return currentDate.toDateString() !== prevDate.toDateString();
 }
 
 function shouldShowProfile(currentMessage, prevMessage, isMine) {
   if (isMine) return false;
   if (!prevMessage) return true;
-  
+
   const prevMine = prevMessage.isMine ?? prevMessage.me ?? false;
   if (prevMine) return true;
-  
-  const currentSender = currentMessage.senderId ?? currentMessage.senderUserId ?? currentMessage.userId ?? currentMessage.memberId;
-  const prevSender = prevMessage.senderId ?? prevMessage.senderUserId ?? prevMessage.userId ?? prevMessage.memberId;
-  
+
+  const currentSender =
+    currentMessage.senderId ??
+    currentMessage.senderUserId ??
+    currentMessage.userId ??
+    currentMessage.memberId;
+  const prevSender =
+    prevMessage.senderId ?? prevMessage.senderUserId ?? prevMessage.userId ?? prevMessage.memberId;
+
   return currentSender !== prevSender;
 }
 
@@ -136,17 +161,25 @@ function isSameMessageMinute(firstMessage, secondMessage) {
   const firstDate = new Date(getMessageTimestamp(firstMessage));
   const secondDate = new Date(getMessageTimestamp(secondMessage));
 
-  return firstDate.getFullYear() === secondDate.getFullYear()
-    && firstDate.getMonth() === secondDate.getMonth()
-    && firstDate.getDate() === secondDate.getDate()
-    && firstDate.getHours() === secondDate.getHours()
-    && firstDate.getMinutes() === secondDate.getMinutes();
+  return (
+    firstDate.getFullYear() === secondDate.getFullYear() &&
+    firstDate.getMonth() === secondDate.getMonth() &&
+    firstDate.getDate() === secondDate.getDate() &&
+    firstDate.getHours() === secondDate.getHours() &&
+    firstDate.getMinutes() === secondDate.getMinutes()
+  );
 }
 
 function getMessageKey(message = {}) {
   const id = message.messageId ?? message.id;
   if (id && !String(id).startsWith("local-")) return `id:${id}`;
-  const sender = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId ?? message.user ?? "";
+  const sender =
+    message.senderId ??
+    message.senderUserId ??
+    message.userId ??
+    message.memberId ??
+    message.user ??
+    "";
   const text = message.content ?? message.text ?? "";
   const timestamp = getMessageTimestamp(message);
   return `fallback:${sender}:${text}:${timestamp}`;
@@ -154,7 +187,13 @@ function getMessageKey(message = {}) {
 
 function getLocalReplacementKey(message = {}) {
   const text = message.content ?? message.text ?? "";
-  const sender = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId ?? message.user ?? "";
+  const sender =
+    message.senderId ??
+    message.senderUserId ??
+    message.userId ??
+    message.memberId ??
+    message.user ??
+    "";
   return `${sender}:${text}`;
 }
 
@@ -259,7 +298,13 @@ function formatRoomLastMessage(message, currentUserId) {
   return senderName ? `${senderName}: ${text}` : text;
 }
 
-export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, selectedRoomId = null }) {
+export function ChatListPage({
+  onChatRoom,
+  onLogin,
+  showToast,
+  compact = false,
+  selectedRoomId = null,
+}) {
   const [rooms, setRooms] = useState([]);
   const [myJoinRequests, setMyJoinRequests] = useState([]);
   const [myJoinRequestStatus, setMyJoinRequestStatus] = useState("idle");
@@ -269,27 +314,34 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
   const currentUserId = getStoredAuthSession("USER")?.userId;
 
   const enrichRooms = async (baseRooms) => {
-    return Promise.all(baseRooms.map(async (room) => {
-      if (room.lastMsg && typeof room.unread === "number") return room;
+    return Promise.all(
+      baseRooms.map(async (room) => {
+        if (room.lastMsg && typeof room.unread === "number") return room;
 
-      try {
-        const messages = sortMessages(await fetchChatMessages(room.chatRoomId ?? room.id, { size: 30 }));
-        const lastMessage = messages[messages.length - 1];
-        const lastReadAt = getRoomLastReadAt(room.chatRoomId ?? room.id);
-        const derivedUnread = messages.filter((message) => {
-          const senderId = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
-          return getMessageTimestamp(message) > lastReadAt && !isSameUser(senderId, currentUserId);
-        }).length;
+        try {
+          const messages = sortMessages(
+            await fetchChatMessages(room.chatRoomId ?? room.id, { size: 30 }),
+          );
+          const lastMessage = messages[messages.length - 1];
+          const lastReadAt = getRoomLastReadAt(room.chatRoomId ?? room.id);
+          const derivedUnread = messages.filter((message) => {
+            const senderId =
+              message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
+            return (
+              getMessageTimestamp(message) > lastReadAt && !isSameUser(senderId, currentUserId)
+            );
+          }).length;
 
-        return {
-          ...room,
-          lastMsg: room.lastMsg || formatRoomLastMessage(lastMessage, currentUserId),
-          unread: typeof room.unread === "number" ? room.unread : derivedUnread,
-        };
-      } catch {
-        return room;
-      }
-    }));
+          return {
+            ...room,
+            lastMsg: room.lastMsg || formatRoomLastMessage(lastMessage, currentUserId),
+            unread: typeof room.unread === "number" ? room.unread : derivedUnread,
+          };
+        } catch {
+          return room;
+        }
+      }),
+    );
   };
 
   const loadRooms = ({ silent = false } = {}) => {
@@ -314,18 +366,18 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
         }
         setLoginRequired(requiresLogin);
         setErrorMessage(
-          requiresLogin
-            ? "로그인 후에 채팅을 이용하실 수 있습니다."
-            : getApiErrorHint(error),
+          requiresLogin ? "로그인 후에 채팅을 이용하실 수 있습니다." : getApiErrorHint(error),
         );
       });
   };
 
   const loadMyJoinRequests = () => {
-    setMyJoinRequestStatus((current) => current === "idle" ? "loading" : current);
+    setMyJoinRequestStatus((current) => (current === "idle" ? "loading" : current));
     return fetchMyJoinRequests({ size: 100 })
       .then((data) => {
-        const pendingRequests = (data.content ?? []).filter((request) => String(request.status).toUpperCase() === "PENDING");
+        const pendingRequests = (data.content ?? []).filter(
+          (request) => String(request.status).toUpperCase() === "PENDING",
+        );
         setMyJoinRequests(pendingRequests);
         setMyJoinRequestStatus(pendingRequests.length > 0 ? "success" : "empty");
       })
@@ -349,11 +401,21 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
   }, []);
 
   return (
-    <div style={compact ? undefined : S.screen} className={compact ? "web-chat-list-page is-compact" : "web-chat-list-page"}>
-      {!compact && <div className="web-page-hero" style={{ background: COLORS.primary, padding: "44px 20px 20px" }}>
-        <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>💬 동행 채팅</div>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginTop: 4 }}>같이 여행할 친구를 찾아보세요</div>
-      </div>}
+    <div
+      style={compact ? undefined : S.screen}
+      className={compact ? "web-chat-list-page is-compact" : "web-chat-list-page"}
+    >
+      {!compact && (
+        <div
+          className="web-page-hero"
+          style={{ background: COLORS.primary, padding: "44px 20px 20px" }}
+        >
+          <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>💬 동행 채팅</div>
+          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginTop: 4 }}>
+            같이 여행할 친구를 찾아보세요
+          </div>
+        </div>
+      )}
       {compact && (
         <div className="chat-workspace-list-head">
           <div>
@@ -365,7 +427,9 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
       )}
       <div style={S.scrollArea} className="web-detail-scroll">
         <div className="web-chat-list" style={{ padding: "12px 16px" }}>
-          {!compact && <div className="chat-api-note">채팅방은 동행 게시판 모집글에서 방장이 생성합니다.</div>}
+          {!compact && (
+            <div className="chat-api-note">채팅방은 동행 게시판 모집글에서 방장이 생성합니다.</div>
+          )}
           {status === "loading" && <SkeletonList count={3} />}
           {status === "error" && (
             <ErrorState
@@ -384,27 +448,37 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
           )}
           {status !== "loading" && (
             <div className="chat-room-list">
-            {rooms.map(c => (
-              <button
-                key={c.id}
-                type="button"
-                className={String(selectedRoomId) === String(c.chatRoomId ?? c.id) ? "chat-room-row active" : "chat-room-row"}
-                onClick={() => onChatRoom(c)}
-              >
-                <div>
-                  <div className="chat-room-title-line">
-                    <strong>{c.title}</strong>
-                    {c.unread > 0 && <em>{c.unread}개 새 메시지</em>}
+              {rooms.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={
+                    String(selectedRoomId) === String(c.chatRoomId ?? c.id)
+                      ? "chat-room-row active"
+                      : "chat-room-row"
+                  }
+                  onClick={() => onChatRoom(c)}
+                >
+                  <div>
+                    <div className="chat-room-title-line">
+                      <strong>{c.title}</strong>
+                      {c.unread > 0 && <em>{c.unread}개 새 메시지</em>}
+                    </div>
+                    <span
+                      className={
+                        c.lastMsg ? "chat-room-last-message" : "chat-room-last-message empty"
+                      }
+                    >
+                      {c.lastMsg || "아직 주고받은 메시지가 없습니다."}
+                    </span>
                   </div>
-                  <span className={c.lastMsg ? "chat-room-last-message" : "chat-room-last-message empty"}>
-                    {c.lastMsg || "아직 주고받은 메시지가 없습니다."}
-                  </span>
-                </div>
-                <div className="chat-room-meta">
-                  <small>👥 {c.members}/{c.maxMembers}</small>
-                </div>
-              </button>
-            ))}
+                  <div className="chat-room-meta">
+                    <small>
+                      👥 {c.members}/{c.maxMembers}
+                    </small>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
           {myJoinRequestStatus !== "loading" && myJoinRequests.length > 0 && (
@@ -413,16 +487,19 @@ export function ChatListPage({ onChatRoom, onLogin, showToast, compact = false, 
                 <strong>내 참여 신청</strong>
                 <span>대기 {myJoinRequests.length}건</span>
               </div>
-              {myJoinRequests.map(request => (
+              {myJoinRequests.map((request) => (
                 <button
                   key={request.joinRequestId ?? request.id}
                   type="button"
                   className="chat-my-join-request-row"
-                  onClick={() => request.chatRoomId && onChatRoom({
-                    chatRoomId: request.chatRoomId,
-                    id: request.chatRoomId,
-                    title: request.chatRoomTitle,
-                  })}
+                  onClick={() =>
+                    request.chatRoomId &&
+                    onChatRoom({
+                      chatRoomId: request.chatRoomId,
+                      id: request.chatRoomId,
+                      title: request.chatRoomTitle,
+                    })
+                  }
                 >
                   <span>{request.chatRoomTitle || "삭제된 채팅방"}</span>
                   <em className={`status-${String(request.status).toLowerCase()}`}>
@@ -459,7 +536,11 @@ export function ChatWorkspacePage({ selectedRoom, onSelectRoom, onLogin, showToa
       <section className="chat-workspace-detail">
         {selectedRoom ? (
           <>
-            <button type="button" className="chat-workspace-mobile-back" onClick={() => onSelectRoom?.(null)}>
+            <button
+              type="button"
+              className="chat-workspace-mobile-back"
+              onClick={() => onSelectRoom?.(null)}
+            >
               ← 채팅 목록
             </button>
             <ChatRoomPage
@@ -549,7 +630,10 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const resolveMessageMine = (message) => {
     if (typeof message.isMine === "boolean") return message.isMine;
     if (typeof message.me === "boolean") return message.me;
-    return isSameUser(message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId, currentUserId);
+    return isSameUser(
+      message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId,
+      currentUserId,
+    );
   };
   const displayedMessages = sortMessages(messages);
   const recentTranslationMessages = displayedMessages
@@ -560,17 +644,24 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     })
     .slice(-TRANSLATION_BATCH_SIZE);
   const recentTranslationKeys = new Set(recentTranslationMessages.map(getMessageKey));
-  const isCurrentUserHost = isSameUser(currentRoom.hostId, currentUserId)
-    || participants.some(participant => isSameUser(participant.userId, currentUserId) && String(participant.role || "").toUpperCase() === "HOST");
+  const isCurrentUserHost =
+    isSameUser(currentRoom.hostId, currentUserId) ||
+    participants.some(
+      (participant) =>
+        isSameUser(participant.userId, currentUserId) &&
+        String(participant.role || "").toUpperCase() === "HOST",
+    );
   const companionParticipantIds = participants
-    .map(participant => participant.userId)
-    .filter(userId => userId && !isSameUser(userId, currentUserId));
-  const companionEndedCount = companionDetail?.participants?.filter(participant => participant.endedAt).length ?? 0;
+    .map((participant) => participant.userId)
+    .filter((userId) => userId && !isSameUser(userId, currentUserId));
+  const companionEndedCount =
+    companionDetail?.participants?.filter((participant) => participant.endedAt).length ?? 0;
   const companionTotalCount = companionDetail?.participants?.length ?? 0;
-  const hasOtherActiveParticipants = participants.some(participant => (
-    !isSameUser(participant.userId, currentUserId)
-    && !["MEMBER_LEFT", "MEMBER_KICKED"].includes(participant.memberState)
-  ));
+  const hasOtherActiveParticipants = participants.some(
+    (participant) =>
+      !isSameUser(participant.userId, currentUserId) &&
+      !["MEMBER_LEFT", "MEMBER_KICKED"].includes(participant.memberState),
+  );
   const hasReviewedParticipant = (userId) => reviewedUserIds.has(String(userId));
 
   const loadCompanionDetail = ({ silent = true } = {}) => {
@@ -628,7 +719,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
 
     return fetchChatMessagesPage(roomId, { size: 50 })
       .then((page) => {
-        setMessages(prev => mergeMessages(prev, page.messages));
+        setMessages((prev) => mergeMessages(prev, page.messages));
         return page.messages;
       })
       .catch((error) => {
@@ -686,21 +777,25 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         if (!ignore) setCompanionStatus("error");
       });
 
-    fetchChatMessagesPage(roomId, { size: 50 }).then((page) => {
-      if (!ignore) {
-        const sortedMessages = sortMessages(page.messages);
-        setMessages(sortedMessages);
-        setOlderCursor(page.nextCursor);
-        setHasOlderMessages(page.hasNext);
-        const latestTimestamp = getMessageTimestamp(sortedMessages[sortedMessages.length - 1]);
-        setRoomLastReadAt(roomId, latestTimestamp || Date.now());
-      }
-    }).catch((error) => {
-      if (ignore) return;
-      setMessages([]);
-      showToast?.(getApiErrorHint(error));
-    });
-    return () => { ignore = true; };
+    fetchChatMessagesPage(roomId, { size: 50 })
+      .then((page) => {
+        if (!ignore) {
+          const sortedMessages = sortMessages(page.messages);
+          setMessages(sortedMessages);
+          setOlderCursor(page.nextCursor);
+          setHasOlderMessages(page.hasNext);
+          const latestTimestamp = getMessageTimestamp(sortedMessages[sortedMessages.length - 1]);
+          setRoomLastReadAt(roomId, latestTimestamp || Date.now());
+        }
+      })
+      .catch((error) => {
+        if (ignore) return;
+        setMessages([]);
+        showToast?.(getApiErrorHint(error));
+      });
+    return () => {
+      ignore = true;
+    };
   }, [roomId, room?.openManagementTab, room?.managementRequestKey]);
 
   useEffect(() => {
@@ -732,9 +827,11 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       chatRoomId: roomId,
       onStatus: setRealtimeStatus,
       onMessage: (message) => {
-        const senderId = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
-        shouldAutoScrollRef.current = isSameUser(senderId, currentUserId) || isMessageListNearBottom();
-        setMessages(prev => mergeMessages(prev, [message]));
+        const senderId =
+          message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
+        shouldAutoScrollRef.current =
+          isSameUser(senderId, currentUserId) || isMessageListNearBottom();
+        setMessages((prev) => mergeMessages(prev, [message]));
       },
       onError: (error) => {
         console.error("Chat realtime failed", error);
@@ -775,17 +872,20 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
 
     let cancelled = false;
     const skippedKeys = [];
-    const targets = recentTranslationMessages
-      .filter((message) => {
-        const key = getMessageKey(message);
-        const content = message.content ?? message.text ?? "";
-        if (!content || translationSkippedMessages[key]) return false;
-        if (isProbablyAlreadyTargetLanguage(content, translationTargetLanguage)) {
-          skippedKeys.push(key);
-          return false;
-        }
-        return !translatedMessages[key] && !translationErrors[key] && !translationPendingRef.current.has(key);
-      });
+    const targets = recentTranslationMessages.filter((message) => {
+      const key = getMessageKey(message);
+      const content = message.content ?? message.text ?? "";
+      if (!content || translationSkippedMessages[key]) return false;
+      if (isProbablyAlreadyTargetLanguage(content, translationTargetLanguage)) {
+        skippedKeys.push(key);
+        return false;
+      }
+      return (
+        !translatedMessages[key] &&
+        !translationErrors[key] &&
+        !translationPendingRef.current.has(key)
+      );
+    });
 
     if (skippedKeys.length > 0) {
       setTranslationSkippedMessages((prev) => {
@@ -811,22 +911,29 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         translationPendingRef.current.add(key);
         try {
           const result = await translateText(content, translationTargetLanguage);
-          const translated = result?.translatedContent ?? result?.translatedText ?? result?.content ?? "";
+          const translated =
+            result?.translatedContent ?? result?.translatedText ?? result?.content ?? "";
           if (!cancelled) {
-            setTranslatedMessages(prev => ({ ...prev, [key]: translated || content }));
+            setTranslatedMessages((prev) => ({ ...prev, [key]: translated || content }));
           }
         } catch (error) {
           if (!cancelled) {
             if (error?.status === 429) {
               const retryAfterSeconds = Number(error.retryAfter);
-              const waitMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-                ? retryAfterSeconds * 1000
-                : TRANSLATION_DEFAULT_COOLDOWN_MS;
+              const waitMs =
+                Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+                  ? retryAfterSeconds * 1000
+                  : TRANSLATION_DEFAULT_COOLDOWN_MS;
               setTranslationCooldownUntil(Date.now() + waitMs);
-              setTranslationNotice(`번역 요청이 많아 잠시 쉬고 있어요. ${Math.ceil(waitMs / 1000)}초 후 다시 시도해주세요.`);
+              setTranslationNotice(
+                `번역 요청이 많아 잠시 쉬고 있어요. ${Math.ceil(waitMs / 1000)}초 후 다시 시도해주세요.`,
+              );
               break;
             }
-            setTranslationErrors(prev => ({ ...prev, [key]: getApiErrorHint(error) || "번역을 불러오지 못했습니다." }));
+            setTranslationErrors((prev) => ({
+              ...prev,
+              [key]: getApiErrorHint(error) || "번역을 불러오지 못했습니다.",
+            }));
           }
         } finally {
           translationPendingRef.current.delete(key);
@@ -876,28 +983,33 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         setParticipantStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return undefined;
     let ignore = false;
     const refreshRoomState = () => {
-      Promise.allSettled([fetchChatRoomDetail(roomId), fetchChatParticipants(roomId), fetchCompanionDetail(roomId)])
-        .then(([detailResult, participantsResult, companionResult]) => {
-          if (ignore) return;
-          if (detailResult.status === "fulfilled") {
-            setRoomDetail(detailResult.value);
-          }
-          if (participantsResult.status === "fulfilled") {
-            setParticipants(participantsResult.value);
-            setParticipantStatus(participantsResult.value.length > 0 ? "success" : "empty");
-          }
-          if (companionResult.status === "fulfilled") {
-            setCompanionDetail(companionResult.value);
-            setCompanionStatus(companionResult.value ? "success" : "empty");
-          }
-        });
+      Promise.allSettled([
+        fetchChatRoomDetail(roomId),
+        fetchChatParticipants(roomId),
+        fetchCompanionDetail(roomId),
+      ]).then(([detailResult, participantsResult, companionResult]) => {
+        if (ignore) return;
+        if (detailResult.status === "fulfilled") {
+          setRoomDetail(detailResult.value);
+        }
+        if (participantsResult.status === "fulfilled") {
+          setParticipants(participantsResult.value);
+          setParticipantStatus(participantsResult.value.length > 0 ? "success" : "empty");
+        }
+        if (companionResult.status === "fulfilled") {
+          setCompanionDetail(companionResult.value);
+          setCompanionStatus(companionResult.value ? "success" : "empty");
+        }
+      });
     };
     const intervalId = window.setInterval(refreshRoomState, 3000);
     return () => {
@@ -920,7 +1032,9 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
 
       let uploadedAttachments = [];
       if (pendingAttachments.length > 0) {
-        uploadedAttachments = await uploadChatAttachments(pendingAttachments, { chatRoomId: roomId });
+        uploadedAttachments = await uploadChatAttachments(pendingAttachments, {
+          chatRoomId: roomId,
+        });
       }
 
       if (uploadedAttachments.length === 0) {
@@ -958,7 +1072,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
 
     try {
       const page = await fetchChatMessagesPage(roomId, { cursor: olderCursor, size: 50 });
-      setMessages(prev => mergeMessages(page.messages, prev));
+      setMessages((prev) => mergeMessages(page.messages, prev));
       setOlderCursor(page.nextCursor);
       setHasOlderMessages(page.hasNext);
       window.requestAnimationFrame(() => {
@@ -977,9 +1091,9 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    setPendingAttachments(prev => [
+    setPendingAttachments((prev) => [
       ...prev,
-      ...files.map(file => ({
+      ...files.map((file) => ({
         id: `${type}-${file.name}-${file.lastModified}`,
         type,
         name: file.name,
@@ -994,7 +1108,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   };
 
   const removeAttachment = (id) => {
-    setPendingAttachments(prev => prev.filter(item => item.id !== id));
+    setPendingAttachments((prev) => prev.filter((item) => item.id !== id));
   };
 
   const runRoomAction = async ({ key, action, successMessage, afterSuccess }) => {
@@ -1015,12 +1129,13 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     showToast?.("채팅방 신고는 백엔드 ReportTargetType에 CHAT_ROOM 추가 후 연결할 수 있습니다.");
   };
 
-  const handleLeaveRoom = () => runRoomAction({
-    key: "leave-room",
-    action: () => leaveChatRoom(roomId),
-    successMessage: "채팅방에서 나갔습니다.",
-    afterSuccess: onBack,
-  });
+  const handleLeaveRoom = () =>
+    runRoomAction({
+      key: "leave-room",
+      action: () => leaveChatRoom(roomId),
+      successMessage: "채팅방에서 나갔습니다.",
+      afterSuccess: onBack,
+    });
 
   const handleCreateCompanion = () => {
     if (!tripStartDate || !tripEndDate) {
@@ -1035,11 +1150,12 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     }
     runRoomAction({
       key: "companion-create",
-      action: () => createCompanion(roomId, {
-        participantUserIds: companionParticipantIds,
-        tripStartDate,
-        tripEndDate,
-      }),
+      action: () =>
+        createCompanion(roomId, {
+          participantUserIds: companionParticipantIds,
+          tripStartDate,
+          tripEndDate,
+        }),
       successMessage: "동행을 생성했습니다.",
       afterSuccess: () => loadCompanionDetail(),
     });
@@ -1058,22 +1174,24 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     });
   };
 
-  const handleEndCompanion = () => runRoomAction({
-    key: "companion-end",
-    action: () => endCompanion(roomId),
-    successMessage: "동행을 종료했습니다. 참여자 리뷰를 남길 수 있습니다.",
-    afterSuccess: () => loadCompanionDetail(),
-  });
+  const handleEndCompanion = () =>
+    runRoomAction({
+      key: "companion-end",
+      action: () => endCompanion(roomId),
+      successMessage: "동행을 종료했습니다. 참여자 리뷰를 남길 수 있습니다.",
+      afterSuccess: () => loadCompanionDetail(),
+    });
 
-  const handleCancelCompanion = () => runRoomAction({
-    key: "companion-cancel",
-    action: () => cancelCompanion(roomId),
-    successMessage: "진행 중인 동행을 취소했습니다.",
-    afterSuccess: () => {
-      setCompanionCancelConfirmOpen(false);
-      return loadCompanionDetail();
-    },
-  });
+  const handleCancelCompanion = () =>
+    runRoomAction({
+      key: "companion-cancel",
+      action: () => cancelCompanion(roomId),
+      successMessage: "진행 중인 동행을 취소했습니다.",
+      afterSuccess: () => {
+        setCompanionCancelConfirmOpen(false);
+        return loadCompanionDetail();
+      },
+    });
 
   const handleTransferOwner = (participant) => {
     if (!participant?.userId) return;
@@ -1116,7 +1234,9 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       `채팅방: ${roomTitle}`,
       messageId ? `메시지 ID: ${messageId}` : null,
       text ? `메시지 내용: ${text}` : null,
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
     setReportTarget({
       userId: messageProfile.userId,
       label: `${messageProfile.nickname || "상대방"}님의 메시지`,
@@ -1160,7 +1280,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         content: reviewContent.trim(),
       });
       showToast?.(`${reviewTarget.nickname || "참여자"} 님에게 동행 리뷰를 남겼습니다.`);
-      setReviewedUserIds(prev => new Set(prev).add(String(reviewTarget.userId)));
+      setReviewedUserIds((prev) => new Set(prev).add(String(reviewTarget.userId)));
       setReviewTarget(null);
       setReviewContent("");
       setReviewScore(5);
@@ -1210,12 +1330,13 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       .then((items) => {
         setProfileReviews(items);
         setProfileReviewStatus(items.length > 0 ? "success" : "empty");
-        const alreadyReviewedByMe = items.some((item) => (
-          isSameUser(item.reviewerId ?? item.writerId ?? item.userId, currentUserId)
-          || (currentUserSession?.nickname && item.reviewerNickname === currentUserSession.nickname)
-        ));
+        const alreadyReviewedByMe = items.some(
+          (item) =>
+            isSameUser(item.reviewerId ?? item.writerId ?? item.userId, currentUserId) ||
+            (currentUserSession?.nickname && item.reviewerNickname === currentUserSession.nickname),
+        );
         if (alreadyReviewedByMe) {
-          setReviewedUserIds(prev => new Set(prev).add(String(target.userId)));
+          setReviewedUserIds((prev) => new Set(prev).add(String(target.userId)));
         }
       })
       .catch(() => {
@@ -1226,13 +1347,25 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
 
   const getMessageProfile = (message) => {
     const userId = message.senderId ?? message.senderUserId ?? message.userId ?? message.memberId;
-    const matchedParticipant = participants.find(participant => isSameUser(participant.userId, userId));
+    const matchedParticipant = participants.find((participant) =>
+      isSameUser(participant.userId, userId),
+    );
     return {
       ...matchedParticipant,
       userId: matchedParticipant?.userId ?? userId,
       nickname: matchedParticipant?.nickname ?? message.user ?? "상대방",
-      profileImageUrl: matchedParticipant?.profileImageUrl ?? message.profileImageUrl ?? message.senderProfileImageUrl ?? "",
-      avatar: matchedParticipant?.profileImageUrl ?? message.profileImageUrl ?? message.senderProfileImageUrl ?? matchedParticipant?.avatar ?? message.avatar ?? "👤",
+      profileImageUrl:
+        matchedParticipant?.profileImageUrl ??
+        message.profileImageUrl ??
+        message.senderProfileImageUrl ??
+        "",
+      avatar:
+        matchedParticipant?.profileImageUrl ??
+        message.profileImageUrl ??
+        message.senderProfileImageUrl ??
+        matchedParticipant?.avatar ??
+        message.avatar ??
+        "👤",
       language: matchedParticipant?.language,
       score: matchedParticipant?.score,
       role: matchedParticipant?.role,
@@ -1280,11 +1413,13 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       } else {
         await rejectJoinRequest({ chatRoomId: roomId, joinRequestId: requestId });
       }
-      setJoinRequests((prev) => prev.map((request) => (
-        request.id === requestId
-          ? { ...request, status: action === "approve" ? "APPROVED" : "REJECTED" }
-          : request
-      )));
+      setJoinRequests((prev) =>
+        prev.map((request) =>
+          request.id === requestId
+            ? { ...request, status: action === "approve" ? "APPROVED" : "REJECTED" }
+            : request,
+        ),
+      );
       showToast?.(action === "approve" ? "참여 신청을 수락했습니다." : "참여 신청을 거절했습니다.");
       if (action === "approve") {
         fetchChatParticipants(roomId)
@@ -1301,34 +1436,62 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     }
   };
 
-  const pendingJoinRequestCount = joinRequests.filter(request => request.status === "PENDING").length;
-  const realtimeLabel = realtimeStatus === "connected"
-    ? "실시간 채팅 연결됨"
-    : realtimeStatus === "connecting"
-      ? "실시간 채팅 연결 중"
-      : "실시간 채팅 연결 끊김";
+  const pendingJoinRequestCount = joinRequests.filter(
+    (request) => request.status === "PENDING",
+  ).length;
+  const realtimeLabel =
+    realtimeStatus === "connected"
+      ? "실시간 채팅 연결됨"
+      : realtimeStatus === "connecting"
+        ? "실시간 채팅 연결 중"
+        : "실시간 채팅 연결 끊김";
 
   return (
     <div
       style={embedded ? undefined : S.screen}
       className={`${embedded ? "web-chat-room-page is-embedded" : "web-chat-room-page"}${managementPanelOpen ? " management-open" : ""}`}
     >
-      <div className="web-page-topbar" style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        {!embedded && <div onClick={onBack} style={{ color: "#fff", fontSize: 14, cursor: "pointer" }}>←</div>}
+      <div
+        className="web-page-topbar"
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        {!embedded && (
+          <div onClick={onBack} style={{ color: "#fff", fontSize: 14, cursor: "pointer" }}>
+            ←
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           <div className="chat-room-title-line">
             <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{currentRoom.title}</div>
             {isCurrentUserHost && (
               <div className="chat-companion-actions" aria-label="동행 관리">
-                <button type="button" disabled={Boolean(actioning)} onClick={handleCreateCompanion}>동행 생성</button>
-                <button type="button" disabled={Boolean(actioning)} onClick={handleAddCompanion}>동행 추가</button>
-                <button type="button" disabled={Boolean(actioning)} onClick={handleEndCompanion}>동행 종료</button>
+                <button type="button" disabled={Boolean(actioning)} onClick={handleCreateCompanion}>
+                  동행 생성
+                </button>
+                <button type="button" disabled={Boolean(actioning)} onClick={handleAddCompanion}>
+                  동행 추가
+                </button>
+                <button type="button" disabled={Boolean(actioning)} onClick={handleEndCompanion}>
+                  동행 종료
+                </button>
               </div>
             )}
           </div>
           <div className="chat-room-member-line">
-            <span>👥 {currentRoom.members}/{currentRoom.maxMembers}명</span>
-            <span className={`chat-realtime-indicator ${realtimeStatus}`} aria-label={realtimeLabel} title={realtimeLabel} />
+            <span>
+              👥 {currentRoom.members}/{currentRoom.maxMembers}명
+            </span>
+            <span
+              className={`chat-realtime-indicator ${realtimeStatus}`}
+              aria-label={realtimeLabel}
+              title={realtimeLabel}
+            />
           </div>
         </div>
         <div className="chat-room-header-actions">
@@ -1344,7 +1507,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
             <button
               type="button"
               className="chat-room-menu-button"
-              onClick={() => setManagementPanelOpen(open => !open)}
+              onClick={() => setManagementPanelOpen((open) => !open)}
               aria-label="채팅방 관리"
               aria-expanded={managementPanelOpen}
             >
@@ -1354,11 +1517,13 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         </div>
       </div>
       {translationEnabled && translationNotice && (
-        <div className="chat-translation-notice">
-          {translationNotice}
-        </div>
+        <div className="chat-translation-notice">{translationNotice}</div>
       )}
-      <div ref={messageScrollRef} className="web-chat-room-body" style={{ ...S.scrollArea, padding: "20px 12px" }}>
+      <div
+        ref={messageScrollRef}
+        className="web-chat-room-body"
+        style={{ ...S.scrollArea, padding: "20px 12px" }}
+      >
         {displayedMessages.length === 0 && (
           <EmptyState
             icon="💬"
@@ -1389,219 +1554,329 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
           const translatedText = translatedMessages[messageKey];
           const translationFailed = translationErrors[messageKey];
           const translationSkipped = translationSkippedMessages[messageKey];
-          const translationErrorText = typeof translationFailed === "string" ? translationFailed : "번역을 불러오지 못했습니다.";
-          
+          const translationErrorText =
+            typeof translationFailed === "string"
+              ? translationFailed
+              : "번역을 불러오지 못했습니다.";
+
           const prevMessage = index > 0 ? displayedMessages[index - 1] : null;
           const nextMessage = displayedMessages[index + 1] ?? null;
           const showDate = shouldShowDate(m, prevMessage);
           const showProfile = shouldShowProfile(m, prevMessage, mine);
-          const showTime = !nextMessage
-            || resolveMessageMine(nextMessage) !== mine
-            || !isSameMessageMinute(m, nextMessage);
-          
+          const showTime =
+            !nextMessage ||
+            resolveMessageMine(nextMessage) !== mine ||
+            !isSameMessageMinute(m, nextMessage);
+
           return (
-          <div key={messageKey}>
-            {showDate && (
-              <div className="chat-date-divider">
-                <span>{formatChatDate(m)}</span>
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: showProfile || showTime ? 12 : 4, alignItems: "flex-end" }}>
-              {!mine && (
-                <div style={{ width: 32, height: 32, marginRight: 6, flexShrink: 0 }}>
-                  {showProfile && (
-                    <button 
-                      type="button" 
-                      className="chat-message-avatar"
-                      onClick={() => openProfile(messageProfile)} 
-                      style={{ 
-                        width: 32, 
-                        height: 32, 
-                        borderRadius: "50%", 
-                        background: COLORS.bg, 
-                        border: 0, 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center", 
-                        fontSize: 15, 
-                        cursor: "pointer" 
-                      }}
-                    >
-                      <ChatAvatar value={messageProfile?.avatar} name={messageProfile?.nickname} />
-                    </button>
-                  )}
+            <div key={messageKey}>
+              {showDate && (
+                <div className="chat-date-divider">
+                  <span>{formatChatDate(m)}</span>
                 </div>
               )}
-              <div className={mine ? "chat-message-stack mine" : "chat-message-stack"} style={{ maxWidth: "80%", minWidth: 0 }}>
-                {!mine && showProfile && (
-                  <button 
-                    type="button" 
-                    className="chat-message-sender" 
-                    onClick={() => openProfile(messageProfile)}
-                    style={{ 
-                      fontSize: 13, 
-                      fontWeight: 700, 
-                      color: COLORS.textMuted, 
-                      marginBottom: 4, 
-                      border: 0, 
-                      background: "transparent", 
-                      padding: "0 4px", 
-                      cursor: "pointer",
-                      textAlign: "left"
-                    }}
-                  >
-                    {messageProfile?.nickname ?? m.user}
-                  </button>
-                )}
-                <div className="chat-message-line" style={{ display: "flex", alignItems: "flex-end", gap: 4, flexDirection: "row" }}>
-                  {mine && showTime && (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 10, color: COLORS.textMuted, whiteSpace: "nowrap", minWidth: 45 }}>
-                      {readReceiptText && <span style={{ fontSize: 10 }}>{readReceiptText}</span>}
-                      <span>{formatChatTime(m)}</span>
-                    </div>
-                  )}
-                  <div 
-                    className="web-message-bubble" 
-                    style={{ 
-                      background: mine ? COLORS.primary : "#fff", 
-                      color: mine ? "#fff" : COLORS.textPrimary, 
-                      borderRadius: mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px", 
-                      padding: m.attachments?.some(file => file.previewType === "image") ? 8 : "11px 15px",
-                      fontSize: 15, 
-                      lineHeight: 1.5,
-                      border: mine ? "none" : "1px solid rgba(0,0,0,0.06)",
-                      wordBreak: "break-word",
-                      maxWidth: m.attachments?.some(file => file.previewType === "image") ? 292 : "100%",
-                      width: "fit-content",
-                      boxShadow: mine ? "none" : "0 1px 2px rgba(0,0,0,0.04)"
-                    }}
-                  >
-                    {m.attachments?.length > 0 && (
-                      <div className="chat-attachment-preview" style={{ display: "grid", gap: 8 }}>
-                        {m.attachments.map(file => (
-                          file.previewType === "image" && file.url ? (
-                            <a
-                              key={file.id}
-                              href={file.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ display: "block", color: "inherit", textDecoration: "none" }}
-                            >
-                              <img
-                                src={file.url}
-                                alt={file.name}
-                                style={{
-                                  display: "block",
-                                  width: 260,
-                                  maxWidth: "100%",
-                                  maxHeight: 190,
-                                  objectFit: "cover",
-                                  borderRadius: 12,
-                                  background: "rgba(0,0,0,0.08)",
-                                }}
-                              />
-                            </a>
-                          ) : (
-                            <a
-                              key={file.id}
-                              href={file.url || undefined}
-                              target="_blank"
-                              rel="noreferrer"
-                              download={file.name}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                color: "inherit",
-                                textDecoration: "none",
-                                fontSize: 13,
-                                opacity: 0.95,
-                              }}
-                            >
-                              <span aria-hidden="true">📎</span>
-                              <span>{file.name}</span>
-                            </a>
-                          )
-                        ))}
-                      </div>
-                    )}
-                    {(m.text ?? m.content) && (
-                      <div
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: mine ? "flex-end" : "flex-start",
+                  marginBottom: showProfile || showTime ? 12 : 4,
+                  alignItems: "flex-end",
+                }}
+              >
+                {!mine && (
+                  <div style={{ width: 32, height: 32, marginRight: 6, flexShrink: 0 }}>
+                    {showProfile && (
+                      <button
+                        type="button"
+                        className="chat-message-avatar"
+                        onClick={() => openProfile(messageProfile)}
                         style={{
-                          marginTop: m.attachments?.length > 0 ? 8 : 0,
-                          padding: m.attachments?.some(file => file.previewType === "image") ? "0 4px 2px" : 0,
-                        }}
-                      >
-                        {m.text ?? m.content ?? ""}
-                      </div>
-                    )}
-                  </div>
-                  {!mine && showTime && (
-                    <div style={{ fontSize: 10, color: COLORS.textMuted, whiteSpace: "nowrap", minWidth: 40 }}>
-                      <span>{formatChatTime(m)}</span>
-                    </div>
-                  )}
-                  {!mine && (
-                    <div className="chat-message-action-wrap">
-                      <button 
-                        type="button" 
-                        className="chat-message-action-button" 
-                        onClick={() => setMessageMenuId(current => current === messageId ? null : messageId)} 
-                        aria-label="메시지 더보기"
-                        style={{
-                          width: 28,
-                          height: 28,
-                          border: "1px solid rgba(0,0,0,0.1)",
+                          width: 32,
+                          height: 32,
                           borderRadius: "50%",
-                          background: "#fff",
-                          color: COLORS.textMuted,
-                          fontSize: 16,
-                          cursor: "pointer",
+                          background: COLORS.bg,
+                          border: 0,
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center"
+                          justifyContent: "center",
+                          fontSize: 15,
+                          cursor: "pointer",
                         }}
                       >
-                        ⋯
+                        <ChatAvatar
+                          value={messageProfile?.avatar}
+                          name={messageProfile?.nickname}
+                        />
                       </button>
-                      {messageMenuId === messageId && (
-                        <div className="chat-message-menu" role="menu">
-                          <button type="button" onClick={() => { setMessageMenuId(null); openProfile(messageProfile); }}>프로필 보기</button>
-                          {!hasReviewedParticipant(messageProfile.userId) && (
-                            <button type="button" disabled={reviewSubmitting} onClick={() => { setMessageMenuId(null); openCompanionReview(messageProfile); }}>동행 리뷰</button>
+                    )}
+                  </div>
+                )}
+                <div
+                  className={mine ? "chat-message-stack mine" : "chat-message-stack"}
+                  style={{ maxWidth: "80%", minWidth: 0 }}
+                >
+                  {!mine && showProfile && (
+                    <button
+                      type="button"
+                      className="chat-message-sender"
+                      onClick={() => openProfile(messageProfile)}
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: COLORS.textMuted,
+                        marginBottom: 4,
+                        border: 0,
+                        background: "transparent",
+                        padding: "0 4px",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      {messageProfile?.nickname ?? m.user}
+                    </button>
+                  )}
+                  <div
+                    className="chat-message-line"
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-end",
+                      gap: 4,
+                      flexDirection: "row",
+                    }}
+                  >
+                    {mine && showTime && (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end",
+                          gap: 2,
+                          fontSize: 10,
+                          color: COLORS.textMuted,
+                          whiteSpace: "nowrap",
+                          minWidth: 45,
+                        }}
+                      >
+                        {readReceiptText && <span style={{ fontSize: 10 }}>{readReceiptText}</span>}
+                        <span>{formatChatTime(m)}</span>
+                      </div>
+                    )}
+                    <div
+                      className="web-message-bubble"
+                      style={{
+                        background: mine ? COLORS.primary : "#fff",
+                        color: mine ? "#fff" : COLORS.textPrimary,
+                        borderRadius: mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                        padding: m.attachments?.some((file) => file.previewType === "image")
+                          ? 8
+                          : "11px 15px",
+                        fontSize: 15,
+                        lineHeight: 1.5,
+                        border: mine ? "none" : "1px solid rgba(0,0,0,0.06)",
+                        wordBreak: "break-word",
+                        maxWidth: m.attachments?.some((file) => file.previewType === "image")
+                          ? 292
+                          : "100%",
+                        width: "fit-content",
+                        boxShadow: mine ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      {m.attachments?.length > 0 && (
+                        <div
+                          className="chat-attachment-preview"
+                          style={{ display: "grid", gap: 8 }}
+                        >
+                          {m.attachments.map((file) =>
+                            file.previewType === "image" && file.url ? (
+                              <a
+                                key={file.id}
+                                href={file.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  display: "block",
+                                  color: "inherit",
+                                  textDecoration: "none",
+                                }}
+                              >
+                                <img
+                                  src={file.url}
+                                  alt={file.name}
+                                  style={{
+                                    display: "block",
+                                    width: 260,
+                                    maxWidth: "100%",
+                                    maxHeight: 190,
+                                    objectFit: "cover",
+                                    borderRadius: 12,
+                                    background: "rgba(0,0,0,0.08)",
+                                  }}
+                                />
+                              </a>
+                            ) : (
+                              <a
+                                key={file.id}
+                                href={file.url || undefined}
+                                target="_blank"
+                                rel="noreferrer"
+                                download={file.name}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  color: "inherit",
+                                  textDecoration: "none",
+                                  fontSize: 13,
+                                  opacity: 0.95,
+                                }}
+                              >
+                                <span aria-hidden="true">📎</span>
+                                <span>{file.name}</span>
+                              </a>
+                            ),
                           )}
-                          <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => { setMessageMenuId(null); handleMessageReport(m); }}>메시지 신고</button>
+                        </div>
+                      )}
+                      {(m.text ?? m.content) && (
+                        <div
+                          style={{
+                            marginTop: m.attachments?.length > 0 ? 8 : 0,
+                            padding: m.attachments?.some((file) => file.previewType === "image")
+                              ? "0 4px 2px"
+                              : 0,
+                          }}
+                        >
+                          {m.text ?? m.content ?? ""}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-                {!mine && translationEnabled && recentTranslationKeys.has(messageKey) && !translationSkipped && (
-                  <div className={`chat-message-translation ${translationFailed ? "error" : ""}`} style={{ marginTop: 4, fontSize: 13 }}>
-                    {translatedText || (translationFailed ? translationErrorText : "번역 대기 중...")}
+                    {!mine && showTime && (
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: COLORS.textMuted,
+                          whiteSpace: "nowrap",
+                          minWidth: 40,
+                        }}
+                      >
+                        <span>{formatChatTime(m)}</span>
+                      </div>
+                    )}
+                    {!mine && (
+                      <div className="chat-message-action-wrap">
+                        <button
+                          type="button"
+                          className="chat-message-action-button"
+                          onClick={() =>
+                            setMessageMenuId((current) =>
+                              current === messageId ? null : messageId,
+                            )
+                          }
+                          aria-label="메시지 더보기"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            border: "1px solid rgba(0,0,0,0.1)",
+                            borderRadius: "50%",
+                            background: "#fff",
+                            color: COLORS.textMuted,
+                            fontSize: 16,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          ⋯
+                        </button>
+                        {messageMenuId === messageId && (
+                          <div className="chat-message-menu" role="menu">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMessageMenuId(null);
+                                openProfile(messageProfile);
+                              }}
+                            >
+                              프로필 보기
+                            </button>
+                            {!hasReviewedParticipant(messageProfile.userId) && (
+                              <button
+                                type="button"
+                                disabled={reviewSubmitting}
+                                onClick={() => {
+                                  setMessageMenuId(null);
+                                  openCompanionReview(messageProfile);
+                                }}
+                              >
+                                동행 리뷰
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="danger"
+                              disabled={Boolean(actioning)}
+                              onClick={() => {
+                                setMessageMenuId(null);
+                                handleMessageReport(m);
+                              }}
+                            >
+                              메시지 신고
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                  {!mine &&
+                    translationEnabled &&
+                    recentTranslationKeys.has(messageKey) &&
+                    !translationSkipped && (
+                      <div
+                        className={`chat-message-translation ${translationFailed ? "error" : ""}`}
+                        style={{ marginTop: 4, fontSize: 13 }}
+                      >
+                        {translatedText ||
+                          (translationFailed ? translationErrorText : "번역 대기 중...")}
+                      </div>
+                    )}
+                </div>
               </div>
             </div>
-          </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
-      <div className="web-chat-input" style={{ 
-        padding: "12px 12px 28px", 
-        background: "#f8f8f8", 
-        borderTop: "1px solid rgba(0,0,0,0.08)", 
-        display: "flex", 
-        gap: 8, 
-        alignItems: "flex-end" 
-      }}>
-        <input ref={imageInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => addLocalAttachments(event, "image")} />
-        <input ref={fileInputRef} type="file" multiple hidden onChange={(event) => addLocalAttachments(event, "file")} />
+      <div
+        className="web-chat-input"
+        style={{
+          padding: "12px 12px 28px",
+          background: "#f8f8f8",
+          borderTop: "1px solid rgba(0,0,0,0.08)",
+          display: "flex",
+          gap: 8,
+          alignItems: "flex-end",
+        }}
+      >
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(event) => addLocalAttachments(event, "image")}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          onChange={(event) => addLocalAttachments(event, "file")}
+        />
         <div className="chat-attachment-wrap" style={{ position: "relative" }}>
-          <button 
-            type="button" 
-            className="chat-attach-button" 
+          <button
+            type="button"
+            className="chat-attach-button"
             onClick={() => setAttachOpen(!attachOpen)}
             style={{
               width: 40,
@@ -1615,26 +1890,32 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              lineHeight: 1
+              lineHeight: 1,
             }}
           >
             +
           </button>
           {attachOpen && (
-            <div className="chat-attach-menu" style={{
-              position: "absolute",
-              bottom: "calc(100% + 8px)",
-              left: 0,
-              background: "#fff",
-              border: "1px solid rgba(0,0,0,0.1)",
-              borderRadius: 12,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              overflow: "hidden",
-              minWidth: 140
-            }}>
-              <button 
-                type="button" 
-                onClick={() => { imageInputRef.current?.click(); setAttachOpen(false); }}
+            <div
+              className="chat-attach-menu"
+              style={{
+                position: "absolute",
+                bottom: "calc(100% + 8px)",
+                left: 0,
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: 12,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                overflow: "hidden",
+                minWidth: 140,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  imageInputRef.current?.click();
+                  setAttachOpen(false);
+                }}
                 style={{
                   width: "100%",
                   padding: "12px 16px",
@@ -1643,14 +1924,17 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                   textAlign: "left",
                   fontSize: 14,
                   fontWeight: 600,
-                  cursor: "pointer"
+                  cursor: "pointer",
                 }}
               >
                 📷 사진
               </button>
-              <button 
-                type="button" 
-                onClick={() => { fileInputRef.current?.click(); setAttachOpen(false); }}
+              <button
+                type="button"
+                onClick={() => {
+                  fileInputRef.current?.click();
+                  setAttachOpen(false);
+                }}
                 style={{
                   width: "100%",
                   padding: "12px 16px",
@@ -1660,7 +1944,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                   textAlign: "left",
                   fontSize: 14,
                   fontWeight: 600,
-                  cursor: "pointer"
+                  cursor: "pointer",
                 }}
               >
                 📎 파일
@@ -1670,16 +1954,19 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {pendingAttachments.length > 0 && (
-            <div className="chat-pending-attachments" style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 6,
-              marginBottom: 8
-            }}>
-              {pendingAttachments.map(file => (
-                <button 
-                  key={file.id} 
-                  type="button" 
+            <div
+              className="chat-pending-attachments"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 8,
+              }}
+            >
+              {pendingAttachments.map((file) => (
+                <button
+                  key={file.id}
+                  type="button"
                   onClick={() => removeAttachment(file.id)}
                   style={{
                     padding: "6px 10px",
@@ -1691,7 +1978,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6
+                    gap: 6,
                   }}
                 >
                   {file.type === "image" ? "📷" : "📎"} {file.name} ×
@@ -1699,43 +1986,49 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
               ))}
             </div>
           )}
-          <input 
-            value={input} 
-            onChange={e => setInput(e.target.value)} 
-            onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()} 
-            placeholder="메시지를 입력하세요..." 
-            style={{ 
-              width: "100%", 
-              background: "#fff", 
-              border: "1px solid rgba(0,0,0,0.1)", 
-              borderRadius: 20, 
-              padding: "11px 16px", 
-              fontSize: 15, 
-              outline: "none", 
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
+            placeholder="메시지를 입력하세요..."
+            style={{
+              width: "100%",
+              background: "#fff",
+              border: "1px solid rgba(0,0,0,0.1)",
+              borderRadius: 20,
+              padding: "11px 16px",
+              fontSize: 15,
+              outline: "none",
               boxSizing: "border-box",
               fontFamily: "inherit",
               fontWeight: 500,
-              lineHeight: 1.4
-            }} 
+              lineHeight: 1.4,
+            }}
           />
         </div>
-        <button 
-          type="button" 
-          onClick={send} 
-          disabled={sending || (!input.trim() && pendingAttachments.length === 0)} 
-          style={{ 
-            width: 40, 
-            height: 40, 
-            background: (sending || (!input.trim() && pendingAttachments.length === 0)) ? COLORS.bg : COLORS.primary, 
-            border: 0, 
-            borderRadius: "50%", 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            cursor: (sending || (!input.trim() && pendingAttachments.length === 0)) ? "not-allowed" : "pointer", 
+        <button
+          type="button"
+          onClick={send}
+          disabled={sending || (!input.trim() && pendingAttachments.length === 0)}
+          style={{
+            width: 40,
+            height: 40,
+            background:
+              sending || (!input.trim() && pendingAttachments.length === 0)
+                ? COLORS.bg
+                : COLORS.primary,
+            border: 0,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor:
+              sending || (!input.trim() && pendingAttachments.length === 0)
+                ? "not-allowed"
+                : "pointer",
             fontSize: 18,
             color: "#fff",
-            transition: "all 0.2s"
+            transition: "all 0.2s",
           }}
         >
           {sending ? "⋯" : "➤"}
@@ -1783,48 +2076,114 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       {profileTarget && (
         <div className="chat-profile-modal" role="dialog" aria-modal="true">
           <div className="chat-profile-card">
-            <button type="button" className="chat-profile-close" onClick={() => setProfileTarget(null)} aria-label="닫기">×</button>
+            <button
+              type="button"
+              className="chat-profile-close"
+              onClick={() => setProfileTarget(null)}
+              aria-label="닫기"
+            >
+              ×
+            </button>
             <div className="chat-profile-avatar">
-              <ChatAvatar value={profileTarget.profileImageUrl || profileTarget.avatar} name={profileTarget.nickname} />
+              <ChatAvatar
+                value={profileTarget.profileImageUrl || profileTarget.avatar}
+                name={profileTarget.nickname}
+              />
             </div>
             <strong>{profileTarget.nickname ?? "상대방"}</strong>
             <span>{profileTarget.role === "HOST" ? "방장" : "참여자"}</span>
-            <p>{profileTarget.language || "언어 미설정"} · 동행지수 {profileTarget.score || "-"}</p>
+            <p>
+              {profileTarget.language || "언어 미설정"} · 동행지수 {profileTarget.score || "-"}
+            </p>
             <div className="chat-profile-reviews">
               <div className="chat-profile-reviews-title">동행 리뷰</div>
               {profileReviewStatus === "loading" && <span>리뷰를 불러오는 중입니다.</span>}
               {profileReviewStatus === "empty" && <span>아직 받은 동행 리뷰가 없습니다.</span>}
               {profileReviewStatus === "error" && <span>동행 리뷰를 불러오지 못했습니다.</span>}
-              {profileReviewStatus === "success" && profileReviews.map((review) => (
-                <div key={review.id ?? `${review.reviewerNickname}-${review.createdAt}`} className="chat-profile-review-item">
-                  <strong><span className="star-score">★ {review.score}</span> · {review.reviewerNickname}</strong>
-                  <span>{review.content || "내용 없는 리뷰입니다."}</span>
-                </div>
-              ))}
+              {profileReviewStatus === "success" &&
+                profileReviews.map((review) => (
+                  <div
+                    key={review.id ?? `${review.reviewerNickname}-${review.createdAt}`}
+                    className="chat-profile-review-item"
+                  >
+                    <strong>
+                      <span className="star-score">★ {review.score}</span> ·{" "}
+                      {review.reviewerNickname}
+                    </strong>
+                    <span>{review.content || "내용 없는 리뷰입니다."}</span>
+                  </div>
+                ))}
             </div>
             <div className="chat-profile-actions">
-              {!isSameUser(profileTarget.userId, currentUserId) && !hasReviewedParticipant(profileTarget.userId) && (
-                <button type="button" disabled={reviewSubmitting} onClick={() => { openCompanionReview(profileTarget); setProfileTarget(null); }}>동행 리뷰 남기기</button>
-              )}
-              <button type="button" className="danger" onClick={() => { handleProfileReport(profileTarget); setProfileTarget(null); }}>사용자 신고하기</button>
+              {!isSameUser(profileTarget.userId, currentUserId) &&
+                !hasReviewedParticipant(profileTarget.userId) && (
+                  <button
+                    type="button"
+                    disabled={reviewSubmitting}
+                    onClick={() => {
+                      openCompanionReview(profileTarget);
+                      setProfileTarget(null);
+                    }}
+                  >
+                    동행 리뷰 남기기
+                  </button>
+                )}
+              <button
+                type="button"
+                className="danger"
+                onClick={() => {
+                  handleProfileReport(profileTarget);
+                  setProfileTarget(null);
+                }}
+              >
+                사용자 신고하기
+              </button>
             </div>
           </div>
         </div>
       )}
-      <aside className={`chat-management-panel${managementPanelOpen ? " open" : ""}`} aria-hidden={!managementPanelOpen}>
+      <aside
+        className={`chat-management-panel${managementPanelOpen ? " open" : ""}`}
+        aria-hidden={!managementPanelOpen}
+      >
         <div className="chat-management-head">
           <strong>채팅방 관리</strong>
-          <button type="button" onClick={() => setManagementPanelOpen(false)} aria-label="채팅방 관리 닫기">×</button>
+          <button
+            type="button"
+            onClick={() => setManagementPanelOpen(false)}
+            aria-label="채팅방 관리 닫기"
+          >
+            ×
+          </button>
         </div>
-        <div className={`chat-management-tabs${isCurrentUserHost ? "" : " two-tabs"}`} role="tablist">
-          <button type="button" className={managementTab === "participants" ? "active" : ""} onClick={() => openManagementPanel("participants")}>참여자</button>
+        <div
+          className={`chat-management-tabs${isCurrentUserHost ? "" : " two-tabs"}`}
+          role="tablist"
+        >
+          <button
+            type="button"
+            className={managementTab === "participants" ? "active" : ""}
+            onClick={() => openManagementPanel("participants")}
+          >
+            참여자
+          </button>
           {isCurrentUserHost && (
-            <button type="button" className={managementTab === "requests" ? "active" : ""} onClick={() => openManagementPanel("requests")}>
+            <button
+              type="button"
+              className={managementTab === "requests" ? "active" : ""}
+              onClick={() => openManagementPanel("requests")}
+            >
               참여 신청
               {pendingJoinRequestCount > 0 && <span>{pendingJoinRequestCount}</span>}
             </button>
           )}
-          <button type="button" className={managementTab === "settings" ? "active" : ""} onClick={() => openManagementPanel("settings")}>설정</button>
+          <button
+            type="button"
+            className={managementTab === "settings" ? "active" : ""}
+            onClick={() => openManagementPanel("settings")}
+          >
+            설정
+          </button>
         </div>
         <div className="chat-management-content">
           {managementTab === "participants" && (
@@ -1834,31 +2193,66 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                 <span>
                   {participantStatus === "loading" && "불러오는 중"}
                   {participantStatus === "error" && "확인 필요"}
-                  {(participantStatus === "success" || participantStatus === "empty") && `${participants.length}명`}
+                  {(participantStatus === "success" || participantStatus === "empty") &&
+                    `${participants.length}명`}
                 </span>
               </div>
-              {participantStatus === "error" && <div className="chat-api-note">참여자 목록을 불러오지 못했습니다.</div>}
+              {participantStatus === "error" && (
+                <div className="chat-api-note">참여자 목록을 불러오지 못했습니다.</div>
+              )}
               {participants.map((participant) => (
                 <div key={participant.userId} className="chat-management-card">
-                  <button type="button" className="chat-participant-profile" onClick={() => openProfile(participant)}>
-                    <b><ChatAvatar value={participant.profileImageUrl || participant.avatar} name={participant.nickname} /></b>
+                  <button
+                    type="button"
+                    className="chat-participant-profile"
+                    onClick={() => openProfile(participant)}
+                  >
+                    <b>
+                      <ChatAvatar
+                        value={participant.profileImageUrl || participant.avatar}
+                        name={participant.nickname}
+                      />
+                    </b>
                     <div>
                       <strong>
                         {participant.nickname}
                         {participant.role === "HOST" && <em>호스트</em>}
                       </strong>
-                      <span>{participant.language || "언어 미설정"} · 동행지수 {participant.score || "-"}</span>
+                      <span>
+                        {participant.language || "언어 미설정"} · 동행지수{" "}
+                        {participant.score || "-"}
+                      </span>
                     </div>
                   </button>
                   {!isSameUser(participant.userId, currentUserId) && (
                     <div className="chat-management-card-actions">
                       {!hasReviewedParticipant(participant.userId) && (
-                        <button type="button" disabled={reviewSubmitting} onClick={() => openCompanionReview(participant)}>리뷰</button>
+                        <button
+                          type="button"
+                          disabled={reviewSubmitting}
+                          onClick={() => openCompanionReview(participant)}
+                        >
+                          리뷰
+                        </button>
                       )}
                       {isCurrentUserHost && (
                         <>
-                          <button type="button" className="primary" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setOwnerTransferTarget(participant)}>방장 위임</button>
-                          <button type="button" className="danger" disabled={participant.role === "HOST" || Boolean(actioning)} onClick={() => setKickConfirmTarget(participant)}>내보내기</button>
+                          <button
+                            type="button"
+                            className="primary"
+                            disabled={participant.role === "HOST" || Boolean(actioning)}
+                            onClick={() => setOwnerTransferTarget(participant)}
+                          >
+                            방장 위임
+                          </button>
+                          <button
+                            type="button"
+                            className="danger"
+                            disabled={participant.role === "HOST" || Boolean(actioning)}
+                            onClick={() => setKickConfirmTarget(participant)}
+                          >
+                            내보내기
+                          </button>
                         </>
                       )}
                     </div>
@@ -1871,31 +2265,58 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
             <>
               <div className="chat-management-section-head">
                 <strong>참여 신청</strong>
-                <button type="button" onClick={loadJoinRequests}>새로고침</button>
+                <button type="button" onClick={loadJoinRequests}>
+                  새로고침
+                </button>
               </div>
               {joinRequestStatus === "loading" && <SkeletonList count={2} />}
-              {joinRequestStatus === "error" && <ErrorState title="신청 목록을 불러오지 못했습니다." onRetry={loadJoinRequests} />}
-              {joinRequestStatus !== "loading" && joinRequestStatus !== "error" && joinRequests.length === 0 && (
-                <EmptyState icon="👥" title="신청 목록이 없어요" description="새로운 참여 신청이 오면 이곳에서 확인할 수 있어요." />
+              {joinRequestStatus === "error" && (
+                <ErrorState title="신청 목록을 불러오지 못했습니다." onRetry={loadJoinRequests} />
               )}
+              {joinRequestStatus !== "loading" &&
+                joinRequestStatus !== "error" &&
+                joinRequests.length === 0 && (
+                  <EmptyState
+                    icon="👥"
+                    title="신청 목록이 없어요"
+                    description="새로운 참여 신청이 오면 이곳에서 확인할 수 있어요."
+                  />
+                )}
               {joinRequests.map((request) => (
                 <div key={request.id} className="chat-management-card join-request">
                   <div className="chat-join-request-profile">
                     <b>
-                      {request.profileImageUrl
-                        ? <img src={request.profileImageUrl} alt="" />
-                        : request.avatar}
+                      {request.profileImageUrl ? (
+                        <img src={request.profileImageUrl} alt="" />
+                      ) : (
+                        request.avatar
+                      )}
                     </b>
                     <div>
                       <strong>{request.name}</strong>
-                      <span>동행지수 {request.score || "-"} · {formatChatTime(request)}</span>
+                      <span>
+                        동행지수 {request.score || "-"} · {formatChatTime(request)}
+                      </span>
                     </div>
                   </div>
                   {request.msg && <p>{request.msg}</p>}
                   {request.status === "PENDING" ? (
                     <div className="chat-management-card-actions">
-                      <button type="button" disabled={joinRequestActioningId === request.id} onClick={() => handleJoinRequest(request.id, "reject")}>거절</button>
-                      <button type="button" className="primary" disabled={joinRequestActioningId === request.id} onClick={() => handleJoinRequest(request.id, "approve")}>수락</button>
+                      <button
+                        type="button"
+                        disabled={joinRequestActioningId === request.id}
+                        onClick={() => handleJoinRequest(request.id, "reject")}
+                      >
+                        거절
+                      </button>
+                      <button
+                        type="button"
+                        className="primary"
+                        disabled={joinRequestActioningId === request.id}
+                        onClick={() => handleJoinRequest(request.id, "approve")}
+                      >
+                        수락
+                      </button>
                     </div>
                   ) : (
                     <div className={`chat-join-request-result ${request.status.toLowerCase()}`}>
@@ -1911,7 +2332,9 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
               <div className="chat-companion-detail-card">
                 <div>
                   <strong>현재 동행</strong>
-                  <span className={`chat-companion-status status-${String(companionDetail?.status || "empty").toLowerCase()}`}>
+                  <span
+                    className={`chat-companion-status status-${String(companionDetail?.status || "empty").toLowerCase()}`}
+                  >
                     {companionStatus === "loading"
                       ? "조회 중"
                       : companionDetail
@@ -1924,14 +2347,23 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                     <dl>
                       <div>
                         <dt>여행 기간</dt>
-                        <dd>{formatPlainDate(companionDetail.tripStartDate)} ~ {formatPlainDate(companionDetail.tripEndDate)}</dd>
+                        <dd>
+                          {formatPlainDate(companionDetail.tripStartDate)} ~{" "}
+                          {formatPlainDate(companionDetail.tripEndDate)}
+                        </dd>
                       </div>
                       <div>
                         <dt>참여 종료</dt>
-                        <dd>{companionEndedCount} / {companionTotalCount}명</dd>
+                        <dd>
+                          {companionEndedCount} / {companionTotalCount}명
+                        </dd>
                       </div>
                     </dl>
-                    {companionDetail.endedAt && <small>동행 종료: {formatChatTime({ sentAt: companionDetail.endedAt })}</small>}
+                    {companionDetail.endedAt && (
+                      <small>
+                        동행 종료: {formatChatTime({ sentAt: companionDetail.endedAt })}
+                      </small>
+                    )}
                   </>
                 ) : (
                   <small>동행을 생성하면 여행 기간과 참여자 종료 상태가 여기에 표시됩니다.</small>
@@ -1942,25 +2374,55 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
                   <strong>동행 여행 기간</strong>
                   <label>
                     시작일
-                    <input type="date" value={tripStartDate} onChange={(event) => setTripStartDate(event.target.value)} />
+                    <input
+                      type="date"
+                      value={tripStartDate}
+                      onChange={(event) => setTripStartDate(event.target.value)}
+                    />
                   </label>
                   <label>
                     종료일
-                    <input type="date" min={tripStartDate || undefined} value={tripEndDate} onChange={(event) => setTripEndDate(event.target.value)} />
+                    <input
+                      type="date"
+                      min={tripStartDate || undefined}
+                      value={tripEndDate}
+                      onChange={(event) => setTripEndDate(event.target.value)}
+                    />
                   </label>
-                  <button type="button" disabled={Boolean(actioning)} onClick={handleCreateCompanion}>동행 생성</button>
-                  <button type="button" className="danger" disabled={Boolean(actioning)} onClick={() => setCompanionCancelConfirmOpen(true)}>진행 중인 동행 취소</button>
+                  <button
+                    type="button"
+                    disabled={Boolean(actioning)}
+                    onClick={handleCreateCompanion}
+                  >
+                    동행 생성
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={Boolean(actioning)}
+                    onClick={() => setCompanionCancelConfirmOpen(true)}
+                  >
+                    진행 중인 동행 취소
+                  </button>
                 </div>
               )}
-              <button type="button" disabled={Boolean(actioning)} onClick={handleRoomReport}>채팅방 신고</button>
+              <button type="button" disabled={Boolean(actioning)} onClick={handleRoomReport}>
+                채팅방 신고
+              </button>
               <button
                 type="button"
                 className="danger"
                 disabled={Boolean(actioning) || (isCurrentUserHost && hasOtherActiveParticipants)}
                 onClick={() => setLeaveConfirmOpen(true)}
-                title={isCurrentUserHost && hasOtherActiveParticipants ? "다른 참여자에게 방장을 위임한 후 나갈 수 있습니다." : undefined}
+                title={
+                  isCurrentUserHost && hasOtherActiveParticipants
+                    ? "다른 참여자에게 방장을 위임한 후 나갈 수 있습니다."
+                    : undefined
+                }
               >
-                {isCurrentUserHost && hasOtherActiveParticipants ? "방장 위임 후 나가기" : "채팅방 나가기"}
+                {isCurrentUserHost && hasOtherActiveParticipants
+                  ? "방장 위임 후 나가기"
+                  : "채팅방 나가기"}
               </button>
             </div>
           )}
@@ -1969,11 +2431,18 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
       {reviewTarget && (
         <div className="chat-profile-modal" role="dialog" aria-modal="true">
           <div className="chat-companion-review-card">
-            <button type="button" className="chat-profile-close" onClick={() => setReviewTarget(null)} aria-label="닫기">×</button>
+            <button
+              type="button"
+              className="chat-profile-close"
+              onClick={() => setReviewTarget(null)}
+              aria-label="닫기"
+            >
+              ×
+            </button>
             <strong>{reviewTarget.nickname || "참여자"} 동행 리뷰</strong>
             <p>함께한 동행 경험을 1~5점으로 남겨주세요.</p>
             <div className="chat-companion-review-stars" aria-label="동행 리뷰 점수">
-              {[1, 2, 3, 4, 5].map(score => (
+              {[1, 2, 3, 4, 5].map((score) => (
                 <button
                   key={score}
                   type="button"

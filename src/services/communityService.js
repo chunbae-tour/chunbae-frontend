@@ -27,8 +27,12 @@ export async function fetchCommunityPosts({ size = 100 } = {}) {
     apiRequest(`/community/posts/free?${listParams.toString()}`),
   ]);
 
-  const companionPosts = companions.status === "fulfilled" ? getPageContent(companions.value).map(normalizeCompanionPost) : [];
-  const reviewPosts = freePosts.status === "fulfilled" ? getPageContent(freePosts.value).map(normalizeFreePost) : [];
+  const companionPosts =
+    companions.status === "fulfilled"
+      ? getPageContent(companions.value).map(normalizeCompanionPost)
+      : [];
+  const reviewPosts =
+    freePosts.status === "fulfilled" ? getPageContent(freePosts.value).map(normalizeFreePost) : [];
   if (companions.status === "rejected" && freePosts.status === "rejected") {
     throw companions.reason;
   }
@@ -70,7 +74,9 @@ export async function fetchCommunityComments(postId, postType = "free") {
 
   const params = new URLSearchParams({ size: "20" });
   const typePath = getCommunityPostTypePath(postType);
-  const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments?${params.toString()}`);
+  const data = await apiRequest(
+    `/community/posts/${typePath}/${postId}/comments?${params.toString()}`,
+  );
   return getPageContent(data).map(normalizeComment);
 }
 
@@ -124,7 +130,12 @@ export async function uploadFreePostImage(file) {
   };
 }
 
-export async function createCommunityComment({ postId, postType = "free", text, parentCommentId = null }) {
+export async function createCommunityComment({
+  postId,
+  postType = "free",
+  text,
+  parentCommentId = null,
+}) {
   const typePath = getCommunityPostTypePath(postType);
   const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments`, {
     method: "POST",
@@ -132,7 +143,13 @@ export async function createCommunityComment({ postId, postType = "free", text, 
     role: "USER",
     body: { content: text, ...(parentCommentId ? { parentCommentId } : {}) },
   });
-  return { ...normalizeComment(data), id: data.commentId ?? data.id ?? Date.now(), text: data.content ?? text, time: data.createdAt ?? "방금", postId };
+  return {
+    ...normalizeComment(data),
+    id: data.commentId ?? data.id ?? Date.now(),
+    text: data.content ?? text,
+    time: data.createdAt ?? "방금",
+    postId,
+  };
 }
 
 function normalizeCompanionPost(post = {}) {
@@ -142,7 +159,11 @@ function normalizeCompanionPost(post = {}) {
   const rawTargetType = post.targetType ?? (legacyPlaceId != null ? "PLACE" : null);
   const targetType = rawTargetType === "TRADITIONAL_MARKET" ? "MARKET" : rawTargetType;
   const targetId = post.targetId ?? legacyPlaceId;
-  const targetName = post.targetName ?? post.placeName ?? (typeof post.place === "string" ? post.place : post.place?.name) ?? "";
+  const targetName =
+    post.targetName ??
+    post.placeName ??
+    (typeof post.place === "string" ? post.place : post.place?.name) ??
+    "";
   return {
     ...post,
     id: post.postId ?? post.companionPostId ?? post.id,
@@ -194,25 +215,26 @@ function normalizeFreePost(post = {}) {
 
 export async function updateCommunityPost(postId, postType, payload) {
   const typePath = getCommunityPostTypePath(postType);
-  const body = typePath === "companions"
-    ? {
-        title: payload.title,
-        content: payload.content,
-        targetType: payload.targetType ?? (payload.placeId ? "PLACE" : undefined),
-        targetId: payload.targetId ?? payload.placeId,
-        targetName: payload.targetName ?? payload.place ?? payload.placeName,
-        // TODO: 구 백엔드 배포 종료 후 placeId/placeName 호환 필드를 제거합니다.
-        placeId: payload.placeId,
-        placeName: payload.place ?? payload.placeName,
-        region: payload.region ?? "",
-        meetingDate: payload.date ?? payload.meetingDate,
-        maxMembers: Number(payload.maxPeople ?? payload.maxMembers ?? 4),
-      }
-    : {
-        title: payload.title,
-        content: payload.content,
-        imageUrls: payload.imageUrls ?? [],
-      };
+  const body =
+    typePath === "companions"
+      ? {
+          title: payload.title,
+          content: payload.content,
+          targetType: payload.targetType ?? (payload.placeId ? "PLACE" : undefined),
+          targetId: payload.targetId ?? payload.placeId,
+          targetName: payload.targetName ?? payload.place ?? payload.placeName,
+          // TODO: 구 백엔드 배포 종료 후 placeId/placeName 호환 필드를 제거합니다.
+          placeId: payload.placeId,
+          placeName: payload.place ?? payload.placeName,
+          region: payload.region ?? "",
+          meetingDate: payload.date ?? payload.meetingDate,
+          maxMembers: Number(payload.maxPeople ?? payload.maxMembers ?? 4),
+        }
+      : {
+          title: payload.title,
+          content: payload.content,
+          imageUrls: payload.imageUrls ?? [],
+        };
   const data = await apiRequest(`/community/posts/${typePath}/${postId}`, {
     method: typePath === "companions" ? "PUT" : "PATCH",
     auth: true,
@@ -253,6 +275,8 @@ export async function deleteComment(postId, postType, commentId) {
 
 export async function fetchReplies(postId, postType, commentId) {
   const typePath = getCommunityPostTypePath(postType);
-  const data = await apiRequest(`/community/posts/${typePath}/${postId}/comments/${commentId}/replies`);
+  const data = await apiRequest(
+    `/community/posts/${typePath}/${postId}/comments/${commentId}/replies`,
+  );
   return getPageContent(data).map(normalizeComment);
 }

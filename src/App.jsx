@@ -13,7 +13,11 @@ import PublicHomePage from "./pages/home/PublicHomePage";
 import MapPage from "./pages/map/MapPage";
 import PlaceDetailPage from "./pages/map/PlaceDetailPage";
 import DirectionPage from "./pages/map/DirectionPage";
-import { CommunityListPage, CommunityPostPage, CommunityWritePage } from "./pages/community/CommunityPages";
+import {
+  CommunityListPage,
+  CommunityPostPage,
+  CommunityWritePage,
+} from "./pages/community/CommunityPages";
 import { ChatWorkspacePage } from "./pages/chat/ChatPage";
 import ChatRequestPage from "./pages/chat/ChatRequestPage";
 import { PayChargePage, PayHistoryPage } from "./pages/payment/PaymentPages";
@@ -22,7 +26,11 @@ import { StorePage, StoreProductPage, StoreShopDetailPage } from "./pages/store/
 import { WishlistPage, MyReviewPage, MyReportsPage, OwnedItemsPage } from "./pages/my/MySubPages";
 import FestivalCalendarPage from "./pages/festival/FestivalCalendarPage";
 import FestivalDetailPage from "./pages/festival/FestivalDetailPage";
-import { MerchantShopPage, MerchantMenuPage, MerchantSettlementPage } from "./pages/merchant/MerchantPages";
+import {
+  MerchantShopPage,
+  MerchantMenuPage,
+  MerchantSettlementPage,
+} from "./pages/merchant/MerchantPages";
 import { MerchantApplyPage } from "./pages/merchant/MerchantApplyPage";
 import {
   AdminAdsPage,
@@ -41,7 +49,14 @@ import {
   AdminSupportPage,
   AdminUsersPage,
 } from "./pages/admin/AdminPages";
-import { MyPage, FestivalPage, NotificationPage, NotificationSettingsPage, FAQPage, SearchPage } from "./pages/misc/MiscPages";
+import {
+  MyPage,
+  FestivalPage,
+  NotificationPage,
+  NotificationSettingsPage,
+  FAQPage,
+  SearchPage,
+} from "./pages/misc/MiscPages";
 import SupportPage from "./pages/support/SupportPage.jsx";
 import {
   clearAuthSession,
@@ -117,28 +132,44 @@ function clearStoredNavigationState() {
 }
 
 function SplashScreen({ onDone }) {
-  useState(() => { setTimeout(onDone, 1800); });
+  useState(() => {
+    setTimeout(onDone, 1800);
+  });
   return (
-    <div style={{ ...S.screen, background: "#1A1A2E", alignItems: "center", justifyContent: "center" }}>
+    <div
+      style={{ ...S.screen, background: "#1A1A2E", alignItems: "center", justifyContent: "center" }}
+    >
       <div style={{ textAlign: "center" }}>
         <img
-            src={ChunbaeImg}
-            alt="춘배 캐릭터"
-            style={{ width: 140, height: 140, objectFit: "contain", marginBottom: 16 }}
+          src={ChunbaeImg}
+          alt="춘배 캐릭터"
+          style={{ width: 140, height: 140, objectFit: "contain", marginBottom: 16 }}
         />
         <div style={{ color: "#FFB41E", fontSize: 28, fontWeight: 700 }}>춘배투어</div>
-        <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 8 }}>ChunBae Tour</div>
+        <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 8 }}>
+          ChunBae Tour
+        </div>
       </div>
-      <div style={{ position: "absolute", bottom: 60, color: "rgba(255,255,255,0.4)", fontSize: 12 }}>로딩 중...</div>
+      <div
+        style={{ position: "absolute", bottom: 60, color: "rgba(255,255,255,0.4)", fontSize: 12 }}
+      >
+        로딩 중...
+      </div>
     </div>
   );
 }
 
 function SocialCallbackScreen() {
   return (
-    <div style={{ ...S.screen, background: "#1A1A2E", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ color: "#FFB41E", fontSize: 22, fontWeight: 700, marginBottom: 8 }}>로그인 처리 중...</div>
-      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>소셜 로그인 정보를 확인하고 있습니다.</div>
+    <div
+      style={{ ...S.screen, background: "#1A1A2E", alignItems: "center", justifyContent: "center" }}
+    >
+      <div style={{ color: "#FFB41E", fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+        로그인 처리 중...
+      </div>
+      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
+        소셜 로그인 정보를 확인하고 있습니다.
+      </div>
     </div>
   );
 }
@@ -149,13 +180,27 @@ export default function App() {
   const isSocialCallbackPath = Boolean(socialCallbackProvider);
   const [entryRole, setEntryRole] = useState(() => getRoleEntryFromPath());
   const [storedSession] = useState(() => getStoredAuthSession(entryRole || undefined));
-  const [storedNavigation] = useState(() => storedSession ? readStoredNavigationState() : null);
-  const [hasPendingOauthSignup] = useState(() => !storedSession && Boolean(getPendingOauthSignup()?.signupTicket));
+  const [storedNavigation] = useState(() => (storedSession ? readStoredNavigationState() : null));
+  const [hasPendingOauthSignup] = useState(
+    () => !storedSession && Boolean(getPendingOauthSignup()?.signupTicket),
+  );
   const hasStoredMainNavigation = storedNavigation?.appState === "main";
-  const [appState, setAppState] = useState(isSocialCallbackPath ? "socialCallback" : hasPendingOauthSignup ? "oauthSignup" : entryRole && !storedSession ? "roleLogin" : hasStoredMainNavigation ? "main" : "splash");
+  const [appState, setAppState] = useState(
+    isSocialCallbackPath
+      ? "socialCallback"
+      : hasPendingOauthSignup
+        ? "oauthSignup"
+        : entryRole && !storedSession
+          ? "roleLogin"
+          : hasStoredMainNavigation
+            ? "main"
+            : "splash",
+  );
   const [user, setUser] = useState(storedSession);
   const [tab, setTab] = useState(storedNavigation?.tab || "home");
-  const [screen, setScreen] = useState(() => storedNavigation?.screen || getInitialScreenForRole(storedSession?.role));
+  const [screen, setScreen] = useState(
+    () => storedNavigation?.screen || getInitialScreenForRole(storedSession?.role),
+  );
   const [toast, setToast] = useState("");
   const [authNotice, setAuthNotice] = useState("");
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -163,12 +208,20 @@ export default function App() {
   const [selectedRoom, setSelectedRoom] = useState(storedNavigation?.selectedRoom || null);
   const [selectedPost, setSelectedPost] = useState(storedNavigation?.selectedPost || null);
   const [communityTab, setCommunityTab] = useState(storedNavigation?.communityTab || "동행");
-  const [communityWriteType, setCommunityWriteType] = useState(storedNavigation?.communityWriteType || "동행");
+  const [communityWriteType, setCommunityWriteType] = useState(
+    storedNavigation?.communityWriteType || "동행",
+  );
   const [selectedProduct, setSelectedProduct] = useState(storedNavigation?.selectedProduct || null);
   const [selectedShop, setSelectedShop] = useState(storedNavigation?.selectedShop || null);
-  const [selectedFestival, setSelectedFestival] = useState(storedNavigation?.selectedFestival || null);
-  const [selectedFestivalBackScreen, setSelectedFestivalBackScreen] = useState(storedNavigation?.selectedFestivalBackScreen || "fest");
-  const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(storedNavigation?.selectedMerchantShopId || null);
+  const [selectedFestival, setSelectedFestival] = useState(
+    storedNavigation?.selectedFestival || null,
+  );
+  const [selectedFestivalBackScreen, setSelectedFestivalBackScreen] = useState(
+    storedNavigation?.selectedFestivalBackScreen || "fest",
+  );
+  const [selectedMerchantShopId, setSelectedMerchantShopId] = useState(
+    storedNavigation?.selectedMerchantShopId || null,
+  );
   const [comfortableView, setComfortableView] = useState(getStoredComfortableView);
   const [likeChangeCounter, setLikeChangeCounter] = useState(0);
   const [privacyBackState, setPrivacyBackState] = useState("login");
@@ -211,7 +264,10 @@ export default function App() {
     setSelectedMerchantShopId(state.selectedMerchantShopId || null);
   };
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  };
   const requestSystemNotificationPermission = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) {
       showToast("이 브라우저는 시스템 알림을 지원하지 않습니다.");
@@ -252,7 +308,11 @@ export default function App() {
     if (window.Notification.permission !== "granted") return;
 
     const popup = new window.Notification(notification?.title || "춘배투어 알림", {
-      body: notification?.displayMessage || notification?.text || notification?.message || "새 알림이 도착했습니다.",
+      body:
+        notification?.displayMessage ||
+        notification?.text ||
+        notification?.message ||
+        "새 알림이 도착했습니다.",
       icon: "/chunbae-favicon.png",
       tag: getNotificationIdentity(notification) || undefined,
     });
@@ -263,7 +323,7 @@ export default function App() {
     };
   };
   const syncNotificationSnapshot = (items = [], announceNew = false) => {
-    setUnreadNotificationCount(items.filter(item => !item.read).length);
+    setUnreadNotificationCount(items.filter((item) => !item.read).length);
 
     const previousSeenIds = notificationSeenIdsRef.current;
     const nextSeenIds = new Set(previousSeenIds);
@@ -289,7 +349,7 @@ export default function App() {
     if (key && notificationSeenIdsRef.current.has(key)) return;
     if (key) notificationSeenIdsRef.current.add(key);
     if (!notification.read) {
-      setUnreadNotificationCount(count => count + 1);
+      setUnreadNotificationCount((count) => count + 1);
     }
     showToast(getNotificationToastText(notification));
     showSystemNotification(notification);
@@ -299,15 +359,16 @@ export default function App() {
     const referenceType = String(notification?.referenceType || "").toUpperCase();
     const notificationType = String(notification?.type || "").toUpperCase();
     const referenceId = notification?.referenceId;
-    const explicitRoomId = notification?.chatRoomId
-      ?? notification?.roomId
-      ?? notification?.chatRoom?.chatRoomId
-      ?? data?.chatRoomId
-      ?? data?.roomId
-      ?? data?.chatRoom?.chatRoomId;
-    const roomId = explicitRoomId
-      ?? (referenceType === "CHAT_ROOM" ? referenceId : null);
-    const isJoinRequestNotification = referenceType === "JOIN_REQUEST" || notificationType.includes("JOIN_REQUEST");
+    const explicitRoomId =
+      notification?.chatRoomId ??
+      notification?.roomId ??
+      notification?.chatRoom?.chatRoomId ??
+      data?.chatRoomId ??
+      data?.roomId ??
+      data?.chatRoom?.chatRoomId;
+    const roomId = explicitRoomId ?? (referenceType === "CHAT_ROOM" ? referenceId : null);
+    const isJoinRequestNotification =
+      referenceType === "JOIN_REQUEST" || notificationType.includes("JOIN_REQUEST");
 
     if (roomId && isJoinRequestNotification) {
       setSelectedRoom({
@@ -336,7 +397,9 @@ export default function App() {
     if (isJoinRequestNotification) {
       setTab("chat");
       setScreen("chat");
-      showToast("신청이 들어온 채팅방 정보를 알림에서 찾지 못했어요. 채팅방 목록에서 해당 방을 열어 신청 관리를 확인해주세요.");
+      showToast(
+        "신청이 들어온 채팅방 정보를 알림에서 찾지 못했어요. 채팅방 목록에서 해당 방을 열어 신청 관리를 확인해주세요.",
+      );
       return;
     }
 
@@ -392,15 +455,28 @@ export default function App() {
   const handleRoleLoginHome = () => {
     setEntryRole(null);
     setAuthNotice("");
-    window.history.pushState({ chunbaeTour: true, appState: "landing", screen: "home", tab: "home" }, "", "/");
+    window.history.pushState(
+      { chunbaeTour: true, appState: "landing", screen: "home", tab: "home" },
+      "",
+      "/",
+    );
     setAppState("landing");
   };
-  const handlePlaceClick = (place) => { setSelectedPlace(place); go("place"); };
-  const handleProductClick = (product) => { setSelectedProduct(product); go("storeProduct"); };
-  const handleShopClick = (shop) => { setSelectedShop(shop); go("storeShop"); };
+  const handlePlaceClick = (place) => {
+    setSelectedPlace(place);
+    go("place");
+  };
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
+    go("storeProduct");
+  };
+  const handleShopClick = (shop) => {
+    setSelectedShop(shop);
+    go("storeShop");
+  };
   const handleLikeChange = (placeId, isLiked) => {
     // 찜 상태가 변경되면 마이페이지를 갱신하도록 카운터 증가
-    setLikeChangeCounter(prev => prev + 1);
+    setLikeChangeCounter((prev) => prev + 1);
   };
 
   useEffect(() => {
@@ -412,14 +488,22 @@ export default function App() {
       .then((profile) => {
         if (ignore) return;
         handleLogin(profile);
-        window.history.replaceState({ chunbaeTour: true, appState: "main", screen: "home", tab: "home" }, "", "/");
+        window.history.replaceState(
+          { chunbaeTour: true, appState: "main", screen: "home", tab: "home" },
+          "",
+          "/",
+        );
       })
       .catch((error) => {
         if (ignore) return;
         if (error.code === "SOCIAL_SIGNUP_REQUIRED") {
           setAppState("oauthSignup");
           setToast("소셜 회원가입을 완료해주세요.");
-          window.history.replaceState({ chunbaeTour: true, appState: "oauthSignup", screen: "home", tab: "home" }, "", "/");
+          window.history.replaceState(
+            { chunbaeTour: true, appState: "oauthSignup", screen: "home", tab: "home" },
+            "",
+            "/",
+          );
           return;
         }
         clearAuthSession();
@@ -433,15 +517,21 @@ export default function App() {
         }
         setAuthNotice(authMessage);
         setToast(authMessage);
-        window.history.replaceState({
-          chunbaeTour: true,
-          appState: error.expectedRole && error.expectedRole !== "USER" ? "roleLogin" : "login",
-          screen: "home",
-          tab: "home",
-        }, "", "/");
+        window.history.replaceState(
+          {
+            chunbaeTour: true,
+            appState: error.expectedRole && error.expectedRole !== "USER" ? "roleLogin" : "login",
+            screen: "home",
+            tab: "home",
+          },
+          "",
+          "/",
+        );
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -478,7 +568,21 @@ export default function App() {
     }
 
     window.history.pushState(state, "", window.location.href);
-  }, [appState, screen, tab, selectedPlace, selectedRoom, selectedPost, communityTab, communityWriteType, selectedProduct, selectedShop, selectedFestival, selectedFestivalBackScreen, selectedMerchantShopId]);
+  }, [
+    appState,
+    screen,
+    tab,
+    selectedPlace,
+    selectedRoom,
+    selectedPost,
+    communityTab,
+    communityWriteType,
+    selectedProduct,
+    selectedShop,
+    selectedFestival,
+    selectedFestivalBackScreen,
+    selectedMerchantShopId,
+  ]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("comfortable-view", comfortableView);
@@ -551,19 +655,54 @@ export default function App() {
         setToast("세션이 만료되었습니다. 다시 로그인해주세요.");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [storedSession]);
 
   const noTabScreens = [
-    "place", "direction", "chatRequest",
-    "notif", "search", "fest", "festCalendar", "festDetail",
-    "pay", "payHistory", "qrpay", "storeProduct", "storeShop",
-    "community", "communityPost", "communityWrite",
-    "wishlist", "myReview", "myReports", "ownedItems", "notificationSettings", "faq", "support",
-    "merchant", "merchantMenu", "merchantSettlement", "merchantApply",
-    "adminDashboard", "adminUsers", "adminReports", "adminMerchant", "adminContent",
-    "adminRefunds", "adminSettlements", "adminAds", "adminCertifications", "adminSupport",
-    "adminBanners", "adminFaqs", "adminProducts", "adminFestivals", "adminShops",
+    "place",
+    "direction",
+    "chatRequest",
+    "notif",
+    "search",
+    "fest",
+    "festCalendar",
+    "festDetail",
+    "pay",
+    "payHistory",
+    "qrpay",
+    "storeProduct",
+    "storeShop",
+    "community",
+    "communityPost",
+    "communityWrite",
+    "wishlist",
+    "myReview",
+    "myReports",
+    "ownedItems",
+    "notificationSettings",
+    "faq",
+    "support",
+    "merchant",
+    "merchantMenu",
+    "merchantSettlement",
+    "merchantApply",
+    "adminDashboard",
+    "adminUsers",
+    "adminReports",
+    "adminMerchant",
+    "adminContent",
+    "adminRefunds",
+    "adminSettlements",
+    "adminAds",
+    "adminCertifications",
+    "adminSupport",
+    "adminBanners",
+    "adminFaqs",
+    "adminProducts",
+    "adminFestivals",
+    "adminShops",
   ];
   const showTab = !noTabScreens.includes(screen);
 
@@ -575,7 +714,10 @@ export default function App() {
     </div>
   );
 
-  if (appState === "splash") return withPwaInstall(<SplashScreen onDone={() => setAppState(storedSession ? "main" : "landing")} />);
+  if (appState === "splash")
+    return withPwaInstall(
+      <SplashScreen onDone={() => setAppState(storedSession ? "main" : "landing")} />,
+    );
   if (appState === "socialCallback") return withPwaInstall(<SocialCallbackScreen />);
   if (appState === "landing") {
     const handlePublicExplore = (target = "home") => {
@@ -594,36 +736,269 @@ export default function App() {
       </div>
     );
   }
-  if (appState === "roleLogin") return withPwaInstall(<LoginPage role={entryRole} notice={authNotice} onNoticeClear={() => setAuthNotice("")} onLogin={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("roleLogin")} />);
-  if (appState === "login")  return withPwaInstall(<LoginPage role="USER" notice={authNotice} onNoticeClear={() => setAuthNotice("")} onLogin={handleLogin} onSignup={() => setAppState("signup")} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("login")} />);
-  if (appState === "signup") return withPwaInstall(<SignupPage onBack={() => setAppState("login")} onDone={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("signup")} />);
-  if (appState === "oauthSignup") return withPwaInstall(<OauthSignupPage onBack={() => { clearPendingOauthSignup(); setAppState("login"); }} onDone={handleLogin} onHome={handleRoleLoginHome} onPrivacy={() => openPrivacyPolicy("oauthSignup")} />);
-  if (appState === "privacyPolicy") return withPwaInstall(<PrivacyPolicyPage onBack={() => setAppState(privacyBackState)} />);
+  if (appState === "roleLogin")
+    return withPwaInstall(
+      <LoginPage
+        role={entryRole}
+        notice={authNotice}
+        onNoticeClear={() => setAuthNotice("")}
+        onLogin={handleLogin}
+        onHome={handleRoleLoginHome}
+        onPrivacy={() => openPrivacyPolicy("roleLogin")}
+      />,
+    );
+  if (appState === "login")
+    return withPwaInstall(
+      <LoginPage
+        role="USER"
+        notice={authNotice}
+        onNoticeClear={() => setAuthNotice("")}
+        onLogin={handleLogin}
+        onSignup={() => setAppState("signup")}
+        onHome={handleRoleLoginHome}
+        onPrivacy={() => openPrivacyPolicy("login")}
+      />,
+    );
+  if (appState === "signup")
+    return withPwaInstall(
+      <SignupPage
+        onBack={() => setAppState("login")}
+        onDone={handleLogin}
+        onHome={handleRoleLoginHome}
+        onPrivacy={() => openPrivacyPolicy("signup")}
+      />,
+    );
+  if (appState === "oauthSignup")
+    return withPwaInstall(
+      <OauthSignupPage
+        onBack={() => {
+          clearPendingOauthSignup();
+          setAppState("login");
+        }}
+        onDone={handleLogin}
+        onHome={handleRoleLoginHome}
+        onPrivacy={() => openPrivacyPolicy("oauthSignup")}
+      />,
+    );
+  if (appState === "privacyPolicy")
+    return withPwaInstall(<PrivacyPolicyPage onBack={() => setAppState(privacyBackState)} />);
 
   return (
     <div style={S.app}>
-      <AppShell active={tab} screen={screen} onTab={handleTab} onHome={goHome} user={user} onLogin={() => setAppState("login")} showMobileTab={showTab} unreadNotificationCount={unreadNotificationCount} onNotificationIntent={requestSystemNotificationPermission}>
-        {screen === "home"             && <HomePage key={likeChangeCounter} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} onFestClick={(festival) => { setSelectedFestival(festival); setSelectedFestivalBackScreen("home"); go("festDetail"); }} onTab={handleTab} onSignup={() => setAppState("signup")} showToast={showToast} user={user} />}
-        {screen === "map"              && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
-        {screen === "place"            && <PlaceDetailPage place={selectedPlace} onBack={() => go(tab)} showToast={showToast} onDirection={() => go("direction")} onQrPay={() => go("qrpay")} onShopClick={handleShopClick} onLikeChange={handleLikeChange} onCompanionMore={() => { setCommunityTab("동행"); go("community"); }} onCompanionWrite={() => { setSelectedPost(null); setCommunityWriteType("동행"); go("communityWrite"); }} />}
-        {screen === "direction"        && <DirectionPage place={selectedPlace} onBack={() => go("place")} />}
-        {screen === "search"           && <SearchPage onBack={() => go(tab)} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} />}
-        {screen === "fest"             && <FestivalPage onBack={() => go(tab)} onCalendar={() => go("festCalendar")} onFestival={(festival) => { setSelectedFestival(festival); setSelectedFestivalBackScreen("fest"); go("festDetail"); }} />}
-        {screen === "festCalendar"     && <FestivalCalendarPage onBack={() => go("fest")} onFestival={(festival) => { setSelectedFestival(festival); setSelectedFestivalBackScreen("festCalendar"); go("festDetail"); }} />}
-        {screen === "festDetail"       && <FestivalDetailPage festival={selectedFestival} onBack={() => go(selectedFestivalBackScreen || "fest")} />}
-        {screen === "community"        && <CommunityListPage initialTab={communityTab} onTabChange={setCommunityTab} onPost={(p) => { setSelectedPost(p); setCommunityTab(p.type || communityTab); go("communityPost"); }} onWrite={(type) => { const nextType = type || communityTab; setSelectedPost(null); setCommunityWriteType(nextType); setCommunityTab(nextType); go("communityWrite"); }} onBack={() => go(tab)} />}
-        {screen === "communityPost"    && <CommunityPostPage post={selectedPost} onBack={() => { setCommunityTab(selectedPost?.type || communityTab); go("community"); }} onEdit={(post) => { setSelectedPost(post); setCommunityWriteType(post.type || communityTab); go("communityWrite"); }} onDeleted={() => { const nextType = selectedPost?.type || communityTab; setSelectedPost(null); setCommunityTab(nextType); go("community"); }} showToast={showToast} user={user} onChatRoom={(room) => { setSelectedRoom(room); setTab("chat"); go("chat"); }} onPlaceClick={handlePlaceClick} onFestivalClick={(festival) => { setSelectedFestival(festival); setSelectedFestivalBackScreen("communityPost"); go("festDetail"); }} />}
-        {screen === "communityWrite"   && <CommunityWritePage post={selectedPost} initialType={communityWriteType} onBack={() => { if (selectedPost) { go("communityPost"); return; } setCommunityTab(communityWriteType); go("community"); }} onSaved={(post) => { const nextType = post?.type || communityWriteType; setCommunityTab(nextType); setSelectedPost(post); go("communityPost"); }} showToast={showToast} />}
-        {screen === "chat"             && <ChatWorkspacePage selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} onLogin={() => setAppState("login")} showToast={showToast} />}
-        {screen === "chatRequest"      && <ChatRequestPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} />}
-        {screen === "pay"              && <PayChargePage onBack={() => go("my")} onDone={() => go("my")} showToast={showToast} />}
-        {screen === "payHistory"       && <PayHistoryPage onBack={() => go("my")} onPlaceClick={handlePlaceClick} onShopClick={handleShopClick} showToast={showToast} />}
-        {screen === "qrpay"            && <QRPayPage onBack={() => go(tab)} showToast={showToast} />}
-        {screen === "store"            && <StorePage onProduct={handleProductClick} />}
-        {screen === "storeProduct"     && <StoreProductPage product={selectedProduct} onBack={() => go("store")} showToast={showToast} />}
-        {screen === "storeShop"        && <StoreShopDetailPage shop={selectedShop} onBack={() => go(tab)} showToast={showToast} onQrPay={() => go("qrpay")} />}
-        {screen === "my"               && <MyPage key={likeChangeCounter} onTab={(key) => { if (key === "chat") setSelectedRoom(null); handleTab(key); }} showToast={showToast} onLogout={handleLogout} onLogin={() => setAppState("login")} onProfileUpdate={setUser} user={user} comfortableView={comfortableView} onComfortableViewChange={setComfortableView} />}
-        {screen === "wishlist"         && (
+      <AppShell
+        active={tab}
+        screen={screen}
+        onTab={handleTab}
+        onHome={goHome}
+        user={user}
+        onLogin={() => setAppState("login")}
+        showMobileTab={showTab}
+        unreadNotificationCount={unreadNotificationCount}
+        onNotificationIntent={requestSystemNotificationPermission}
+      >
+        {screen === "home" && (
+          <HomePage
+            key={likeChangeCounter}
+            onPlaceClick={handlePlaceClick}
+            onShopClick={handleShopClick}
+            onFestClick={(festival) => {
+              setSelectedFestival(festival);
+              setSelectedFestivalBackScreen("home");
+              go("festDetail");
+            }}
+            onTab={handleTab}
+            onSignup={() => setAppState("signup")}
+            showToast={showToast}
+            user={user}
+          />
+        )}
+        {screen === "map" && <MapPage key={likeChangeCounter} onPlaceClick={handlePlaceClick} />}
+        {screen === "place" && (
+          <PlaceDetailPage
+            place={selectedPlace}
+            onBack={() => go(tab)}
+            showToast={showToast}
+            onDirection={() => go("direction")}
+            onQrPay={() => go("qrpay")}
+            onShopClick={handleShopClick}
+            onLikeChange={handleLikeChange}
+            onCompanionMore={() => {
+              setCommunityTab("동행");
+              go("community");
+            }}
+            onCompanionWrite={() => {
+              setSelectedPost(null);
+              setCommunityWriteType("동행");
+              go("communityWrite");
+            }}
+          />
+        )}
+        {screen === "direction" && (
+          <DirectionPage place={selectedPlace} onBack={() => go("place")} />
+        )}
+        {screen === "search" && (
+          <SearchPage
+            onBack={() => go(tab)}
+            onPlaceClick={handlePlaceClick}
+            onShopClick={handleShopClick}
+          />
+        )}
+        {screen === "fest" && (
+          <FestivalPage
+            onBack={() => go(tab)}
+            onCalendar={() => go("festCalendar")}
+            onFestival={(festival) => {
+              setSelectedFestival(festival);
+              setSelectedFestivalBackScreen("fest");
+              go("festDetail");
+            }}
+          />
+        )}
+        {screen === "festCalendar" && (
+          <FestivalCalendarPage
+            onBack={() => go("fest")}
+            onFestival={(festival) => {
+              setSelectedFestival(festival);
+              setSelectedFestivalBackScreen("festCalendar");
+              go("festDetail");
+            }}
+          />
+        )}
+        {screen === "festDetail" && (
+          <FestivalDetailPage
+            festival={selectedFestival}
+            onBack={() => go(selectedFestivalBackScreen || "fest")}
+          />
+        )}
+        {screen === "community" && (
+          <CommunityListPage
+            initialTab={communityTab}
+            onTabChange={setCommunityTab}
+            onPost={(p) => {
+              setSelectedPost(p);
+              setCommunityTab(p.type || communityTab);
+              go("communityPost");
+            }}
+            onWrite={(type) => {
+              const nextType = type || communityTab;
+              setSelectedPost(null);
+              setCommunityWriteType(nextType);
+              setCommunityTab(nextType);
+              go("communityWrite");
+            }}
+            onBack={() => go(tab)}
+          />
+        )}
+        {screen === "communityPost" && (
+          <CommunityPostPage
+            post={selectedPost}
+            onBack={() => {
+              setCommunityTab(selectedPost?.type || communityTab);
+              go("community");
+            }}
+            onEdit={(post) => {
+              setSelectedPost(post);
+              setCommunityWriteType(post.type || communityTab);
+              go("communityWrite");
+            }}
+            onDeleted={() => {
+              const nextType = selectedPost?.type || communityTab;
+              setSelectedPost(null);
+              setCommunityTab(nextType);
+              go("community");
+            }}
+            showToast={showToast}
+            user={user}
+            onChatRoom={(room) => {
+              setSelectedRoom(room);
+              setTab("chat");
+              go("chat");
+            }}
+            onPlaceClick={handlePlaceClick}
+            onFestivalClick={(festival) => {
+              setSelectedFestival(festival);
+              setSelectedFestivalBackScreen("communityPost");
+              go("festDetail");
+            }}
+          />
+        )}
+        {screen === "communityWrite" && (
+          <CommunityWritePage
+            post={selectedPost}
+            initialType={communityWriteType}
+            onBack={() => {
+              if (selectedPost) {
+                go("communityPost");
+                return;
+              }
+              setCommunityTab(communityWriteType);
+              go("community");
+            }}
+            onSaved={(post) => {
+              const nextType = post?.type || communityWriteType;
+              setCommunityTab(nextType);
+              setSelectedPost(post);
+              go("communityPost");
+            }}
+            showToast={showToast}
+          />
+        )}
+        {screen === "chat" && (
+          <ChatWorkspacePage
+            selectedRoom={selectedRoom}
+            onSelectRoom={setSelectedRoom}
+            onLogin={() => setAppState("login")}
+            showToast={showToast}
+          />
+        )}
+        {screen === "chatRequest" && (
+          <ChatRequestPage room={selectedRoom} onBack={() => go("chat")} showToast={showToast} />
+        )}
+        {screen === "pay" && (
+          <PayChargePage onBack={() => go("my")} onDone={() => go("my")} showToast={showToast} />
+        )}
+        {screen === "payHistory" && (
+          <PayHistoryPage
+            onBack={() => go("my")}
+            onPlaceClick={handlePlaceClick}
+            onShopClick={handleShopClick}
+            showToast={showToast}
+          />
+        )}
+        {screen === "qrpay" && <QRPayPage onBack={() => go(tab)} showToast={showToast} />}
+        {screen === "store" && <StorePage onProduct={handleProductClick} />}
+        {screen === "storeProduct" && (
+          <StoreProductPage
+            product={selectedProduct}
+            onBack={() => go("store")}
+            showToast={showToast}
+          />
+        )}
+        {screen === "storeShop" && (
+          <StoreShopDetailPage
+            shop={selectedShop}
+            onBack={() => go(tab)}
+            showToast={showToast}
+            onQrPay={() => go("qrpay")}
+          />
+        )}
+        {screen === "my" && (
+          <MyPage
+            key={likeChangeCounter}
+            onTab={(key) => {
+              if (key === "chat") setSelectedRoom(null);
+              handleTab(key);
+            }}
+            showToast={showToast}
+            onLogout={handleLogout}
+            onLogin={() => setAppState("login")}
+            onProfileUpdate={setUser}
+            user={user}
+            comfortableView={comfortableView}
+            onComfortableViewChange={setComfortableView}
+          />
+        )}
+        {screen === "wishlist" && (
           <WishlistPage
             onBack={() => go("my")}
             onPlaceClick={handlePlaceClick}
@@ -634,32 +1009,104 @@ export default function App() {
             }}
           />
         )}
-        {screen === "myReview"         && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
-        {screen === "myReports"        && <MyReportsPage onBack={() => go("my")} />}
-        {screen === "ownedItems"       && <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />}
-        {screen === "notif"            && <NotificationPage onBack={() => go(tab)} onNotificationClick={handleNotificationNavigate} onUnreadCountChange={setUnreadNotificationCount} />}
-        {screen === "notificationSettings" && <NotificationSettingsPage onBack={() => go("my")} showToast={showToast} />}
-        {screen === "faq"              && <FAQPage onBack={() => go(tab)} />}
-        {screen === "support"          && <SupportPage onBack={() => go("my")} showToast={showToast} user={user} onLogin={() => setAppState("login")} />}
-        {screen === "merchant"         && <MerchantShopPage onBack={() => go("my")} showToast={showToast} onMenuManage={() => go("merchantMenu")} onSettlement={() => go("merchantSettlement")} selectedShopId={selectedMerchantShopId} onShopChange={setSelectedMerchantShopId} />}
-        {screen === "merchantMenu"     && <MerchantMenuPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}
-        {screen === "merchantSettlement" && <MerchantSettlementPage onBack={() => go("merchant")} showToast={showToast} selectedShopId={selectedMerchantShopId} />}
-        {screen === "merchantApply"   && <MerchantApplyPage onBack={() => go("my")} showToast={showToast} onLogin={() => setAppState("login")} />}
-        {screen === "adminDashboard"   && <AdminDashboardPage onBack={() => go("my")} onNav={go} />}
-        {screen === "adminUsers"       && <AdminUsersPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminReports"     && <AdminReportsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminMerchant"    && <AdminMerchantPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminContent"     && <AdminContentPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminRefunds"     && <AdminRefundsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminSettlements" && <AdminSettlementsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminAds"         && <AdminAdsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminCertifications" && <AdminCertificationsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminSupport"     && <AdminSupportPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminBanners"     && <AdminBannersPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminFaqs"        && <AdminFaqsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminProducts"    && <AdminProductsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminFestivals"   && <AdminFestivalsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
-        {screen === "adminShops"       && <AdminShopsPage onBack={() => go("adminDashboard")} showToast={showToast} />}
+        {screen === "myReview" && <MyReviewPage onBack={() => go("my")} showToast={showToast} />}
+        {screen === "myReports" && <MyReportsPage onBack={() => go("my")} />}
+        {screen === "ownedItems" && (
+          <OwnedItemsPage onBack={() => go("my")} showToast={showToast} />
+        )}
+        {screen === "notif" && (
+          <NotificationPage
+            onBack={() => go(tab)}
+            onNotificationClick={handleNotificationNavigate}
+            onUnreadCountChange={setUnreadNotificationCount}
+          />
+        )}
+        {screen === "notificationSettings" && (
+          <NotificationSettingsPage onBack={() => go("my")} showToast={showToast} />
+        )}
+        {screen === "faq" && <FAQPage onBack={() => go(tab)} />}
+        {screen === "support" && (
+          <SupportPage
+            onBack={() => go("my")}
+            showToast={showToast}
+            user={user}
+            onLogin={() => setAppState("login")}
+          />
+        )}
+        {screen === "merchant" && (
+          <MerchantShopPage
+            onBack={() => go("my")}
+            showToast={showToast}
+            onMenuManage={() => go("merchantMenu")}
+            onSettlement={() => go("merchantSettlement")}
+            selectedShopId={selectedMerchantShopId}
+            onShopChange={setSelectedMerchantShopId}
+          />
+        )}
+        {screen === "merchantMenu" && (
+          <MerchantMenuPage
+            onBack={() => go("merchant")}
+            showToast={showToast}
+            selectedShopId={selectedMerchantShopId}
+          />
+        )}
+        {screen === "merchantSettlement" && (
+          <MerchantSettlementPage
+            onBack={() => go("merchant")}
+            showToast={showToast}
+            selectedShopId={selectedMerchantShopId}
+          />
+        )}
+        {screen === "merchantApply" && (
+          <MerchantApplyPage
+            onBack={() => go("my")}
+            showToast={showToast}
+            onLogin={() => setAppState("login")}
+          />
+        )}
+        {screen === "adminDashboard" && <AdminDashboardPage onBack={() => go("my")} onNav={go} />}
+        {screen === "adminUsers" && (
+          <AdminUsersPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminReports" && (
+          <AdminReportsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminMerchant" && (
+          <AdminMerchantPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminContent" && (
+          <AdminContentPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminRefunds" && (
+          <AdminRefundsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminSettlements" && (
+          <AdminSettlementsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminAds" && (
+          <AdminAdsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminCertifications" && (
+          <AdminCertificationsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminSupport" && (
+          <AdminSupportPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminBanners" && (
+          <AdminBannersPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminFaqs" && (
+          <AdminFaqsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminProducts" && (
+          <AdminProductsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminFestivals" && (
+          <AdminFestivalsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
+        {screen === "adminShops" && (
+          <AdminShopsPage onBack={() => go("adminDashboard")} showToast={showToast} />
+        )}
       </AppShell>
       <PwaInstallPrompt />
       <Toast msg={toast} />

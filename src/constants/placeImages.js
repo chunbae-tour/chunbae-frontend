@@ -17,7 +17,8 @@ export function getPlaceImageUrl(place) {
 
   if (place.imageUrl) return place.imageUrl;
   if (place.thumbnailUrl) return place.thumbnailUrl;
-  if (Array.isArray(place.imageUrls)) return place.imageUrls.find(Boolean) || PLACE_IMAGES[place.imageKey] || "";
+  if (Array.isArray(place.imageUrls))
+    return place.imageUrls.find(Boolean) || PLACE_IMAGES[place.imageKey] || "";
 
   if (typeof place.imageUrls === "string" && place.imageUrls.trim()) {
     const trimmed = place.imageUrls.trim();
@@ -25,7 +26,14 @@ export function getPlaceImageUrl(place) {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) return parsed.find(Boolean) || PLACE_IMAGES[place.imageKey] || "";
     } catch {
-      return trimmed.split(",").map((url) => url.trim()).find(Boolean) || PLACE_IMAGES[place.imageKey] || "";
+      return (
+        trimmed
+          .split(",")
+          .map((url) => url.trim())
+          .find(Boolean) ||
+        PLACE_IMAGES[place.imageKey] ||
+        ""
+      );
     }
   }
 

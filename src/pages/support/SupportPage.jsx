@@ -2,14 +2,25 @@ import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { createSupportRoom, fetchMySupportRooms, fetchSupportMessages, mergeSupportMessages, uploadSupportFile } from "../../services/supportService.js";
+import {
+  createSupportRoom,
+  fetchMySupportRooms,
+  fetchSupportMessages,
+  mergeSupportMessages,
+  uploadSupportFile,
+} from "../../services/supportService.js";
 import { createSupportRealtimeClient } from "../../services/supportRealtimeService.js";
 
 function formatDate(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function getRoomLabel(status) {
@@ -35,13 +46,28 @@ function isImageMessage(message) {
 function SupportMessageContent({ message, isCustomer }) {
   if (isImageMessage(message)) {
     return (
-      <a href={message.fileUrl} target="_blank" rel="noreferrer" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+      <a
+        href={message.fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        style={{ display: "block", color: "inherit", textDecoration: "none" }}
+      >
         <img
           src={message.fileUrl}
           alt={message.fileName || "상담 이미지"}
-          style={{ display: "block", width: "100%", maxWidth: 260, borderRadius: 10, background: "rgba(255,255,255,0.18)" }}
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: 260,
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.18)",
+          }}
         />
-        {message.fileName && <span style={{ display: "block", marginTop: 6, fontSize: 12, opacity: 0.72 }}>{message.fileName}</span>}
+        {message.fileName && (
+          <span style={{ display: "block", marginTop: 6, fontSize: 12, opacity: 0.72 }}>
+            {message.fileName}
+          </span>
+        )}
       </a>
     );
   }
@@ -150,7 +176,7 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
       role,
       onStatus: setRealtimeStatus,
       onMessage: (message) => {
-        setMessages(prev => mergeSupportMessages(prev, [message]));
+        setMessages((prev) => mergeSupportMessages(prev, [message]));
         setMessagesStatus("success");
       },
       onError: (error) => {
@@ -263,8 +289,18 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
   if (!user) {
     return (
       <div style={S.screen}>
-        <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+        <div
+          style={{
+            background: COLORS.primary,
+            padding: "44px 16px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+            ←
+          </span>
           <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>고객센터</span>
         </div>
         <div style={{ padding: 16 }}>
@@ -282,8 +318,18 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <div>
           <div style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>고객센터</div>
           <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 13 }}>
@@ -292,37 +338,77 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
         </div>
       </div>
       <div style={{ ...S.scrollArea, padding: 16 }}>
-        <div style={{ background: "#fff", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)", marginBottom: 12 }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 14,
+            padding: 16,
+            border: "0.5px solid rgba(0,0,0,0.06)",
+            marginBottom: 12,
+          }}
+        >
           <strong style={{ color: COLORS.primary }}>내 상담방</strong>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", marginTop: 12, paddingBottom: 2 }}>
-            {roomsStatus === "loading" && <div style={{ minWidth: 220 }}><SkeletonList count={1} /></div>}
-            {roomsStatus === "error" && <ErrorState title="상담방을 불러오지 못했습니다." description={roomsError} onRetry={loadRooms} />}
-            {(roomsStatus === "empty" || rooms.length === 0) && (
-              <span style={{ color: COLORS.textMuted, fontSize: 14 }}>아직 상담방이 없습니다. 아래 입력창에서 첫 문의를 남겨주세요.</span>
+          <div
+            style={{ display: "flex", gap: 8, overflowX: "auto", marginTop: 12, paddingBottom: 2 }}
+          >
+            {roomsStatus === "loading" && (
+              <div style={{ minWidth: 220 }}>
+                <SkeletonList count={1} />
+              </div>
             )}
-            {rooms.map(room => (
+            {roomsStatus === "error" && (
+              <ErrorState
+                title="상담방을 불러오지 못했습니다."
+                description={roomsError}
+                onRetry={loadRooms}
+              />
+            )}
+            {(roomsStatus === "empty" || rooms.length === 0) && (
+              <span style={{ color: COLORS.textMuted, fontSize: 14 }}>
+                아직 상담방이 없습니다. 아래 입력창에서 첫 문의를 남겨주세요.
+              </span>
+            )}
+            {rooms.map((room) => (
               <button
                 key={room.supportRoomId}
                 type="button"
                 onClick={() => setSelectedRoom(room)}
                 style={{
                   minWidth: 150,
-                  border: selectedRoom?.supportRoomId === room.supportRoomId ? `1.5px solid ${COLORS.primary}` : "1px solid rgba(0,0,0,0.08)",
-                  background: selectedRoom?.supportRoomId === room.supportRoomId ? COLORS.greenBg : "#fff",
+                  border:
+                    selectedRoom?.supportRoomId === room.supportRoomId
+                      ? `1.5px solid ${COLORS.primary}`
+                      : "1px solid rgba(0,0,0,0.08)",
+                  background:
+                    selectedRoom?.supportRoomId === room.supportRoomId ? COLORS.greenBg : "#fff",
                   borderRadius: 12,
                   padding: 12,
                   textAlign: "left",
                   cursor: "pointer",
                 }}
               >
-                <strong style={{ display: "block", color: COLORS.primary }}>상담 #{room.supportRoomId}</strong>
-                <span style={{ display: "block", color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}>{getRoomLabel(room.status)}</span>
+                <strong style={{ display: "block", color: COLORS.primary }}>
+                  상담 #{room.supportRoomId}
+                </strong>
+                <span
+                  style={{ display: "block", color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}
+                >
+                  {getRoomLabel(room.status)}
+                </span>
               </button>
             ))}
           </div>
         </div>
 
-        <div style={{ background: "#fff", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)", minHeight: 360 }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 14,
+            padding: 16,
+            border: "0.5px solid rgba(0,0,0,0.06)",
+            minHeight: 360,
+          }}
+        >
           {!selectedRoom && (
             <EmptyState
               icon="💬"
@@ -332,19 +418,62 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
           )}
           {selectedRoom && (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
-                <strong style={{ color: COLORS.primary }}>상담 #{selectedRoom.supportRoomId}</strong>
-                <span style={{ color: COLORS.textMuted, fontSize: 13 }}>{getRoomLabel(selectedRoom.status)} · {formatDate(selectedRoom.createdAt)}</span>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+              >
+                <strong style={{ color: COLORS.primary }}>
+                  상담 #{selectedRoom.supportRoomId}
+                </strong>
+                <span style={{ color: COLORS.textMuted, fontSize: 13 }}>
+                  {getRoomLabel(selectedRoom.status)} · {formatDate(selectedRoom.createdAt)}
+                </span>
               </div>
               {messagesStatus === "loading" && <SkeletonList count={3} />}
-              {messagesStatus === "error" && <ErrorState title="상담 메시지를 불러오지 못했습니다." description="백엔드 연결 상태를 확인해주세요." onRetry={() => loadMessages(selectedRoom)} />}
-              {messagesStatus === "empty" && <EmptyState icon="메시지" title="아직 메시지가 없습니다." description="아래 입력창에서 문의를 남겨주세요." />}
-              {messages.map(message => {
+              {messagesStatus === "error" && (
+                <ErrorState
+                  title="상담 메시지를 불러오지 못했습니다."
+                  description="백엔드 연결 상태를 확인해주세요."
+                  onRetry={() => loadMessages(selectedRoom)}
+                />
+              )}
+              {messagesStatus === "empty" && (
+                <EmptyState
+                  icon="메시지"
+                  title="아직 메시지가 없습니다."
+                  description="아래 입력창에서 문의를 남겨주세요."
+                />
+              )}
+              {messages.map((message) => {
                 const isCustomer = message.senderRole === "CUSTOMER";
                 return (
-                  <div key={message.messageId ?? `${message.senderRole}-${message.sentAt}-${message.content}`} style={{ display: "flex", justifyContent: isCustomer ? "flex-end" : "flex-start", marginBottom: 10 }}>
-                    <div style={{ maxWidth: "76%", background: isCustomer ? COLORS.primary : COLORS.bg, color: isCustomer ? "#fff" : COLORS.text, borderRadius: 12, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 12, opacity: 0.72, marginBottom: 4 }}>{isCustomer ? "나" : "관리자"} · {formatDate(message.sentAt)}</div>
+                  <div
+                    key={
+                      message.messageId ??
+                      `${message.senderRole}-${message.sentAt}-${message.content}`
+                    }
+                    style={{
+                      display: "flex",
+                      justifyContent: isCustomer ? "flex-end" : "flex-start",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        maxWidth: "76%",
+                        background: isCustomer ? COLORS.primary : COLORS.bg,
+                        color: isCustomer ? "#fff" : COLORS.text,
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, opacity: 0.72, marginBottom: 4 }}>
+                        {isCustomer ? "나" : "관리자"} · {formatDate(message.sentAt)}
+                      </div>
                       <SupportMessageContent message={message} isCustomer={isCustomer} />
                     </div>
                   </div>
@@ -354,7 +483,15 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
           )}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, padding: 12, background: "#fff", borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          padding: 12,
+          background: "#fff",
+          borderTop: "0.5px solid rgba(0,0,0,0.08)",
+        }}
+      >
         <label
           title={selectedRoom ? "이미지/파일 첨부" : "상담방 생성 후 첨부할 수 있어요."}
           style={{
@@ -386,14 +523,32 @@ export default function SupportPage({ onBack, showToast, user, onLogin }) {
           disabled={(Boolean(selectedRoom) && !canSend) || uploading}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && handleSend()}
-          placeholder={selectedRoom ? "상담 메시지를 입력하세요." : "문의 내용을 입력하면 상담방이 생성됩니다."}
-          style={{ flex: 1, border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 14px", fontSize: 14, outline: "none" }}
+          placeholder={
+            selectedRoom ? "상담 메시지를 입력하세요." : "문의 내용을 입력하면 상담방이 생성됩니다."
+          }
+          style={{
+            flex: 1,
+            border: "1px solid rgba(0,0,0,0.1)",
+            borderRadius: 12,
+            padding: "12px 14px",
+            fontSize: 14,
+            outline: "none",
+          }}
         />
         <button
           type="button"
           disabled={!input.trim() || sending || uploading || (Boolean(selectedRoom) && !canSend)}
           onClick={handleSend}
-          style={{ border: 0, borderRadius: 12, background: COLORS.primary, color: "#fff", padding: "0 18px", fontWeight: 800, opacity: !input.trim() || sending || uploading ? 0.5 : 1, cursor: sending || uploading ? "wait" : "pointer" }}
+          style={{
+            border: 0,
+            borderRadius: 12,
+            background: COLORS.primary,
+            color: "#fff",
+            padding: "0 18px",
+            fontWeight: 800,
+            opacity: !input.trim() || sending || uploading ? 0.5 : 1,
+            cursor: sending || uploading ? "wait" : "pointer",
+          }}
         >
           {uploading ? "첨부 중" : selectedRoom ? "전송" : "문의"}
         </button>

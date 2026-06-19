@@ -51,11 +51,24 @@ const SCREEN_NAV_KEY = {
   merchantApply: "my",
 };
 
-export default function AppShell({ active, screen, onTab, onHome, user, onLogin, showMobileTab, unreadNotificationCount = 0, onNotificationIntent, children }) {
+export default function AppShell({
+  active,
+  screen,
+  onTab,
+  onHome,
+  user,
+  onLogin,
+  showMobileTab,
+  unreadNotificationCount = 0,
+  onNotificationIntent,
+  children,
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [topbarBalance, setTopbarBalance] = useState(null);
   const [topbarBalanceStatus, setTopbarBalanceStatus] = useState("idle");
-  const selectedKey = String(screen || "").startsWith("admin") ? "adminDashboard" : SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
+  const selectedKey = String(screen || "").startsWith("admin")
+    ? "adminDashboard"
+    : SCREEN_NAV_KEY[screen] || (NAV_KEYS.has(screen) ? screen : active);
   const hideFaqFloating = [
     "chatroom",
     "qrpay",
@@ -71,7 +84,8 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
   const isLoggedIn = Boolean(user);
   const isAdmin = String(user?.role || "").toUpperCase() === "ADMIN";
   const topbarUserLabel = user?.nickname || (isLoggedIn ? "마이" : "로그인");
-  const notificationBadgeText = unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
+  const notificationBadgeText =
+    unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
 
   useEffect(() => {
     if (!isLoggedIn || isAdmin) {
@@ -124,7 +138,7 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
         <button
           type="button"
           className="desktop-rail-menu"
-          onClick={() => setSidebarOpen(open => !open)}
+          onClick={() => setSidebarOpen((open) => !open)}
           aria-label={sidebarOpen ? "전체 메뉴 닫기" : "전체 메뉴 열기"}
           aria-expanded={sidebarOpen}
         >
@@ -152,11 +166,17 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
               <div className="desktop-rail-divider" />
               <button
                 type="button"
-                className={selectedKey === "adminDashboard" ? "desktop-rail-item admin active" : "desktop-rail-item admin"}
+                className={
+                  selectedKey === "adminDashboard"
+                    ? "desktop-rail-item admin active"
+                    : "desktop-rail-item admin"
+                }
                 onClick={() => goTab("adminDashboard")}
                 title="관리자"
               >
-                <span className="desktop-rail-icon admin-shield-icon"><AdminShieldIcon /></span>
+                <span className="desktop-rail-icon admin-shield-icon">
+                  <AdminShieldIcon />
+                </span>
                 <span className="desktop-rail-label">관리자</span>
               </button>
             </>
@@ -207,11 +227,17 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
               <div className="sidebar-admin-divider" />
               <button
                 type="button"
-                className={selectedKey === "adminDashboard" ? "sidebar-nav-item admin active" : "sidebar-nav-item admin"}
+                className={
+                  selectedKey === "adminDashboard"
+                    ? "sidebar-nav-item admin active"
+                    : "sidebar-nav-item admin"
+                }
                 onClick={() => goTab("adminDashboard")}
                 title="관리자"
               >
-                <span className="sidebar-nav-icon admin-shield-icon"><AdminShieldIcon /></span>
+                <span className="sidebar-nav-icon admin-shield-icon">
+                  <AdminShieldIcon />
+                </span>
                 <span className="sidebar-nav-label">관리자</span>
               </button>
             </>
@@ -222,7 +248,12 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
       <main className="shell-main">
         <header className="desktop-topbar">
           <div className="topbar-brand-row">
-            <button type="button" className="topbar-brand" onClick={goHome} aria-label="춘배투어 홈으로 이동">
+            <button
+              type="button"
+              className="topbar-brand"
+              onClick={goHome}
+              aria-label="춘배투어 홈으로 이동"
+            >
               <div className="brand-mark">
                 <img src={MascotDefault} alt="" />
               </div>
@@ -235,15 +266,26 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
           {!isAdmin && (
             <div className="topbar-actions">
               {isLoggedIn && (
-                <button type="button" className="topbar-yeopjeon" onClick={() => openAuthOrTab("pay")}>
+                <button
+                  type="button"
+                  className="topbar-yeopjeon"
+                  onClick={() => openAuthOrTab("pay")}
+                >
                   <span>내 엽전 잔액</span>
                   <strong>
                     <img src={YeopjeonImg} alt="" />
-                    {topbarBalanceStatus === "success" ? `${topbarBalance.toLocaleString()}냥` : "잔액 확인"}
+                    {topbarBalanceStatus === "success"
+                      ? `${topbarBalance.toLocaleString()}냥`
+                      : "잔액 확인"}
                   </strong>
                 </button>
               )}
-              <button type="button" className="topbar-notification" onClick={() => openAuthOrTab("notif")} aria-label="알림">
+              <button
+                type="button"
+                className="topbar-notification"
+                onClick={() => openAuthOrTab("notif")}
+                aria-label="알림"
+              >
                 🔔
                 {isLoggedIn && unreadNotificationCount > 0 && <span>{notificationBadgeText}</span>}
               </button>
@@ -257,7 +299,12 @@ export default function AppShell({ active, screen, onTab, onHome, user, onLogin,
 
         <div className="shell-content">{children}</div>
         {!hideFaqFloating && (
-          <button type="button" className="faq-floating-button" onClick={() => onTab("faq")} aria-label="FAQ 도움말">
+          <button
+            type="button"
+            className="faq-floating-button"
+            onClick={() => onTab("faq")}
+            aria-label="FAQ 도움말"
+          >
             FAQ
           </button>
         )}

@@ -89,7 +89,9 @@ export default function PrivacyPolicyPage({ onBack }) {
   return (
     <div style={{ ...S.screen, background: "#f7f4ed" }} className="privacy-policy-page">
       <header className="privacy-policy-header">
-        <button type="button" onClick={onBack} aria-label="이전 화면으로 돌아가기">←</button>
+        <button type="button" onClick={onBack} aria-label="이전 화면으로 돌아가기">
+          ←
+        </button>
         <div>
           <span>춘배투어</span>
           <strong>개인정보처리방침</strong>
@@ -99,7 +101,8 @@ export default function PrivacyPolicyPage({ onBack }) {
         <section className="privacy-policy-intro">
           <strong>춘배투어는 개인정보보호법 등 관련 법령을 준수합니다.</strong>
           <p>
-            본 방침은 이용자의 개인정보가 어떤 목적으로 수집되고, 어떻게 이용·보관·파기되는지 알기 쉽게 안내하기 위한 문서입니다.
+            본 방침은 이용자의 개인정보가 어떤 목적으로 수집되고, 어떻게 이용·보관·파기되는지 알기
+            쉽게 안내하기 위한 문서입니다.
           </p>
         </section>
         {policySections.map((section) => (

@@ -325,7 +325,11 @@
 button,
 [role="button"],
 [style*="cursor: pointer"] {
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 button:focus-visible,
@@ -1613,24 +1617,48 @@ button:disabled,
 }
 
 @keyframes dog-pant-frames {
-  0% { background-position: 0 0; }
-  25% { background-position: 33.333% 0; }
-  50% { background-position: 66.666% 0; }
-  75% { background-position: 100% 0; }
-  100% { background-position: 0 0; }
+  0% {
+    background-position: 0 0;
+  }
+  25% {
+    background-position: 33.333% 0;
+  }
+  50% {
+    background-position: 66.666% 0;
+  }
+  75% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
 }
 
 @keyframes dog-run-bounce {
-  from { transform: translateY(0) rotate(-1deg); }
-  to { transform: translateY(-7px) rotate(1deg); }
+  from {
+    transform: translateY(0) rotate(-1deg);
+  }
+  to {
+    transform: translateY(-7px) rotate(1deg);
+  }
 }
 
 @keyframes dog-short-run {
-  0% { transform: translateX(0) scaleX(1); }
-  44% { transform: translateX(min(54vw, 760px)) scaleX(1); }
-  50% { transform: translateX(min(54vw, 760px)) scaleX(-1); }
-  94% { transform: translateX(0) scaleX(-1); }
-  100% { transform: translateX(0) scaleX(1); }
+  0% {
+    transform: translateX(0) scaleX(1);
+  }
+  44% {
+    transform: translateX(min(54vw, 760px)) scaleX(1);
+  }
+  50% {
+    transform: translateX(min(54vw, 760px)) scaleX(-1);
+  }
+  94% {
+    transform: translateX(0) scaleX(-1);
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
 }
 
 .auth-signup-screen {
@@ -1647,7 +1675,13 @@ button:disabled,
 .auth-signup-screen::after {
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 253, 248, 0.1), rgba(255, 253, 248, 0) 32%),
-    linear-gradient(90deg, rgba(18, 52, 36, 0.5), rgba(18, 52, 36, 0.16) 42%, rgba(18, 52, 36, 0.16) 58%, rgba(18, 52, 36, 0.5)),
+    linear-gradient(
+      90deg,
+      rgba(18, 52, 36, 0.5),
+      rgba(18, 52, 36, 0.16) 42%,
+      rgba(18, 52, 36, 0.16) 58%,
+      rgba(18, 52, 36, 0.5)
+    ),
     linear-gradient(180deg, rgba(18, 52, 36, 0.18), rgba(18, 52, 36, 0.46));
 }
 
@@ -1776,7 +1810,10 @@ button:disabled,
 
 .oauth-birth-inputs {
   display: grid;
-  grid-template-columns: minmax(92px, 1.2fr) auto minmax(58px, 0.75fr) auto minmax(58px, 0.75fr) auto;
+  grid-template-columns: minmax(92px, 1.2fr) auto minmax(58px, 0.75fr) auto minmax(
+      58px,
+      0.75fr
+    ) auto;
   align-items: center;
   gap: 6px;
 }
@@ -1939,7 +1976,6 @@ button:disabled,
   .dog-mascot-stage {
     display: none;
   }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2095,7 +2131,10 @@ button:disabled,
 .sidebar-brand-text,
 .sidebar-nav-label {
   overflow: hidden;
-  transition: opacity 160ms ease, transform 160ms ease, width 160ms ease;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    width 160ms ease;
   white-space: nowrap;
 }
 
@@ -2622,14 +2661,22 @@ button:disabled,
     radial-gradient(circle at 8% 12%, rgba(255, 107, 53, 0.08), transparent 24%),
     radial-gradient(circle at 82% 8%, rgba(59, 130, 246, 0.05), transparent 22%),
     linear-gradient(90deg, rgba(17, 24, 39, 0.025) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(17, 24, 39, 0.025) 1px, transparent 1px),
-    var(--color-bg-base);
-  background-size: auto, 32px 32px, 32px 32px, auto;
+    linear-gradient(0deg, rgba(17, 24, 39, 0.025) 1px, transparent 1px), var(--color-bg-base);
+  background-size:
+    auto,
+    32px 32px,
+    32px 32px,
+    auto;
 }
 
 .home-hero {
   background:
-    linear-gradient(90deg, rgba(17, 24, 39, 0.9) 0%, rgba(17, 24, 39, 0.74) 48%, rgba(17, 24, 39, 0.5) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 24, 39, 0.9) 0%,
+      rgba(17, 24, 39, 0.74) 48%,
+      rgba(17, 24, 39, 0.5) 100%
+    ),
     url("../assets/home/market-night-alley-optimized.jpg") center / cover no-repeat,
     var(--color-text-primary);
   color: #ffffff;
@@ -3423,8 +3470,7 @@ button:disabled,
   min-height: 150px;
   background:
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 12px, transparent 12px 24px),
-    linear-gradient(145deg, rgba(17, 24, 39, 0.08), rgba(255, 107, 53, 0.16)),
-    var(--color-bg-base);
+    linear-gradient(145deg, rgba(17, 24, 39, 0.08), rgba(255, 107, 53, 0.16)), var(--color-bg-base);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3519,8 +3565,13 @@ button:disabled,
   top: 12px;
   height: 18px;
   border-radius: 3px;
-  background:
-    repeating-linear-gradient(90deg, var(--color-primary) 0 18px, var(--color-success) 18px 36px, var(--color-warning) 36px 54px, var(--color-info) 54px 72px);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-primary) 0 18px,
+    var(--color-success) 18px 36px,
+    var(--color-warning) 36px 54px,
+    var(--color-info) 54px 72px
+  );
   opacity: 0.82;
 }
 
@@ -3535,8 +3586,7 @@ button:disabled,
   background:
     linear-gradient(180deg, rgba(26, 26, 46, 0.04), rgba(26, 26, 46, 0.32)),
     repeating-linear-gradient(45deg, rgba(26, 26, 46, 0.045) 0 1px, transparent 1px 15px),
-    linear-gradient(145deg, rgba(17, 24, 39, 0.14), rgba(255, 240, 234, 0.72)),
-    var(--color-bg-base);
+    linear-gradient(145deg, rgba(17, 24, 39, 0.14), rgba(255, 240, 234, 0.72)), var(--color-bg-base);
 }
 
 .home-place-image.is-hanok {
@@ -3660,8 +3710,11 @@ button:disabled,
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0 9px, transparent 9px 18px);
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12) 0 9px,
+    transparent 9px 18px
+  );
 }
 
 .home-festival-image span {
@@ -4337,8 +4390,7 @@ button:disabled,
 .home-route-list.is-featured-route div {
   min-height: 112px;
   align-content: start;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 240, 234, 0.58));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 240, 234, 0.58));
   position: relative;
 }
 
@@ -4560,8 +4612,7 @@ button:disabled,
 }
 
 .home-event-panel {
-  background:
-    linear-gradient(180deg, #ffffff, var(--color-primary-subtle));
+  background: linear-gradient(180deg, #ffffff, var(--color-primary-subtle));
 }
 
 .home-side-event-card {
@@ -4942,7 +4993,10 @@ button:disabled,
   font-size: 12px;
   font-weight: 800;
   padding: 7px 12px;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .community-date-quick-options button:hover,
@@ -4967,7 +5021,9 @@ button:disabled,
   font-family: inherit;
   padding: 12px 14px;
   text-align: left;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .community-date-display:hover,
@@ -5044,8 +5100,22 @@ button:disabled,
   border: 1px solid #7c5734;
   border-radius: 8px 8px 14px 14px;
   background:
-    linear-gradient(90deg, rgba(255,255,255,0.04), transparent 18%, rgba(255,255,255,0.05) 48%, transparent 72%),
-    repeating-linear-gradient(90deg, #8f633b 0, #8f633b 3px, #855a35 3px, #855a35 82px, #76502f 83px, #76502f 85px);
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04),
+      transparent 18%,
+      rgba(255, 255, 255, 0.05) 48%,
+      transparent 72%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      #8f633b 0,
+      #8f633b 3px,
+      #855a35 3px,
+      #855a35 82px,
+      #76502f 83px,
+      #76502f 85px
+    );
   box-shadow: 0 24px 60px rgba(20, 14, 8, 0.34);
   overflow: visible;
 }
@@ -6251,7 +6321,8 @@ button:disabled,
 .place-night-visual {
   background:
     linear-gradient(180deg, rgba(26, 26, 46, 0.04), rgba(26, 26, 46, 0.82)),
-    var(--place-hero-image, url("../assets/home/market-night-alley-optimized.jpg")) center / cover no-repeat !important;
+    var(--place-hero-image, url("../assets/home/market-night-alley-optimized.jpg")) center / cover
+      no-repeat !important;
   align-items: flex-end !important;
   justify-content: flex-start !important;
   padding: 26px;
@@ -6329,9 +6400,7 @@ button:disabled,
   border-radius: 8px;
   padding: 16px;
   margin: 0 0 18px;
-  background:
-    linear-gradient(90deg, rgba(255, 180, 30, 0.09), transparent 36%),
-    #ffffff;
+  background: linear-gradient(90deg, rgba(255, 180, 30, 0.09), transparent 36%), #ffffff;
 }
 
 .place-action-head {
@@ -6617,9 +6686,8 @@ button:disabled,
 }
 
 .place-detail-sidebar .place-night-visual {
-  background:
-    var(--place-hero-image, linear-gradient(135deg, #1a3d2b, #2c6e49))
-    center / cover no-repeat !important;
+  background: var(--place-hero-image, linear-gradient(135deg, #1a3d2b, #2c6e49)) center / cover
+    no-repeat !important;
   cursor: zoom-in;
   padding: 0;
 }
@@ -7245,9 +7313,7 @@ button:disabled,
   border: 1px solid rgba(26, 26, 46, 0.08);
   border-radius: 8px;
   padding: 14px;
-  background:
-    linear-gradient(90deg, rgba(255, 180, 30, 0.08), transparent),
-    #f7f5f0;
+  background: linear-gradient(90deg, rgba(255, 180, 30, 0.08), transparent), #f7f5f0;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
@@ -7293,9 +7359,7 @@ button:disabled,
   border: 1px solid rgba(255, 180, 30, 0.34);
   border-radius: 8px;
   padding: 14px;
-  background:
-    linear-gradient(90deg, rgba(255, 180, 30, 0.16), rgba(255, 255, 255, 0.78)),
-    #fffaf0;
+  background: linear-gradient(90deg, rgba(255, 180, 30, 0.16), rgba(255, 255, 255, 0.78)), #fffaf0;
 }
 
 .place-pay-flow span,
@@ -7335,8 +7399,7 @@ button:disabled,
   border: 1px solid rgba(26, 26, 46, 0.08);
   border-radius: 8px;
   background:
-    repeating-linear-gradient(0deg, rgba(26, 26, 46, 0.025) 0 1px, transparent 1px 12px),
-    #fffaf0;
+    repeating-linear-gradient(0deg, rgba(26, 26, 46, 0.025) 0 1px, transparent 1px 12px), #fffaf0;
   padding: 20px 22px;
 }
 
@@ -7499,8 +7562,7 @@ button:disabled,
   margin-bottom: 18px;
   border: 1px solid rgba(255, 180, 30, 0.34);
   border-radius: 10px;
-  background:
-    linear-gradient(135deg, rgba(255, 248, 225, 0.96), rgba(236, 253, 245, 0.92));
+  background: linear-gradient(135deg, rgba(255, 248, 225, 0.96), rgba(236, 253, 245, 0.92));
   padding: 18px;
 }
 
@@ -7589,7 +7651,8 @@ button:disabled,
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(17, 24, 39, 0.1), rgba(17, 24, 39, 0.82)),
-    var(--shop-hero-image, url("../assets/home/market-night-alley-optimized.jpg")) center / cover no-repeat;
+    var(--shop-hero-image, url("../assets/home/market-night-alley-optimized.jpg")) center / cover
+      no-repeat;
   color: #ffffff;
   padding: 28px;
   display: grid;
@@ -8065,13 +8128,13 @@ button:disabled,
 }
 
 .flow-step.active .flow-num {
-  background: #2C6E49;
+  background: #2c6e49;
   color: #ffffff;
 }
 
 .flow-step.done .flow-num {
-  background: #E1F5EE;
-  color: #0F6E56;
+  background: #e1f5ee;
+  color: #0f6e56;
 }
 
 .payment-rate-note {
@@ -8100,7 +8163,11 @@ button:disabled,
   justify-content: center;
   gap: 5px;
   font: inherit;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .payment-amount-card:hover {
@@ -8109,7 +8176,7 @@ button:disabled,
 }
 
 .payment-amount-card.selected {
-  border-color: #2C6E49;
+  border-color: #2c6e49;
   border-width: 1.5px;
   background: #f0faf4;
   box-shadow: 0 12px 24px rgba(44, 110, 73, 0.12);
@@ -8117,7 +8184,7 @@ button:disabled,
 
 .payment-amount-card.selected .amount-won,
 .payment-method-card.selected .pay-name {
-  color: #2C6E49;
+  color: #2c6e49;
 }
 
 .amount-won {
@@ -8153,8 +8220,8 @@ button:disabled,
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #E1F5EE;
-  color: #0F6E56;
+  background: #e1f5ee;
+  color: #0f6e56;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -8208,13 +8275,13 @@ button:disabled,
 
 .payment-direct-input-box p {
   margin: 8px 0 0;
-  color: #0F6E56;
+  color: #0f6e56;
   font-size: 12px;
   font-weight: 700;
 }
 
 .payment-direct-input-box p.invalid {
-  color: #A32D2D;
+  color: #a32d2d;
 }
 
 .payment-method-card {
@@ -8226,7 +8293,7 @@ button:disabled,
 
 .payment-method-card.active,
 .payment-method-card.selected {
-  border-color: #2C6E49;
+  border-color: #2c6e49;
   background: #f0faf4;
   box-shadow: 0 12px 24px rgba(44, 110, 73, 0.12);
 }
@@ -8255,7 +8322,7 @@ button:disabled,
 }
 
 .pay-logo.kakao {
-  background: #FAE100;
+  background: #fae100;
 }
 
 .pay-logo.kakao img {
@@ -8264,7 +8331,7 @@ button:disabled,
 }
 
 .pay-logo.toss {
-  background: #0064FF;
+  background: #0064ff;
 }
 
 .pay-logo.toss img {
@@ -8273,12 +8340,12 @@ button:disabled,
 }
 
 .pay-logo.card {
-  background: #2C6E49;
+  background: #2c6e49;
   font-size: 18px;
 }
 
 .pay-logo.eximbay {
-  background: #0048FA;
+  background: #0048fa;
 }
 
 .pay-logo.eximbay img {
@@ -8307,14 +8374,14 @@ button:disabled,
 
 .payment-method-card.active .payment-radio-dot,
 .payment-method-card.selected .payment-radio-dot {
-  border-color: #2C6E49;
+  border-color: #2c6e49;
 }
 
 .payment-radio-dot div {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #2C6E49;
+  background: #2c6e49;
 }
 
 .payment-bottom-cta {
@@ -8357,7 +8424,7 @@ button:disabled,
   min-width: 152px;
   border: 0;
   border-radius: 14px;
-  background: #2C6E49;
+  background: #2c6e49;
   color: #ffffff;
   padding: 13px 28px;
   font-size: 14px;
@@ -9168,7 +9235,11 @@ button:disabled,
   font-size: 14px;
   font-weight: 900;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
-  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
 }
 
 .merchant-status-card button.active {
@@ -10098,7 +10169,10 @@ button:disabled,
   font-size: 13px;
   font-weight: 700;
   padding: 8px 12px;
-  transition: background-color 0.1s, border-color 0.1s, color 0.1s;
+  transition:
+    background-color 0.1s,
+    border-color 0.1s,
+    color 0.1s;
 }
 
 .notification-filter-tabs button.active {
@@ -10881,7 +10955,11 @@ button:disabled,
   font-size: 12px;
   font-weight: 800;
   padding: 0 13px;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
 }
 
 .chat-translation-button:hover {
@@ -10900,7 +10978,7 @@ button:disabled,
   display: flex;
   align-items: center;
   gap: 7px;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
 }
 
@@ -11817,7 +11895,10 @@ button:disabled,
 .web-chat-room-body,
 .web-chat-input,
 .chat-translation-notice {
-  transition: width 0.25s ease, margin 0.25s ease, transform 0.25s ease;
+  transition:
+    width 0.25s ease,
+    margin 0.25s ease,
+    transform 0.25s ease;
 }
 
 .web-chat-room-page.management-open .web-chat-room-body,
@@ -12631,7 +12712,12 @@ button:disabled,
   border-radius: var(--border-radius-md, 12px);
   background:
     linear-gradient(135deg, rgba(234, 243, 222, 0.96), rgba(210, 231, 194, 0.88)),
-    linear-gradient(90deg, transparent 0 44%, rgba(255, 255, 255, 0.84) 44% 50%, transparent 50% 100%);
+    linear-gradient(
+      90deg,
+      transparent 0 44%,
+      rgba(255, 255, 255, 0.84) 44% 50%,
+      transparent 50% 100%
+    );
   cursor: pointer;
   padding: 0;
 }
@@ -12758,7 +12844,9 @@ button:disabled,
   border-radius: 8px;
   background: #ffffff;
   padding: 5px 6px 5px 13px;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
 }
 
 .festival-search-form:focus-within {
@@ -12904,7 +12992,10 @@ button:disabled,
   font-size: 12px;
   font-weight: 500;
   padding: 6px 14px;
-  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    color 0.12s,
+    background 0.12s;
 }
 
 .festival-month-filters button:hover {
@@ -12933,15 +13024,30 @@ button:disabled,
   overflow: hidden;
   padding: 30px 14px 14px;
   text-align: left;
-  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s,
+    transform 0.12s;
 }
 
 .wall-pattern,
 .festival-list-card::before {
   background-color: #ede3cf;
   background-image:
-    repeating-linear-gradient(0deg, rgba(94, 74, 46, 0.1) 0, rgba(94, 74, 46, 0.1) 1.5px, transparent 1.5px, transparent 22px),
-    repeating-linear-gradient(90deg, rgba(94, 74, 46, 0.06) 0, rgba(94, 74, 46, 0.06) 1.5px, transparent 1.5px, transparent 38px),
+    repeating-linear-gradient(
+      0deg,
+      rgba(94, 74, 46, 0.1) 0,
+      rgba(94, 74, 46, 0.1) 1.5px,
+      transparent 1.5px,
+      transparent 22px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(94, 74, 46, 0.06) 0,
+      rgba(94, 74, 46, 0.06) 1.5px,
+      transparent 1.5px,
+      transparent 38px
+    ),
     linear-gradient(135deg, #f0e6d2 0%, #e6d8be 100%);
 }
 
@@ -13112,8 +13218,22 @@ button:disabled,
   border: 1px solid rgba(54, 42, 30, 0.25);
   border-radius: 0 0 10px 10px;
   background:
-    linear-gradient(90deg, rgba(255,255,255,0.04), transparent 18%, rgba(255,255,255,0.05) 48%, transparent 72%),
-    repeating-linear-gradient(90deg, #8f633b 0, #8f633b 3px, #855a35 3px, #855a35 92px, #76502f 93px, #76502f 96px);
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04),
+      transparent 18%,
+      rgba(255, 255, 255, 0.05) 48%,
+      transparent 72%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      #8f633b 0,
+      #8f633b 3px,
+      #855a35 3px,
+      #855a35 92px,
+      #76502f 93px,
+      #76502f 96px
+    );
   box-shadow: 0 18px 44px rgba(45, 38, 27, 0.14);
 }
 
@@ -13228,7 +13348,9 @@ button:disabled,
   cursor: pointer;
   font-family: inherit;
   padding: 5px 2px;
-  transition: background 0.1s, box-shadow 0.1s;
+  transition:
+    background 0.1s,
+    box-shadow 0.1s;
 }
 
 .festival-calendar-day:hover {
@@ -13303,8 +13425,7 @@ button:disabled,
     radial-gradient(ellipse at 78% 30%, rgba(126, 116, 96, 0.18) 0 11px, transparent 12px),
     radial-gradient(ellipse at 24% 62%, rgba(178, 154, 116, 0.22) 0 16px, transparent 17px),
     radial-gradient(ellipse at 64% 70%, rgba(137, 125, 104, 0.18) 0 13px, transparent 14px),
-    repeating-linear-gradient(0deg, rgba(97, 83, 65, 0.09) 0 1px, transparent 1px 74px),
-    #f2eadc;
+    repeating-linear-gradient(0deg, rgba(97, 83, 65, 0.09) 0 1px, transparent 1px 74px), #f2eadc;
   padding: 18px 16px 8px;
   scrollbar-width: thin;
 }
@@ -13488,7 +13609,10 @@ button:disabled,
   font: inherit;
   padding: 0;
   text-align: left;
-  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s,
+    transform 0.12s;
 }
 
 .store-product-card:not(:disabled):hover {
@@ -13589,9 +13713,7 @@ button:disabled,
 
 .map-explorer-page,
 .search-local-page {
-  background:
-    linear-gradient(90deg, rgba(186, 36, 28, 0.035) 0 1px, transparent 1px 100%),
-    #f3efe7;
+  background: linear-gradient(90deg, rgba(186, 36, 28, 0.035) 0 1px, transparent 1px 100%), #f3efe7;
 }
 
 .search-local-copy span {
@@ -13795,10 +13917,11 @@ button:disabled,
     radial-gradient(circle at 72% 30%, rgba(226, 75, 74, 0.16) 0 5px, transparent 6px),
     radial-gradient(circle at 84% 72%, rgba(0, 121, 89, 0.14) 0 5px, transparent 6px),
     linear-gradient(135deg, rgba(255, 255, 255, 0.54) 0 1px, transparent 1px 22px),
-    linear-gradient(45deg, rgba(26, 26, 46, 0.035) 0 1px, transparent 1px 24px),
-    #f7edd9;
+    linear-gradient(45deg, rgba(26, 26, 46, 0.035) 0 1px, transparent 1px 24px), #f7edd9;
   border: 1px solid rgba(138, 79, 0, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45), 0 14px 34px rgba(26, 26, 46, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 14px 34px rgba(26, 26, 46, 0.08);
 }
 
 .map-night-board::before {
@@ -13865,11 +13988,26 @@ button:disabled,
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
 }
 
-.map-place-pin.pin-0 { top: 72px; left: 16%; }
-.map-place-pin.pin-1 { top: 126px; left: 40%; }
-.map-place-pin.pin-2 { top: 82px; right: 24%; }
-.map-place-pin.pin-3 { bottom: 92px; right: 13%; }
-.map-place-pin.pin-4 { bottom: 84px; left: 24%; }
+.map-place-pin.pin-0 {
+  top: 72px;
+  left: 16%;
+}
+.map-place-pin.pin-1 {
+  top: 126px;
+  left: 40%;
+}
+.map-place-pin.pin-2 {
+  top: 82px;
+  right: 24%;
+}
+.map-place-pin.pin-3 {
+  bottom: 92px;
+  right: 13%;
+}
+.map-place-pin.pin-4 {
+  bottom: 84px;
+  left: 24%;
+}
 
 .map-place-popover {
   position: absolute;
@@ -14437,7 +14575,11 @@ button:disabled,
 }
 
 .map-result-card {
-  transition: border-color 0.14s, background-color 0.14s, box-shadow 0.14s, transform 0.14s;
+  transition:
+    border-color 0.14s,
+    background-color 0.14s,
+    box-shadow 0.14s,
+    transform 0.14s;
 }
 
 .map-result-card.active {
@@ -15390,7 +15532,9 @@ button:disabled,
     visibility: hidden;
     pointer-events: none;
     transform: translateX(-100%);
-    transition: transform 180ms ease, visibility 180ms ease;
+    transition:
+      transform 180ms ease,
+      visibility 180ms ease;
   }
 
   .app-shell.sidebar-expanded .desktop-sidebar {
@@ -16272,13 +16416,14 @@ body {
 }
 
 .desktop-sidebar {
-  background:
-    linear-gradient(180deg, #fffdf8 0%, #f9f2e7 100%);
+  background: linear-gradient(180deg, #fffdf8 0%, #f9f2e7 100%);
   border-right: 1px solid rgba(31, 39, 51, 0.08);
 }
 
 .topbar-user b {
-  box-shadow: inset 0 0 0 1px rgba(31, 39, 51, 0.08), 0 8px 18px rgba(244, 182, 63, 0.25);
+  box-shadow:
+    inset 0 0 0 1px rgba(31, 39, 51, 0.08),
+    0 8px 18px rgba(244, 182, 63, 0.25);
 }
 
 .sidebar-nav-item {
@@ -16317,8 +16462,7 @@ body {
   background:
     radial-gradient(circle at 8% 12%, rgba(244, 182, 63, 0.12), transparent 24%),
     radial-gradient(circle at 92% 8%, rgba(40, 104, 79, 0.1), transparent 28%),
-    linear-gradient(180deg, #fffdf8 0%, #f8f5ef 46%, #f6f1e8 100%),
-    #f6f1e8;
+    linear-gradient(180deg, #fffdf8 0%, #f8f5ef 46%, #f6f1e8 100%), #f6f1e8;
   position: relative;
   isolation: isolate;
 }
@@ -16331,8 +16475,18 @@ body {
   pointer-events: none;
   opacity: 0.3;
   background:
-    linear-gradient(120deg, transparent 0 46%, rgba(244, 182, 63, 0.16) 46% 47%, transparent 47% 100%),
-    linear-gradient(150deg, transparent 0 58%, rgba(40, 104, 79, 0.12) 58% 59%, transparent 59% 100%),
+    linear-gradient(
+      120deg,
+      transparent 0 46%,
+      rgba(244, 182, 63, 0.16) 46% 47%,
+      transparent 47% 100%
+    ),
+    linear-gradient(
+      150deg,
+      transparent 0 58%,
+      rgba(40, 104, 79, 0.12) 58% 59%,
+      transparent 59% 100%
+    ),
     repeating-linear-gradient(90deg, rgba(154, 95, 0, 0.045) 0 1px, transparent 1px 72px);
 }
 
@@ -16416,7 +16570,12 @@ body {
   border: 1px solid rgba(255, 253, 248, 0.24);
   border-radius: 8px;
   background:
-    linear-gradient(90deg, rgba(31, 39, 51, 0.76) 0%, rgba(40, 104, 79, 0.28) 54%, rgba(244, 182, 63, 0.08) 100%),
+    linear-gradient(
+      90deg,
+      rgba(31, 39, 51, 0.76) 0%,
+      rgba(40, 104, 79, 0.28) 54%,
+      rgba(244, 182, 63, 0.08) 100%
+    ),
     url("../assets/home/chunbae-local-pass-hero-modern.png") center / cover no-repeat;
   box-shadow: 0 18px 42px rgba(31, 39, 51, 0.16);
 }
@@ -16500,8 +16659,7 @@ body {
 
 .home-core-panel .home-quick-item {
   border-color: rgba(31, 39, 51, 0.08);
-  background:
-    linear-gradient(180deg, #fffdf8, #fbf5eb);
+  background: linear-gradient(180deg, #fffdf8, #fbf5eb);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
@@ -16536,7 +16694,10 @@ body {
 .home-place-card,
 .home-festival-card {
   overflow: hidden;
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
 }
 
 .home-place-card:hover,
@@ -16555,8 +16716,7 @@ body {
 }
 
 .home-course-panel {
-  background:
-    linear-gradient(135deg, #fffdf8 0%, #fff4db 100%);
+  background: linear-gradient(135deg, #fffdf8 0%, #fff4db 100%);
 }
 
 .home-course-kicker {
@@ -16647,8 +16807,7 @@ body {
     background:
       radial-gradient(circle at 8% 12%, rgba(244, 182, 63, 0.12), transparent 24%),
       radial-gradient(circle at 92% 8%, rgba(40, 104, 79, 0.1), transparent 28%),
-      linear-gradient(180deg, #fffdf8 0%, #f8f5ef 48%, #f6f1e8 100%),
-      #f6f1e8;
+      linear-gradient(180deg, #fffdf8 0%, #f8f5ef 48%, #f6f1e8 100%), #f6f1e8;
   }
 
   .home-page::after {
@@ -16675,8 +16834,7 @@ body {
     background:
       radial-gradient(circle at 8% 12%, rgba(244, 182, 63, 0.12), transparent 24%),
       radial-gradient(circle at 92% 8%, rgba(40, 104, 79, 0.1), transparent 28%),
-      linear-gradient(180deg, #fffdf8 0%, #f8f5ef 52%, #f6f1e8 100%),
-      #f6f1e8;
+      linear-gradient(180deg, #fffdf8 0%, #f8f5ef 52%, #f6f1e8 100%), #f6f1e8;
   }
 
   .home-page::before {
@@ -16712,7 +16870,12 @@ body {
 /* Bright public landing pass */
 .public-home {
   background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.28) 0%, rgba(255, 253, 248, 0.04) 38%, rgba(255, 253, 248, 0.2) 100%),
+    linear-gradient(
+      180deg,
+      rgba(255, 253, 248, 0.28) 0%,
+      rgba(255, 253, 248, 0.04) 38%,
+      rgba(255, 253, 248, 0.2) 100%
+    ),
     url("../assets/home/chunbae-local-pass-hero-modern.png") center / cover fixed,
     #fff7df;
   color: #1f2733;
@@ -16816,7 +16979,9 @@ body {
   background:
     linear-gradient(110deg, transparent 0 38%, rgba(255, 255, 255, 0.78) 46%, transparent 56%),
     radial-gradient(circle at 38% 32%, #ffe596, #f4b63f 62%, #bf7b00);
-  box-shadow: 0 0 0 5px rgba(244, 182, 63, 0.08), 0 10px 18px rgba(154, 95, 0, 0.16);
+  box-shadow:
+    0 0 0 5px rgba(244, 182, 63, 0.08),
+    0 10px 18px rgba(154, 95, 0, 0.16);
   opacity: 0.84;
   animation: public-coin-glint 4.8s ease-in-out infinite;
 }
@@ -16847,7 +17012,12 @@ body {
   width: 190px;
   height: 190px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 209, 119, 0.38) 0 18%, rgba(255, 190, 64, 0.16) 38%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 209, 119, 0.38) 0 18%,
+    rgba(255, 190, 64, 0.16) 38%,
+    transparent 70%
+  );
   mix-blend-mode: screen;
   opacity: 0.52;
   animation: public-lantern-pulse 3.8s ease-in-out infinite;
@@ -17024,7 +17194,11 @@ body {
   opacity: 0.44;
   background:
     radial-gradient(ellipse 90px 30px at 10% 52%, rgba(255, 255, 255, 0.72) 0 62%, transparent 64%),
-    radial-gradient(ellipse 130px 38px at 35% 38%, rgba(255, 255, 255, 0.58) 0 62%, transparent 64%),
+    radial-gradient(
+      ellipse 130px 38px at 35% 38%,
+      rgba(255, 255, 255, 0.58) 0 62%,
+      transparent 64%
+    ),
     radial-gradient(ellipse 100px 34px at 64% 58%, rgba(255, 255, 255, 0.5) 0 62%, transparent 64%),
     radial-gradient(ellipse 80px 26px at 88% 44%, rgba(255, 255, 255, 0.42) 0 62%, transparent 64%);
   animation: public-cloud-drift 28s ease-in-out infinite alternate;
@@ -17598,9 +17772,7 @@ body {
 
 .home-recommend-visual {
   height: 110px;
-  background:
-    linear-gradient(135deg, rgba(44, 110, 73, 0.22), rgba(255, 211, 105, 0.22)),
-    #e8f6ee;
+  background: linear-gradient(135deg, rgba(44, 110, 73, 0.22), rgba(255, 211, 105, 0.22)), #e8f6ee;
   overflow: hidden;
 }
 
@@ -17950,7 +18122,10 @@ body {
   border-radius: 20px;
   background: #f7f7f4;
   font-size: 12px;
-  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    color 0.12s ease,
+    background 0.12s ease;
 }
 
 .community-scope-row button:hover:not(.active) {
@@ -17983,7 +18158,10 @@ body {
   gap: 14px;
   min-height: 172px;
   padding: 16px;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .community-list-card.free-post {

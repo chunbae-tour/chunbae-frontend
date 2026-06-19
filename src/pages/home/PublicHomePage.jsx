@@ -35,56 +35,49 @@ export default function PublicHomePage({ onLogin, onSignup, onExplore }) {
       </div>
       <header className="public-nav">
         <div className="public-brand">
-          <motion.img
-            src={ChunbaeImg}
-            alt="춘배 캐릭터"
-          />
+          <motion.img src={ChunbaeImg} alt="춘배 캐릭터" />
           <div>
             <strong>춘배투어</strong>
             <span>ChunBae Tour</span>
           </div>
         </div>
         <nav className="public-nav-menu" aria-label="주요 서비스">
-          <button type="button" onClick={explore("map")}>전통시장 탐방</button>
-          <button type="button" onClick={explore("search")}>테마별 코스</button>
-          <button type="button" onClick={explore("fest")}>동네 축제</button>
-          <button type="button" onClick={explore("home")}>서비스 소개</button>
+          <button type="button" onClick={explore("map")}>
+            전통시장 탐방
+          </button>
+          <button type="button" onClick={explore("search")}>
+            테마별 코스
+          </button>
+          <button type="button" onClick={explore("fest")}>
+            동네 축제
+          </button>
+          <button type="button" onClick={explore("home")}>
+            서비스 소개
+          </button>
         </nav>
         <div className="public-nav-actions">
-          <PwaInstallButton className="public-install public-install-nav">
-            앱 설치
-          </PwaInstallButton>
-          <button type="button" className="public-login-link" onClick={onLogin}>로그인</button>
-          <button type="button" className="public-ghost" onClick={onSignup}>회원가입</button>
+          <PwaInstallButton className="public-install public-install-nav">앱 설치</PwaInstallButton>
+          <button type="button" className="public-login-link" onClick={onLogin}>
+            로그인
+          </button>
+          <button type="button" className="public-ghost" onClick={onSignup}>
+            회원가입
+          </button>
         </div>
       </header>
 
       <section className="public-hero">
         <div className="public-hero-copy">
-          <motion.span
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            custom={0}
-          >
+          <motion.span variants={fadeUp} initial="hidden" animate="visible" custom={0}>
             전통시장 · 관광지 · 동행 매칭
           </motion.span>
-          <motion.h1
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            custom={1}
-          >
-            오늘 갈 만한 시장과 동네 코스,<br />한 화면에서 둘러보세요
+          <motion.h1 variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+            오늘 갈 만한 시장과 동네 코스,
+            <br />한 화면에서 둘러보세요
           </motion.h1>
-          <motion.p
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            custom={2}
-          >
-            현재 위치를 기준으로 가까운 전통시장, 주변 명소, 동네 축제,
-            먹거리 골목까지 한 번에 확인할 수 있어요.
+          <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={2}>
+            현재 위치를 기준으로 가까운 전통시장, 주변 명소, 동네 축제, 먹거리 골목까지 한 번에
+            확인할 수 있어요.
           </motion.p>
           <motion.div
             className="public-hero-actions"
@@ -140,7 +133,11 @@ export default function PublicHomePage({ onLogin, onSignup, onExplore }) {
                 key={label}
                 type="button"
                 onClick={explore(tab)}
-                whileHover={{ backgroundColor: "#9a5f00", color: "#fffdf8", borderColor: "#9a5f00" }}
+                whileHover={{
+                  backgroundColor: "#9a5f00",
+                  color: "#fffdf8",
+                  borderColor: "#9a5f00",
+                }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.18 }}
               >

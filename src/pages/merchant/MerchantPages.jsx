@@ -62,7 +62,14 @@ const SHOP_STATUS_LABELS = {
 };
 
 // ─── 상인 가게 관리 ───────────────────────────────────────────────────
-export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement, selectedShopId, onShopChange }) {
+export function MerchantShopPage({
+  onBack,
+  showToast,
+  onMenuManage,
+  onSettlement,
+  selectedShopId,
+  onShopChange,
+}) {
   const [shop, setShop] = useState(EMPTY_SHOP);
   const [shops, setShops] = useState([]);
   const [wallet, setWallet] = useState(EMPTY_WALLET);
@@ -136,53 +143,81 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         fetchMerchantHome(),
       ]);
       const noticeResult = await fetchMerchantShopNotices(effectiveShopId)
-        .then(value => ({ status: "fulfilled", value }))
-        .catch(error => ({ status: "rejected", reason: error }));
+        .then((value) => ({ status: "fulfilled", value }))
+        .catch((error) => ({ status: "rejected", reason: error }));
       const imageResult = await fetchMerchantShopImages(effectiveShopId)
-        .then(value => ({ status: "fulfilled", value }))
-        .catch(error => ({ status: "rejected", reason: error }));
+        .then((value) => ({ status: "fulfilled", value }))
+        .catch((error) => ({ status: "rejected", reason: error }));
 
       if (ignore) return;
-      setShop(shopResult.status === "fulfilled" ? shopResult.value : (nextShops.find(item => String(item.id) === String(effectiveShopId)) ?? EMPTY_SHOP));
+      setShop(
+        shopResult.status === "fulfilled"
+          ? shopResult.value
+          : (nextShops.find((item) => String(item.id) === String(effectiveShopId)) ?? EMPTY_SHOP),
+      );
       setWallet(walletResult.status === "fulfilled" ? walletResult.value : EMPTY_WALLET);
       setMerchantHome(homeResult.status === "fulfilled" ? homeResult.value : EMPTY_MERCHANT_HOME);
       setPaymentRequests(requestResult.status === "fulfilled" ? requestResult.value : []);
       setNotices(noticeResult.status === "fulfilled" ? noticeResult.value : []);
       setShopImages(imageResult.status === "fulfilled" ? imageResult.value : []);
       setStatus(shopResult.status === "fulfilled" ? "success" : "error");
-      setRequestStatus(requestResult.status === "fulfilled" ? (requestResult.value.length > 0 ? "success" : "empty") : "error");
-      setNoticeStatus(noticeResult.status === "fulfilled" ? (noticeResult.value.length > 0 ? "success" : "empty") : "error");
-      setImageStatus(imageResult.status === "fulfilled" ? (imageResult.value.length > 0 ? "success" : "empty") : "error");
+      setRequestStatus(
+        requestResult.status === "fulfilled"
+          ? requestResult.value.length > 0
+            ? "success"
+            : "empty"
+          : "error",
+      );
+      setNoticeStatus(
+        noticeResult.status === "fulfilled"
+          ? noticeResult.value.length > 0
+            ? "success"
+            : "empty"
+          : "error",
+      );
+      setImageStatus(
+        imageResult.status === "fulfilled"
+          ? imageResult.value.length > 0
+            ? "success"
+            : "empty"
+          : "error",
+      );
     }
 
-    loadMerchantDashboard()
-      .catch(() => {
-        if (ignore) return;
-        setShops([]);
-        setShop(EMPTY_SHOP);
-        setWallet(EMPTY_WALLET);
-        setMerchantHome(EMPTY_MERCHANT_HOME);
-        setPaymentRequests([]);
-        setNotices([]);
-        setShopImages([]);
-        setStatus("error");
-        setRequestStatus("error");
-        setNoticeStatus("error");
-        setImageStatus("error");
-      });
+    loadMerchantDashboard().catch(() => {
+      if (ignore) return;
+      setShops([]);
+      setShop(EMPTY_SHOP);
+      setWallet(EMPTY_WALLET);
+      setMerchantHome(EMPTY_MERCHANT_HOME);
+      setPaymentRequests([]);
+      setNotices([]);
+      setShopImages([]);
+      setStatus("error");
+      setRequestStatus("error");
+      setNoticeStatus("error");
+      setImageStatus("error");
+    });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [selectedShopId, onShopChange]);
 
   const handlePaymentRequest = async (requestId, action) => {
     const nextStatus = action === "approve" ? "APPROVED" : "REJECTED";
-    const apiCall = action === "approve" ? approveMerchantPaymentRequest : rejectMerchantPaymentRequest;
+    const apiCall =
+      action === "approve" ? approveMerchantPaymentRequest : rejectMerchantPaymentRequest;
     try {
       await apiCall(requestId);
-      setPaymentRequests(prev => prev.map(item => item.id === requestId ? { ...item, status: nextStatus } : item));
+      setPaymentRequests((prev) =>
+        prev.map((item) => (item.id === requestId ? { ...item, status: nextStatus } : item)),
+      );
       showToast(action === "approve" ? "결제 요청을 승인했습니다." : "결제 요청을 거절했습니다.");
     } catch {
-      showToast(action === "approve" ? "결제 요청 승인에 실패했습니다." : "결제 요청 거절에 실패했습니다.");
+      showToast(
+        action === "approve" ? "결제 요청 승인에 실패했습니다." : "결제 요청 거절에 실패했습니다.",
+      );
     }
   };
 
@@ -192,14 +227,17 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     if (a.type !== b.type) return a.type === "PROFILE" ? -1 : 1;
     return Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0);
   });
-  const profileShopImage = sortedShopImages.find(item => item.type === "PROFILE" || item.isPrimary);
+  const profileShopImage = sortedShopImages.find(
+    (item) => item.type === "PROFILE" || item.isPrimary,
+  );
   const shopImagePreview = [
     profileShopImage?.url || profileShopImage?.imageUrl,
     shop.thumbnailUrl,
     ...(Array.isArray(shop.imageUrls) ? shop.imageUrls : []),
-    ...sortedShopImages.map(item => item.url || item.imageUrl),
-  ]
-    .find(value => typeof value === "string" && (/^https?:\/\//.test(value) || value.startsWith("/")));
+    ...sortedShopImages.map((item) => item.url || item.imageUrl),
+  ].find(
+    (value) => typeof value === "string" && (/^https?:\/\//.test(value) || value.startsWith("/")),
+  );
   const handleShopSelect = (event) => {
     onShopChange?.(event.target.value);
   };
@@ -218,7 +256,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   };
 
   const handleShopFormChange = (key, value) => {
-    setShopForm(prev => ({ ...prev, [key]: value }));
+    setShopForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleShopSave = async () => {
@@ -231,7 +269,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     try {
       const updatedShop = await updateMerchantShop(currentShopId, shopForm);
       setShop(updatedShop);
-      setShops(prev => prev.map(item => String(item.id) === String(updatedShop.id) ? { ...item, ...updatedShop } : item));
+      setShops((prev) =>
+        prev.map((item) =>
+          String(item.id) === String(updatedShop.id) ? { ...item, ...updatedShop } : item,
+        ),
+      );
       setIsShopEditorOpen(false);
       showToast("가게 정보가 수정되었습니다.");
     } catch {
@@ -265,8 +307,12 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     setIsUpdatingStatus(true);
     try {
       await updateMerchantShopStatus(currentShopId, nextStatus);
-      setShop(prev => ({ ...prev, status: nextStatus }));
-      setShops(prev => prev.map(item => String(item.id) === String(currentShopId) ? { ...item, status: nextStatus } : item));
+      setShop((prev) => ({ ...prev, status: nextStatus }));
+      setShops((prev) =>
+        prev.map((item) =>
+          String(item.id) === String(currentShopId) ? { ...item, status: nextStatus } : item,
+        ),
+      );
       showToast(`${SHOP_STATUS_LABELS[nextStatus] ?? nextStatus} 상태로 변경했습니다.`);
     } catch {
       showToast("가게 상태 변경에 실패했습니다. 백엔드 연결 상태를 확인해주세요.");
@@ -292,7 +338,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         fetchMerchantShopImages(currentShopId),
       ]);
       setShop(refreshedShop);
-      setShops(prev => prev.map(item => String(item.id) === String(refreshedShop.id) ? { ...item, ...refreshedShop } : item));
+      setShops((prev) =>
+        prev.map((item) =>
+          String(item.id) === String(refreshedShop.id) ? { ...item, ...refreshedShop } : item,
+        ),
+      );
       setShopImages(refreshedImages);
       setImageStatus(refreshedImages.length > 0 ? "success" : "empty");
       showToast(type === "PROFILE" ? "대표 사진을 변경했습니다." : "소개 사진을 추가했습니다.");
@@ -310,7 +360,9 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
     setDeletingShopImageId(String(imageId));
     try {
       await deleteMerchantShopImage(currentShopId, imageId);
-      const nextImages = shopImages.filter(item => String(item.imageId ?? item.id) !== String(imageId));
+      const nextImages = shopImages.filter(
+        (item) => String(item.imageId ?? item.id) !== String(imageId),
+      );
       setShopImages(nextImages);
       setImageStatus(nextImages.length > 0 ? "success" : "empty");
       showToast("가게 사진을 삭제했습니다.");
@@ -332,7 +384,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         title: noticeForm.title.trim(),
         content: noticeForm.content.trim(),
       });
-      setNotices(prev => [createdNotice, ...prev]);
+      setNotices((prev) => [createdNotice, ...prev]);
       setNoticeForm({ title: "", content: "" });
       setNoticeStatus("success");
       showToast("가게 공지를 등록했습니다.");
@@ -346,7 +398,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const handleNoticeDelete = async (noticeId) => {
     try {
       await deleteMerchantShopNotice(currentShopId, noticeId);
-      setNotices(prev => prev.filter(item => item.id !== noticeId));
+      setNotices((prev) => prev.filter((item) => item.id !== noticeId));
       showToast("가게 공지를 삭제했습니다.");
     } catch {
       showToast("가게 공지 삭제에 실패했습니다.");
@@ -376,15 +428,41 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
 
   return (
     <div style={S.screen} className="merchant-dashboard-page">
-      <div style={{ background: COLORS.primary, padding: "44px 20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 20px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>상인 대시보드</div>
       </div>
       <div className="merchant-workspace-tabs" role="tablist" aria-label="상인 업무">
-        <button type="button" className="active" role="tab" aria-selected="true">가게 홈</button>
-        <button type="button" role="tab" onClick={() => document.getElementById("merchant-qr-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}>QR 승인</button>
-        <button type="button" role="tab" onClick={onMenuManage}>메뉴</button>
-        <button type="button" role="tab" onClick={onSettlement}>정산</button>
+        <button type="button" className="active" role="tab" aria-selected="true">
+          가게 홈
+        </button>
+        <button
+          type="button"
+          role="tab"
+          onClick={() =>
+            document
+              .getElementById("merchant-qr-panel")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+        >
+          QR 승인
+        </button>
+        <button type="button" role="tab" onClick={onMenuManage}>
+          메뉴
+        </button>
+        <button type="button" role="tab" onClick={onSettlement}>
+          정산
+        </button>
       </div>
       <div style={S.scrollArea}>
         <div className="merchant-shop-selector">
@@ -395,8 +473,10 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
             onChange={handleShopSelect}
             disabled={shops.length <= 1}
           >
-            {shops.map(item => (
-              <option key={item.id} value={item.id}>{item.name}</option>
+            {shops.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
             ))}
           </select>
           <span>{shops.length.toLocaleString()}개 가게</span>
@@ -425,7 +505,9 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
           </div>
           <div>
             <span>대기 승인</span>
-            <strong>{paymentRequests.filter(item => item.status === "PENDING_CONFIRM").length}건</strong>
+            <strong>
+              {paymentRequests.filter((item) => item.status === "PENDING_CONFIRM").length}건
+            </strong>
           </div>
           <div>
             <span>수익 잔액</span>
@@ -439,14 +521,37 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
         <div className="merchant-info-panel">
           <div className="merchant-info-head">
             <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>
+              <div
+                style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}
+              >
                 {shop.name}
-                {shop.verified && <span style={{ fontSize: 14, background: COLORS.greenBg, color: COLORS.green, borderRadius: 6, padding: "2px 8px", marginLeft: 8 }}>✅ 인증</span>}
-                {shop.status && <span className={`merchant-shop-status ${String(shop.status).toLowerCase()}`}>{SHOP_STATUS_LABELS[shop.status] ?? shop.status}</span>}
+                {shop.verified && (
+                  <span
+                    style={{
+                      fontSize: 14,
+                      background: COLORS.greenBg,
+                      color: COLORS.green,
+                      borderRadius: 6,
+                      padding: "2px 8px",
+                      marginLeft: 8,
+                    }}
+                  >
+                    ✅ 인증
+                  </span>
+                )}
+                {shop.status && (
+                  <span className={`merchant-shop-status ${String(shop.status).toLowerCase()}`}>
+                    {SHOP_STATUS_LABELS[shop.status] ?? shop.status}
+                  </span>
+                )}
               </div>
-              <div style={{ color: "#E8A020", fontSize: 14 }}>★ {shop.rating} · 리뷰 {shop.reviewCount}개</div>
+              <div style={{ color: "#E8A020", fontSize: 14 }}>
+                ★ {shop.rating} · 리뷰 {shop.reviewCount}개
+              </div>
             </div>
-            <button type="button" onClick={openShopEditor}>수정</button>
+            <button type="button" onClick={openShopEditor}>
+              수정
+            </button>
           </div>
           <div className="merchant-info-grid">
             {[
@@ -456,12 +561,14 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               ["🕐 영업시간", shop.operatingHours],
               ["📅 휴무", shop.holiday],
               ["📝 설명", shop.description],
-            ].filter(([, value]) => value).map(([k, v]) => (
-              <div key={k}>
-                <span style={{ color: COLORS.textMuted, minWidth: 74 }}>{k}</span>
-                <span style={{ color: COLORS.primary }}>{v}</span>
-              </div>
-            ))}
+            ]
+              .filter(([, value]) => value)
+              .map(([k, v]) => (
+                <div key={k}>
+                  <span style={{ color: COLORS.textMuted, minWidth: 74 }}>{k}</span>
+                  <span style={{ color: COLORS.primary }}>{v}</span>
+                </div>
+              ))}
           </div>
         </div>
 
@@ -480,7 +587,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                 <em>관리자 조치로 운영정지 상태입니다.</em>
               ) : (
                 <div>
-                  {["ACTIVE", "CLOSED"].map(nextStatus => (
+                  {["ACTIVE", "CLOSED"].map((nextStatus) => (
                     <button
                       key={nextStatus}
                       type="button"
@@ -489,7 +596,8 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                       onClick={() => handleStatusChange(nextStatus)}
                       disabled={isUpdatingStatus}
                     >
-                      {shop.status === nextStatus ? "✓ " : ""}{SHOP_STATUS_LABELS[nextStatus]}
+                      {shop.status === nextStatus ? "✓ " : ""}
+                      {SHOP_STATUS_LABELS[nextStatus]}
                     </button>
                   ))}
                 </div>
@@ -511,7 +619,11 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                     disabled={isUploadingShopImage || !currentShopId}
                   />
                 </label>
-                <label className={isUploadingShopImage || !currentShopId ? "disabled secondary" : "secondary"}>
+                <label
+                  className={
+                    isUploadingShopImage || !currentShopId ? "disabled secondary" : "secondary"
+                  }
+                >
                   {isUploadingShopImage ? "업로드 중" : "소개 사진 추가"}
                   <input
                     type="file"
@@ -521,21 +633,35 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                   />
                 </label>
               </div>
-              {imageStatus === "loading" && <small className="merchant-image-empty">사진 목록을 불러오는 중입니다.</small>}
-              {imageStatus === "error" && <small className="merchant-image-empty">사진 목록을 불러오지 못했습니다.</small>}
+              {imageStatus === "loading" && (
+                <small className="merchant-image-empty">사진 목록을 불러오는 중입니다.</small>
+              )}
+              {imageStatus === "error" && (
+                <small className="merchant-image-empty">사진 목록을 불러오지 못했습니다.</small>
+              )}
               {imageStatus !== "loading" && imageStatus !== "error" && shopImages.length === 0 && (
                 <small className="merchant-image-empty">등록된 가게 사진이 없습니다.</small>
               )}
               {shopImages.length > 0 && (
                 <div className="merchant-image-list">
-                  {sortedShopImages.map(image => {
+                  {sortedShopImages.map((image) => {
                     const imageId = image.imageId ?? image.id;
                     const imageUrl = image.url || image.imageUrl;
                     return (
                       <figure key={imageId || imageUrl}>
-                        {imageUrl ? <img src={imageUrl} alt={`${shop.name || "가게"} 사진`} /> : <span>이미지 URL 없음</span>}
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={`${shop.name || "가게"} 사진`} />
+                        ) : (
+                          <span>이미지 URL 없음</span>
+                        )}
                         <figcaption>
-                          <span className={image.type === "PROFILE" || image.isPrimary ? "merchant-image-type-badge" : "merchant-image-type-badge gallery"}>
+                          <span
+                            className={
+                              image.type === "PROFILE" || image.isPrimary
+                                ? "merchant-image-type-badge"
+                                : "merchant-image-type-badge gallery"
+                            }
+                          >
                             {image.type === "PROFILE" || image.isPrimary ? "대표" : "소개"}
                           </span>
                         </figcaption>
@@ -563,16 +689,24 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
             </div>
             <strong>{notices.length}건</strong>
           </div>
-          {noticeStatus === "error" && <div className="merchant-api-note">공지 목록을 불러오지 못했습니다. 백엔드 연결 상태를 확인해주세요.</div>}
+          {noticeStatus === "error" && (
+            <div className="merchant-api-note">
+              공지 목록을 불러오지 못했습니다. 백엔드 연결 상태를 확인해주세요.
+            </div>
+          )}
           <div className="merchant-notice-form">
             <input
               value={noticeForm.title}
-              onChange={event => setNoticeForm(prev => ({ ...prev, title: event.target.value }))}
+              onChange={(event) =>
+                setNoticeForm((prev) => ({ ...prev, title: event.target.value }))
+              }
               placeholder="공지 제목"
             />
             <textarea
               value={noticeForm.content}
-              onChange={event => setNoticeForm(prev => ({ ...prev, content: event.target.value }))}
+              onChange={(event) =>
+                setNoticeForm((prev) => ({ ...prev, content: event.target.value }))
+              }
               placeholder="공지 내용을 입력하세요."
               rows={3}
             />
@@ -588,27 +722,38 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               description="오늘의 영업 안내나 임시 휴무를 공지로 남겨보세요."
             />
           )}
-          {notices.map(notice => (
+          {notices.map((notice) => (
             <div key={notice.id} className="merchant-notice-item">
               <div>
                 <strong>{notice.title}</strong>
-                {(notice.createdAtLabel || notice.createdAt) && <span>{notice.createdAtLabel || notice.createdAt}</span>}
+                {(notice.createdAtLabel || notice.createdAt) && (
+                  <span>{notice.createdAtLabel || notice.createdAt}</span>
+                )}
                 <p>{notice.content}</p>
               </div>
-              <button type="button" onClick={() => handleNoticeDelete(notice.id)}>삭제</button>
+              <button type="button" onClick={() => handleNoticeDelete(notice.id)}>
+                삭제
+              </button>
             </div>
           ))}
         </div>
 
         {isShopEditorOpen && (
-          <div className="merchant-shop-editor" role="dialog" aria-modal="true" aria-labelledby="merchant-shop-editor-title">
+          <div
+            className="merchant-shop-editor"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="merchant-shop-editor-title"
+          >
             <div className="merchant-shop-editor-card">
               <div className="merchant-shop-editor-head">
                 <div>
                   <strong id="merchant-shop-editor-title">가게 정보 수정</strong>
                   <span>상태, 인증, 평점은 관리자 기준 정보라 여기서 수정하지 않습니다.</span>
                 </div>
-                <button type="button" onClick={() => setIsShopEditorOpen(false)} aria-label="닫기">×</button>
+                <button type="button" onClick={() => setIsShopEditorOpen(false)} aria-label="닫기">
+                  ×
+                </button>
               </div>
               <div className="merchant-shop-form-grid">
                 {[
@@ -623,7 +768,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                     <span>{label}</span>
                     <input
                       value={shopForm[key]}
-                      onChange={event => handleShopFormChange(key, event.target.value)}
+                      onChange={(event) => handleShopFormChange(key, event.target.value)}
                       placeholder={placeholder}
                     />
                   </label>
@@ -632,14 +777,20 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                   <span>가게 설명</span>
                   <textarea
                     value={shopForm.description}
-                    onChange={event => handleShopFormChange("description", event.target.value)}
+                    onChange={(event) => handleShopFormChange("description", event.target.value)}
                     placeholder="사용자에게 보여줄 가게 소개를 입력하세요."
                     rows={4}
                   />
                 </label>
               </div>
               <div className="merchant-shop-editor-actions">
-                <button type="button" onClick={() => setIsShopEditorOpen(false)} disabled={isSavingShop}>취소</button>
+                <button
+                  type="button"
+                  onClick={() => setIsShopEditorOpen(false)}
+                  disabled={isSavingShop}
+                >
+                  취소
+                </button>
                 <button type="button" onClick={handleShopSave} disabled={isSavingShop}>
                   {isSavingShop ? "저장 중" : "저장"}
                 </button>
@@ -655,37 +806,67 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               <small>상인이 승인하면 사용자 결제가 완료됩니다.</small>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button type="button" className="merchant-small-action" onClick={handleQrReissue} disabled={qrReissuing}>
+              <button
+                type="button"
+                className="merchant-small-action"
+                onClick={handleQrReissue}
+                disabled={qrReissuing}
+              >
                 {qrReissuing ? "재발급 중" : "QR 재발급"}
               </button>
-              <strong>{paymentRequests.filter(item => item.status === "PENDING_CONFIRM").length}건 대기</strong>
+              <strong>
+                {paymentRequests.filter((item) => item.status === "PENDING_CONFIRM").length}건 대기
+              </strong>
             </div>
           </div>
-          {requestStatus === "error" && <div className="merchant-api-note">QR 승인 요청을 불러오지 못했습니다. 백엔드 연결 상태를 확인해주세요.</div>}
+          {requestStatus === "error" && (
+            <div className="merchant-api-note">
+              QR 승인 요청을 불러오지 못했습니다. 백엔드 연결 상태를 확인해주세요.
+            </div>
+          )}
           {paymentRequests.length === 0 ? (
             <EmptyState
               icon="QR"
               title="대기 중인 결제 요청이 없습니다."
               description="사용자가 현장에서 QR을 스캔하고 금액을 입력하면 승인 요청이 이곳에 표시됩니다."
             />
-          ) : paymentRequests.map(request => (
-            <div key={request.id} className={`merchant-payment-request ${request.status !== "PENDING_CONFIRM" ? "done" : ""}`}>
-              <div>
-                <strong>{request.menuName || "QR 결제 요청"}</strong>
-                <span>{request.customerName} · {request.requestedAt}</span>
-                {request.memo && <small>{request.memo}</small>}
-              </div>
-              <em>🪙 {request.amount.toLocaleString()}</em>
-              {request.status === "PENDING_CONFIRM" ? (
-                <div className="merchant-payment-actions">
-                  <button type="button" onClick={() => handlePaymentRequest(request.id, "reject")}>거절</button>
-                  <button type="button" onClick={() => handlePaymentRequest(request.id, "approve")}>승인</button>
+          ) : (
+            paymentRequests.map((request) => (
+              <div
+                key={request.id}
+                className={`merchant-payment-request ${request.status !== "PENDING_CONFIRM" ? "done" : ""}`}
+              >
+                <div>
+                  <strong>{request.menuName || "QR 결제 요청"}</strong>
+                  <span>
+                    {request.customerName} · {request.requestedAt}
+                  </span>
+                  {request.memo && <small>{request.memo}</small>}
                 </div>
-              ) : (
-                <span className="merchant-payment-status">{request.status === "APPROVED" ? "승인 완료" : "거절됨"}</span>
-              )}
-            </div>
-          ))}
+                <em>🪙 {request.amount.toLocaleString()}</em>
+                {request.status === "PENDING_CONFIRM" ? (
+                  <div className="merchant-payment-actions">
+                    <button
+                      type="button"
+                      onClick={() => handlePaymentRequest(request.id, "reject")}
+                    >
+                      거절
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePaymentRequest(request.id, "approve")}
+                    >
+                      승인
+                    </button>
+                  </div>
+                ) : (
+                  <span className="merchant-payment-status">
+                    {request.status === "APPROVED" ? "승인 완료" : "거절됨"}
+                  </span>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         <div className="merchant-payment-panel merchant-item-use-panel">
@@ -705,21 +886,28 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
               onKeyDown={(event) => event.key === "Enter" && handleUseCustomerItem()}
               placeholder="QR 스캔 토큰"
             />
-            <button type="button" onClick={handleUseCustomerItem} disabled={itemUseStatus === "loading"}>
+            <button
+              type="button"
+              onClick={handleUseCustomerItem}
+              disabled={itemUseStatus === "loading"}
+            >
               {itemUseStatus === "loading" ? "처리 중" : "사용 처리"}
             </button>
           </div>
           {itemUseStatus === "error" && (
-            <div className="merchant-api-note">아이템 사용 처리에 실패했습니다. 만료되었거나 이미 사용한 QR일 수 있습니다.</div>
+            <div className="merchant-api-note">
+              아이템 사용 처리에 실패했습니다. 만료되었거나 이미 사용한 QR일 수 있습니다.
+            </div>
           )}
           {itemUseResult && (
             <div className="merchant-item-use-result">
               <strong>{itemUseResult.productName || "아이템"}</strong>
-              <span>{itemUseResult.status} · {itemUseResult.usedAt || "방금 처리됨"}</span>
+              <span>
+                {itemUseResult.status} · {itemUseResult.usedAt || "방금 처리됨"}
+              </span>
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
@@ -748,12 +936,14 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
         setStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [selectedShopId]);
 
   const toggleMenu = async (id) => {
     const menu = menus.find((item) => item.id === id);
-    setMenus(prev => prev.map(m => m.id === id ? { ...m, available: !m.available } : m));
+    setMenus((prev) => prev.map((m) => (m.id === id ? { ...m, available: !m.available } : m)));
     if (!menu) return;
     await updateMerchantMenu(id, { available: !menu.available }, selectedShopId).catch(() => {});
   };
@@ -776,7 +966,10 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.price) { showToast("메뉴명과 가격을 입력해주세요."); return; }
+    if (!form.name || !form.price) {
+      showToast("메뉴명과 가격을 입력해주세요.");
+      return;
+    }
     const draft = {
       id: editingId ?? Date.now(),
       name: form.name,
@@ -789,7 +982,7 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
     if (editingId) {
       try {
         const updated = await updateMerchantMenu(editingId, draft, selectedShopId);
-        setMenus(prev => prev.map(menu => menu.id === editingId ? updated : menu));
+        setMenus((prev) => prev.map((menu) => (menu.id === editingId ? updated : menu)));
         resetMenuForm();
         showToast("메뉴가 수정되었습니다.");
       } catch {
@@ -800,7 +993,7 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
 
     try {
       const created = await addMerchantMenu(draft, selectedShopId);
-      setMenus(prev => [...prev, created]);
+      setMenus((prev) => [...prev, created]);
       setStatus("success");
       resetMenuForm();
       showToast("메뉴가 추가되었습니다!");
@@ -811,19 +1004,43 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
 
   const handleDelete = async (id) => {
     await deleteMerchantMenu(id, selectedShopId).catch(() => {});
-    setMenus(prev => prev.filter(m => m.id !== id));
+    setMenus((prev) => prev.filter((m) => m.id !== id));
     showToast("메뉴가 삭제되었습니다.");
   };
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 20px 20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+            ←
+          </span>
           <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>🍽️ 메뉴 관리</span>
         </div>
-        <div onClick={() => { setShowAddForm(true); setEditingId(null); setForm({ name: "", nameEn: "", price: "", desc: "" }); }}
-          style={{ background: COLORS.accent, color: COLORS.primary, fontSize: 14, fontWeight: 700, borderRadius: 20, padding: "6px 16px", cursor: "pointer" }}>
+        <div
+          onClick={() => {
+            setShowAddForm(true);
+            setEditingId(null);
+            setForm({ name: "", nameEn: "", price: "", desc: "" });
+          }}
+          style={{
+            background: COLORS.accent,
+            color: COLORS.primary,
+            fontSize: 14,
+            fontWeight: 700,
+            borderRadius: 20,
+            padding: "6px 16px",
+            cursor: "pointer",
+          }}
+        >
           + 메뉴 추가
         </div>
       </div>
@@ -831,29 +1048,80 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
       <div style={S.scrollArea}>
         {/* 메뉴 추가 폼 */}
         {showAddForm && (
-          <div style={{ background: "#fff", margin: 16, borderRadius: 16, padding: 20, border: `2px solid ${COLORS.accent}` }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 14 }}>{editingId ? "메뉴 수정" : "새 메뉴 추가"}</div>
+          <div
+            style={{
+              background: "#fff",
+              margin: 16,
+              borderRadius: 16,
+              padding: 20,
+              border: `2px solid ${COLORS.accent}`,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 14 }}>
+              {editingId ? "메뉴 수정" : "새 메뉴 추가"}
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { key: "name", label: "메뉴명 *", placeholder: "예) 빈대떡" },
                 { key: "nameEn", label: "영문명", placeholder: "예) Bindaetteok" },
                 { key: "price", label: "가격 (엽전) *", placeholder: "예) 5000", type: "number" },
                 { key: "desc", label: "설명", placeholder: "메뉴 설명을 입력하세요" },
-              ].map(f => (
+              ].map((f) => (
                 <div key={f.key}>
-                  <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 4 }}>{f.label}</div>
+                  <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 4 }}>
+                    {f.label}
+                  </div>
                   <input
                     value={form[f.key]}
-                    onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
                     type={f.type || "text"}
                     placeholder={f.placeholder}
-                    style={{ width: "100%", background: COLORS.bg, border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                    style={{
+                      width: "100%",
+                      background: COLORS.bg,
+                      border: "1px solid rgba(0,0,0,0.1)",
+                      borderRadius: 10,
+                      padding: "10px 14px",
+                      fontSize: 14,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
                   />
                 </div>
               ))}
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <div onClick={resetMenuForm} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: "pointer", color: COLORS.textMuted }}>취소</div>
-                <div onClick={handleSave} style={{ flex: 2, background: COLORS.accent, color: COLORS.primary, borderRadius: 10, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>{editingId ? "수정하기" : "추가하기"}</div>
+                <div
+                  onClick={resetMenuForm}
+                  style={{
+                    flex: 1,
+                    background: COLORS.bg,
+                    borderRadius: 10,
+                    padding: "10px 0",
+                    textAlign: "center",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    color: COLORS.textMuted,
+                  }}
+                >
+                  취소
+                </div>
+                <div
+                  onClick={handleSave}
+                  style={{
+                    flex: 2,
+                    background: COLORS.accent,
+                    color: COLORS.primary,
+                    borderRadius: 10,
+                    padding: "10px 0",
+                    textAlign: "center",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  {editingId ? "수정하기" : "추가하기"}
+                </div>
               </div>
             </div>
           </div>
@@ -861,7 +1129,9 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
 
         {/* 메뉴 목록 */}
         <div style={{ padding: "8px 16px 16px" }}>
-          <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 10 }}>총 {menus.length}개 메뉴</div>
+          <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 10 }}>
+            총 {menus.length}개 메뉴
+          </div>
           {status === "loading" && <SkeletonList count={3} />}
           {status === "error" && (
             <ErrorState
@@ -878,27 +1148,126 @@ export function MerchantMenuPage({ onBack, showToast, selectedShopId }) {
               onAction={() => setShowAddForm(true)}
             />
           )}
-          {menus.map(m => (
-            <div key={m.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, border: "0.5px solid rgba(0,0,0,0.06)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+          {menus.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                background: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 10,
+                border: "0.5px solid rgba(0,0,0,0.06)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: 8,
+                }}
+              >
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{m.name}</span>
-                    {m.nameEn && <span style={{ fontSize: 14, color: COLORS.textMuted }}>{m.nameEn}</span>}
+                    <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>
+                      {m.name}
+                    </span>
+                    {m.nameEn && (
+                      <span style={{ fontSize: 14, color: COLORS.textMuted }}>{m.nameEn}</span>
+                    )}
                   </div>
-                  {m.desc && <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>{m.desc}</div>}
-                  <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.accent }}>🪙 {m.price.toLocaleString()} 엽전</div>
+                  {m.desc && (
+                    <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>
+                      {m.desc}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.accent }}>
+                    🪙 {m.price.toLocaleString()} 엽전
+                  </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-                  <div onClick={() => toggleMenu(m.id)} style={{ width: 48, height: 26, borderRadius: 13, background: m.available ? COLORS.green : "#ccc", position: "relative", cursor: "pointer" }}>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: m.available ? 25 : 3, transition: "left 0.2s" }} />
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    onClick={() => toggleMenu(m.id)}
+                    style={{
+                      width: 48,
+                      height: 26,
+                      borderRadius: 13,
+                      background: m.available ? COLORS.green : "#ccc",
+                      position: "relative",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        position: "absolute",
+                        top: 3,
+                        left: m.available ? 25 : 3,
+                        transition: "left 0.2s",
+                      }}
+                    />
                   </div>
-                  <span style={{ fontSize: 14, color: m.available ? COLORS.green : COLORS.textMuted, fontWeight: 600 }}>{m.available ? "판매중" : "판매중지"}</span>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: m.available ? COLORS.green : COLORS.textMuted,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {m.available ? "판매중" : "판매중지"}
+                  </span>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, borderTop: "0.5px solid rgba(0,0,0,0.06)", paddingTop: 10 }}>
-                <div onClick={() => startEditMenu(m)} style={{ flex: 1, background: COLORS.bg, borderRadius: 8, padding: "7px 0", textAlign: "center", fontSize: 14, fontWeight: 600, cursor: "pointer", color: COLORS.primary }}>✏️ 수정</div>
-                <div onClick={() => handleDelete(m.id)} style={{ flex: 1, background: "#FEE8E8", borderRadius: 8, padding: "7px 0", textAlign: "center", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#A32D2D" }}>🗑️ 삭제</div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  borderTop: "0.5px solid rgba(0,0,0,0.06)",
+                  paddingTop: 10,
+                }}
+              >
+                <div
+                  onClick={() => startEditMenu(m)}
+                  style={{
+                    flex: 1,
+                    background: COLORS.bg,
+                    borderRadius: 8,
+                    padding: "7px 0",
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: COLORS.primary,
+                  }}
+                >
+                  ✏️ 수정
+                </div>
+                <div
+                  onClick={() => handleDelete(m.id)}
+                  style={{
+                    flex: 1,
+                    background: "#FEE8E8",
+                    borderRadius: 8,
+                    padding: "7px 0",
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#A32D2D",
+                  }}
+                >
+                  🗑️ 삭제
+                </div>
               </div>
             </div>
           ))}
@@ -918,25 +1287,29 @@ export function MerchantSettlementPage({ onBack, showToast, selectedShopId }) {
   useEffect(() => {
     let ignore = false;
 
-    Promise.allSettled([fetchMerchantSettlements(selectedShopId), fetchMerchantWallet(selectedShopId)])
-      .then(([settlementResult, walletResult]) => {
-        if (ignore) return;
+    Promise.allSettled([
+      fetchMerchantSettlements(selectedShopId),
+      fetchMerchantWallet(selectedShopId),
+    ]).then(([settlementResult, walletResult]) => {
+      if (ignore) return;
 
-        if (walletResult.status === "fulfilled") {
-          setWallet(walletResult.value);
-        }
+      if (walletResult.status === "fulfilled") {
+        setWallet(walletResult.value);
+      }
 
-        if (settlementResult.status === "fulfilled") {
-          setSettlements(settlementResult.value);
-          setStatus(settlementResult.value.length > 0 ? "success" : "empty");
-        } else {
-          setSettlements([]);
-          setErrorMessage("정산 내역 API 응답을 불러오지 못했습니다.");
-          setStatus("error");
-        }
-      });
+      if (settlementResult.status === "fulfilled") {
+        setSettlements(settlementResult.value);
+        setStatus(settlementResult.value.length > 0 ? "success" : "empty");
+      } else {
+        setSettlements([]);
+        setErrorMessage("정산 내역 API 응답을 불러오지 못했습니다.");
+        setStatus("error");
+      }
+    });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [selectedShopId]);
 
   const totalAmount = settlements.reduce((sum, item) => sum + item.amount, 0);
@@ -959,13 +1332,25 @@ export function MerchantSettlementPage({ onBack, showToast, selectedShopId }) {
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>정산 내역</span>
       </div>
       <div style={{ background: COLORS.primary, padding: "0 16px 20px", textAlign: "center" }}>
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>총 정산액</div>
-        <div style={{ color: COLORS.accent, fontSize: 28, fontWeight: 700 }}>🪙 {totalAmount.toLocaleString()} 엽전</div>
+        <div style={{ color: COLORS.accent, fontSize: 28, fontWeight: 700 }}>
+          🪙 {totalAmount.toLocaleString()} 엽전
+        </div>
       </div>
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
@@ -975,19 +1360,23 @@ export function MerchantSettlementPage({ onBack, showToast, selectedShopId }) {
               <strong>🪙 {settlementAvailable.toLocaleString()} 엽전</strong>
               <small>정산은 5,000엽전부터 신청할 수 있습니다. 현금 기준 50,000원 상당입니다.</small>
               {!canRequestSettlement && (
-                <em>현재 기준까지 {(MIN_SETTLEMENT_AMOUNT - settlementAvailable).toLocaleString()}엽전이 더 필요합니다.</em>
+                <em>
+                  현재 기준까지 {(MIN_SETTLEMENT_AMOUNT - settlementAvailable).toLocaleString()}
+                  엽전이 더 필요합니다.
+                </em>
               )}
             </div>
-            <button type="button" onClick={handleSettlementRequest} disabled={!canRequestSettlement}>
+            <button
+              type="button"
+              onClick={handleSettlementRequest}
+              disabled={!canRequestSettlement}
+            >
               {canRequestSettlement ? "정산 신청하기" : "정산 기준 미달"}
             </button>
           </div>
           {status === "loading" && <SkeletonList count={3} />}
           {status === "error" && (
-            <ErrorState
-              title="정산 내역을 불러오지 못했습니다."
-              description={errorMessage}
-            />
+            <ErrorState title="정산 내역을 불러오지 못했습니다." description={errorMessage} />
           )}
           {status === "empty" && (
             <EmptyState
@@ -996,13 +1385,42 @@ export function MerchantSettlementPage({ onBack, showToast, selectedShopId }) {
               description="QR 결제 매출이 쌓이면 정산 요청과 처리 내역이 이곳에 표시됩니다."
             />
           )}
-          {settlements.map(s => (
-            <div key={s.id} style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
+          {settlements.map((s) => (
+            <div
+              key={s.id}
+              style={{
+                background: "#fff",
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 10,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                border: "0.5px solid rgba(0,0,0,0.06)",
+              }}
+            >
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>{s.date} 정산</div>
-                <span style={{ background: COLORS.greenBg, color: COLORS.green, fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>{s.status}</span>
+                <div
+                  style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}
+                >
+                  {s.date} 정산
+                </div>
+                <span
+                  style={{
+                    background: COLORS.greenBg,
+                    color: COLORS.green,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    borderRadius: 6,
+                    padding: "2px 8px",
+                  }}
+                >
+                  {s.status}
+                </span>
               </div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.green }}>+{s.amount.toLocaleString()}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.green }}>
+                +{s.amount.toLocaleString()}
+              </div>
             </div>
           ))}
         </div>

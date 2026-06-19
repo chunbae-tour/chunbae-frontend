@@ -40,7 +40,7 @@ function makeDataCodewords(bytes, version) {
 
   appendBits(bits, 0b0100, 4); // byte mode
   appendBits(bits, bytes.length, countBits);
-  bytes.forEach(byte => appendBits(bits, byte, 8));
+  bytes.forEach((byte) => appendBits(bits, byte, 8));
 
   const terminatorLength = Math.min(4, capacityBits - bits.length);
   appendBits(bits, 0, terminatorLength);
@@ -125,14 +125,14 @@ function addErrorCorrection(dataCodewords, version) {
   }
 
   const result = [];
-  const maxDataLength = Math.max(...blocks.map(block => block.data.length));
+  const maxDataLength = Math.max(...blocks.map((block) => block.data.length));
   for (let i = 0; i < maxDataLength; i += 1) {
     blocks.forEach((block) => {
       if (i < block.data.length) result.push(block.data[i]);
     });
   }
   for (let i = 0; i < eccLength; i += 1) {
-    blocks.forEach(block => result.push(block.ecc[i]));
+    blocks.forEach((block) => result.push(block.ecc[i]));
   }
   return result;
 }
@@ -156,7 +156,13 @@ function drawFinder(matrix, x, y) {
       const xx = x + dx;
       const yy = y + dy;
       const isInside = dx >= 0 && dx <= 6 && dy >= 0 && dy <= 6;
-      const isBlack = isInside && (dx === 0 || dx === 6 || dy === 0 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4));
+      const isBlack =
+        isInside &&
+        (dx === 0 ||
+          dx === 6 ||
+          dy === 0 ||
+          dy === 6 ||
+          (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4));
       setModule(matrix, xx, yy, isBlack, true);
     }
   }
@@ -232,7 +238,9 @@ function maskBit(x, y) {
 
 function drawData(matrix, codewords) {
   const size = matrix.modules.length;
-  const bits = codewords.flatMap(byte => Array.from({ length: 8 }, (_, index) => (byte >>> (7 - index)) & 1));
+  const bits = codewords.flatMap((byte) =>
+    Array.from({ length: 8 }, (_, index) => (byte >>> (7 - index)) & 1),
+  );
   let bitIndex = 0;
   let upward = true;
 
@@ -276,7 +284,8 @@ function drawFormatBits(matrix) {
   for (let i = 9; i < 15; i += 1) setModule(matrix, 14 - i, 8, ((bits >>> i) & 1) !== 0, true);
 
   for (let i = 0; i < 8; i += 1) setModule(matrix, size - 1 - i, 8, ((bits >>> i) & 1) !== 0, true);
-  for (let i = 8; i < 15; i += 1) setModule(matrix, 8, size - 15 + i, ((bits >>> i) & 1) !== 0, true);
+  for (let i = 8; i < 15; i += 1)
+    setModule(matrix, 8, size - 15 + i, ((bits >>> i) & 1) !== 0, true);
   setModule(matrix, 8, size - 8, true, true);
 }
 

@@ -3,12 +3,35 @@ import { createPortal } from "react-dom";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, ReportDialog, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { createChatRoom, fetchMyChatRooms, getCompanionJoinState, getCompanionRoomForPost, registerCompanionChatRoom, submitCompanionJoinRequest } from "../../services/chatService.js";
-import { createCommunityComment, createCommunityPost, deleteComment, deleteCommunityPost, fetchCommunityComments, fetchCommunityPostDetail, fetchCommunityPosts, fetchReplies, updateComment, updateCommunityPost, uploadFreePostImage } from "../../services/communityService.js";
+import {
+  createChatRoom,
+  fetchMyChatRooms,
+  getCompanionJoinState,
+  getCompanionRoomForPost,
+  registerCompanionChatRoom,
+  submitCompanionJoinRequest,
+} from "../../services/chatService.js";
+import {
+  createCommunityComment,
+  createCommunityPost,
+  deleteComment,
+  deleteCommunityPost,
+  fetchCommunityComments,
+  fetchCommunityPostDetail,
+  fetchCommunityPosts,
+  fetchReplies,
+  updateComment,
+  updateCommunityPost,
+  uploadFreePostImage,
+} from "../../services/communityService.js";
 import { createReport, REPORT_REASONS } from "../../services/reportService.js";
 import { fetchFestivalDetail, searchFestivals } from "../../services/festivalService.js";
 import { fetchWishlist } from "../../services/myService.js";
-import { fetchPlaceDetail, fetchPlaces, fetchTraditionalMarketDetail } from "../../services/placeService.js";
+import {
+  fetchPlaceDetail,
+  fetchPlaces,
+  fetchTraditionalMarketDetail,
+} from "../../services/placeService.js";
 import { searchPlaces, searchUnifiedPage } from "../../services/searchService.js";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
 
@@ -122,7 +145,11 @@ function formatFestivalDate(value) {
   if (!value) return "";
   const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
 }
 
 function formatFestivalRange(startDate, endDate) {
@@ -147,7 +174,11 @@ function getCalendarCells(year, month) {
       const day = dayOffset - currentMonthDays;
       return { day, value: toLocalDateValue(new Date(year, month + 1, day)), outside: true };
     }
-    return { day: dayOffset, value: toLocalDateValue(new Date(year, month, dayOffset)), outside: false };
+    return {
+      day: dayOffset,
+      value: toLocalDateValue(new Date(year, month, dayOffset)),
+      outside: false,
+    };
   });
 }
 
@@ -202,45 +233,86 @@ function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
 
   return createPortal(
     <div className="hanok-calendar-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="hanok-calendar" role="dialog" aria-modal="true" aria-label="모임 날짜 선택" onMouseDown={(event) => event.stopPropagation()}>
+      <section
+        className="hanok-calendar"
+        role="dialog"
+        aria-modal="true"
+        aria-label="모임 날짜 선택"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="hanok-calendar-roof" aria-hidden="true">
           <span className="hanok-roof-ridge" />
           <div className="hanok-roof-tiles">
-            {Array.from({ length: 11 }, (_, index) => <i key={index} />)}
+            {Array.from({ length: 11 }, (_, index) => (
+              <i key={index} />
+            ))}
           </div>
         </div>
         <header className="hanok-calendar-header">
-          <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>?</button>
+          <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>
+            ?
+          </button>
           <div className="hanok-calendar-period">
-            <button type="button" className={wheelMode === "year" ? "active" : ""} onClick={() => setWheelMode(wheelMode === "year" ? null : "year")}>{year}년</button>
-            <button type="button" className={wheelMode === "month" ? "active" : ""} onClick={() => setWheelMode(wheelMode === "month" ? null : "month")}>{month + 1}월</button>
+            <button
+              type="button"
+              className={wheelMode === "year" ? "active" : ""}
+              onClick={() => setWheelMode(wheelMode === "year" ? null : "year")}
+            >
+              {year}년
+            </button>
+            <button
+              type="button"
+              className={wheelMode === "month" ? "active" : ""}
+              onClick={() => setWheelMode(wheelMode === "month" ? null : "month")}
+            >
+              {month + 1}월
+            </button>
           </div>
-          <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>?</button>
+          <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>
+            ?
+          </button>
         </header>
 
         {wheelMode && (
-          <div className="hanok-calendar-wheel-panel" onWheel={(event) => handleWheel(event, wheelMode)}>
-            <div className="hanok-calendar-wheel-label">{wheelMode === "year" ? "연도 선택" : "월 선택"} · 마우스 휠로 넘겨보세요</div>
+          <div
+            className="hanok-calendar-wheel-panel"
+            onWheel={(event) => handleWheel(event, wheelMode)}
+          >
+            <div className="hanok-calendar-wheel-label">
+              {wheelMode === "year" ? "연도 선택" : "월 선택"} · 마우스 휠로 넘겨보세요
+            </div>
             <div ref={wheelRef} className={`hanok-calendar-wheel ${wheelMode}`}>
-              {(wheelMode === "year" ? years : months).map(option => {
+              {(wheelMode === "year" ? years : months).map((option) => {
                 const selected = wheelMode === "year" ? option === year : option === month;
                 return (
-                  <button type="button" key={option} className={selected ? "selected" : ""} onWheel={(event) => handleWheel(event, wheelMode)} onClick={() => wheelMode === "year" ? changeYear(option) : changeMonth(option)}>
+                  <button
+                    type="button"
+                    key={option}
+                    className={selected ? "selected" : ""}
+                    onWheel={(event) => handleWheel(event, wheelMode)}
+                    onClick={() =>
+                      wheelMode === "year" ? changeYear(option) : changeMonth(option)
+                    }
+                  >
                     {wheelMode === "year" ? `${option}년` : `${option + 1}월`}
                   </button>
                 );
               })}
             </div>
-            <button type="button" className="hanok-wheel-done" onClick={() => setWheelMode(null)}>달력 보기</button>
+            <button type="button" className="hanok-wheel-done" onClick={() => setWheelMode(null)}>
+              달력 보기
+            </button>
           </div>
         )}
 
         <div className="hanok-calendar-body">
           <div className="hanok-calendar-weekdays">
-            {["일", "월", "화", "수", "목", "금", "토"].map(day => <span key={day}>{day}</span>)}
+            {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+              <span key={day}>{day}</span>
+            ))}
           </div>
           <div className="hanok-calendar-days">
-            {cells.map(cell => (
+            {cells.map((cell) => (
               <button
                 type="button"
                 key={cell.value}
@@ -258,7 +330,9 @@ function HanokCalendarModal({ open, value, min, onClose, onConfirm }) {
         </div>
         <footer className="hanok-calendar-footer">
           <span>{formatMeetingDate(draftDate)}</span>
-          <button type="button" onClick={() => onConfirm(draftDate)}>{new Date(`${draftDate}T12:00:00`).getDate()}일로 선택</button>
+          <button type="button" onClick={() => onConfirm(draftDate)}>
+            {new Date(`${draftDate}T12:00:00`).getDate()}일로 선택
+          </button>
         </footer>
       </section>
     </div>,
@@ -277,10 +351,13 @@ function isClosedCompanionPost(post) {
   const status = String(post?.status ?? "").toUpperCase();
   const parsedMeetingDate = parseDateValue(post?.meetingDate ?? post?.date);
   const meetingDateValue = parsedMeetingDate ? toLocalDateValue(parsedMeetingDate) : "";
-  const isPastMeetingDate = Boolean(meetingDateValue) && meetingDateValue < toLocalDateValue(new Date());
-  return ["CLOSED", "HIDDEN", "DELETED"].includes(status)
-    || isPastMeetingDate
-    || (Number(post?.max) > 0 && Number(post?.current) >= Number(post?.max));
+  const isPastMeetingDate =
+    Boolean(meetingDateValue) && meetingDateValue < toLocalDateValue(new Date());
+  return (
+    ["CLOSED", "HIDDEN", "DELETED"].includes(status) ||
+    isPastMeetingDate ||
+    (Number(post?.max) > 0 && Number(post?.current) >= Number(post?.max))
+  );
 }
 
 function getMeetingDateParts(value) {
@@ -305,23 +382,23 @@ function isPostAuthor(post, user) {
     post.writer?.id,
     post.author?.userId,
     post.author?.id,
-  ].filter(value => value != null && value !== "");
-  const currentUserIds = [
-    user.userId,
-    user.id,
-    user.accountId,
-    user.memberId,
-  ].filter(value => value != null && value !== "");
+  ].filter((value) => value != null && value !== "");
+  const currentUserIds = [user.userId, user.id, user.accountId, user.memberId].filter(
+    (value) => value != null && value !== "",
+  );
 
-  if (postUserIds.some(postId => currentUserIds.some(userId => String(postId) === String(userId)))) {
+  if (
+    postUserIds.some((postId) => currentUserIds.some((userId) => String(postId) === String(userId)))
+  ) {
     return true;
   }
 
-  const authorName = typeof post.author === "string"
-    ? post.author
-    : post.author?.nickname ?? post.author?.name ?? post.writer?.nickname ?? post.writer?.name;
+  const authorName =
+    typeof post.author === "string"
+      ? post.author
+      : (post.author?.nickname ?? post.author?.name ?? post.writer?.nickname ?? post.writer?.name);
   const currentNames = [user.nickname, user.name, user.username].filter(Boolean);
-  return Boolean(authorName && currentNames.some(name => String(authorName) === String(name)));
+  return Boolean(authorName && currentNames.some((name) => String(authorName) === String(name)));
 }
 
 function CommunityProfileAvatar({ imageUrl, name = "여행자", className = "" }) {
@@ -422,7 +499,11 @@ function normalizeCompanionTarget(post = {}) {
   return {
     type,
     id: post.targetId ?? legacyPlaceId,
-    name: post.targetName ?? post.placeName ?? (typeof post.place === "string" ? post.place : post.place?.name) ?? "",
+    name:
+      post.targetName ??
+      post.placeName ??
+      (typeof post.place === "string" ? post.place : post.place?.name) ??
+      "",
   };
 }
 
@@ -437,8 +518,9 @@ async function fetchCompanionTarget(target) {
       ? fetchPlaces({ keyword: target.name, size: 10 }).catch(() => [])
       : Promise.resolve([]),
   ]);
-  const listPlace = candidates.find((place) => String(place.placeId ?? place.id) === String(target.id))
-    ?? candidates.find((place) => place.name === target.name);
+  const listPlace =
+    candidates.find((place) => String(place.placeId ?? place.id) === String(target.id)) ??
+    candidates.find((place) => place.name === target.name);
 
   if (!listPlace) {
     const detailImageUrl = getPlaceImageUrl(detail);
@@ -455,8 +537,22 @@ async function fetchCompanionTarget(target) {
   return {
     ...listPlace,
     ...detail,
-    imageUrl: detail.imageUrl || detail.thumbnailUrl || detailImageUrl || listPlace.imageUrl || listPlace.thumbnailUrl || listImageUrl || "",
-    thumbnailUrl: detail.thumbnailUrl || detail.imageUrl || detailImageUrl || listPlace.thumbnailUrl || listPlace.imageUrl || listImageUrl || "",
+    imageUrl:
+      detail.imageUrl ||
+      detail.thumbnailUrl ||
+      detailImageUrl ||
+      listPlace.imageUrl ||
+      listPlace.thumbnailUrl ||
+      listImageUrl ||
+      "",
+    thumbnailUrl:
+      detail.thumbnailUrl ||
+      detail.imageUrl ||
+      detailImageUrl ||
+      listPlace.thumbnailUrl ||
+      listPlace.imageUrl ||
+      listImageUrl ||
+      "",
     imageUrls: detail.imageUrls?.length ? detail.imageUrls : listPlace.imageUrls,
   };
 }
@@ -473,7 +569,9 @@ function StaticMeetingMap({ name, onOpen }) {
       <span className="community-map-road road-two" />
       <span className="community-map-block block-one" />
       <span className="community-map-block block-two" />
-      <span className="community-map-pin" aria-hidden="true"><LocationIcon /></span>
+      <span className="community-map-pin" aria-hidden="true">
+        <LocationIcon />
+      </span>
       <span className="community-map-caption">
         <strong>{name || "만나는 곳"}</strong>
       </span>
@@ -488,7 +586,10 @@ function ParticipantAvatarStack({ current = 1, max = 4, hostLabel = "방장", de
   const visibleSlots = Math.min(safeMax, detailed ? 8 : 4);
 
   return (
-    <div className={`community-participant-stack ${detailed ? "detailed" : ""}`} aria-label={`${safeCurrent}/${safeMax}명 참여 중`}>
+    <div
+      className={`community-participant-stack ${detailed ? "detailed" : ""}`}
+      aria-label={`${safeCurrent}/${safeMax}명 참여 중`}
+    >
       {Array.from({ length: visibleSlots }, (_, index) => {
         const occupied = index < safeCurrent;
         const isHost = index === 0;
@@ -543,18 +644,23 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
         if (closedOrder !== 0) return closedOrder;
       }
       if (sort === "popular") {
-        return (Number(b.views) + Number(b.comments)) - (Number(a.views) + Number(a.comments));
+        return Number(b.views) + Number(b.comments) - (Number(a.views) + Number(a.comments));
       }
       if (sort === "deadline") {
         const closedOrder = Number(isClosedCompanionPost(a)) - Number(isClosedCompanionPost(b));
         if (closedOrder !== 0) return closedOrder;
-        return (parseDateValue(a.meetingDate)?.getTime() ?? Number.MAX_SAFE_INTEGER)
-          - (parseDateValue(b.meetingDate)?.getTime() ?? Number.MAX_SAFE_INTEGER);
+        return (
+          (parseDateValue(a.meetingDate)?.getTime() ?? Number.MAX_SAFE_INTEGER) -
+          (parseDateValue(b.meetingDate)?.getTime() ?? Number.MAX_SAFE_INTEGER)
+        );
       }
-      return (parseDateValue(b.createdAt)?.getTime() ?? 0) - (parseDateValue(a.createdAt)?.getTime() ?? 0);
+      return (
+        (parseDateValue(b.createdAt)?.getTime() ?? 0) -
+        (parseDateValue(a.createdAt)?.getTime() ?? 0)
+      );
     });
-  const companionCount = posts.filter(p => p.type === "동행").length;
-  const freeCount = posts.filter(p => p.type === "자유").length;
+  const companionCount = posts.filter((p) => p.type === "동행").length;
+  const freeCount = posts.filter((p) => p.type === "자유").length;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(boardPages[tab] ?? 1, totalPages);
   const pagedPosts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -564,7 +670,7 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
     setErrorMessage("");
     fetchCommunityPosts({ size: 100 })
       .then((data) => {
-        const nextPosts = Array.isArray(data) ? data : data.posts ?? [];
+        const nextPosts = Array.isArray(data) ? data : (data.posts ?? []);
         setPosts(nextPosts);
         setStatus(nextPosts.length > 0 ? "success" : "empty");
       })
@@ -578,19 +684,21 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadPosts();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
     setTab(initialTab);
     setScope("전체");
     setSort("latest");
-    setBoardPages(prev => ({ ...prev, [initialTab]: 1 }));
+    setBoardPages((prev) => ({ ...prev, [initialTab]: 1 }));
   }, [initialTab]);
 
   useEffect(() => {
     if ((boardPages[tab] ?? 1) > totalPages) {
-      setBoardPages(prev => ({ ...prev, [tab]: totalPages }));
+      setBoardPages((prev) => ({ ...prev, [tab]: totalPages }));
     }
   }, [boardPages, tab, totalPages]);
 
@@ -598,12 +706,12 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
     setTab(nextTab);
     setScope("전체");
     setSort("latest");
-    setBoardPages(prev => ({ ...prev, [nextTab]: 1 }));
+    setBoardPages((prev) => ({ ...prev, [nextTab]: 1 }));
     onTabChange?.(nextTab);
   };
 
   const handlePageChange = (nextPage) => {
-    setBoardPages(prev => ({ ...prev, [tab]: nextPage }));
+    setBoardPages((prev) => ({ ...prev, [tab]: nextPage }));
     const scrollTarget = document.querySelector(".community-list-shell");
     scrollTarget?.scrollIntoView({ block: "start", behavior: "smooth" });
   };
@@ -612,16 +720,25 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
     <div style={S.screen} className="community-list-screen">
       <div className="community-list-hero">
         <div>
-          <button type="button" onClick={onBack} aria-label="뒤로 가기">←</button>
+          <button type="button" onClick={onBack} aria-label="뒤로 가기">
+            ←
+          </button>
           <span>LOCAL COMPANION</span>
           <h1>같이 걸을 골목 친구를 찾아보세요.</h1>
           <p>동행 모집과 여행 이야기를 한 곳에서 나눠보세요.</p>
         </div>
-        <button type="button" onClick={() => onWrite?.(tab)}>글쓰기</button>
+        <button type="button" onClick={() => onWrite?.(tab)}>
+          글쓰기
+        </button>
       </div>
       <div className="community-list-tabs">
-        {["동행", "자유"].map(t => (
-          <button key={t} type="button" onClick={() => handleTabChange(t)} className={tab === t ? "active" : ""}>
+        {["동행", "자유"].map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => handleTabChange(t)}
+            className={tab === t ? "active" : ""}
+          >
             {t === "동행" ? "동행 게시판" : "자유 게시판"}
             <span>{t === "동행" ? companionCount : freeCount}</span>
           </button>
@@ -631,13 +748,22 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
         <div className="community-list-shell">
           <div className="community-filter-bar">
             <div className="community-scope-row">
-              {(tab === "동행" ? ["전체", "모집중", "마감"] : ["전체"]).map(item => (
-                <button key={item} type="button" className={scope === item ? "active" : ""} onClick={() => setScope(item)}>
+              {(tab === "동행" ? ["전체", "모집중", "마감"] : ["전체"]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={scope === item ? "active" : ""}
+                  onClick={() => setScope(item)}
+                >
                   {item}
                 </button>
               ))}
             </div>
-            <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="게시글 정렬">
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+              aria-label="게시글 정렬"
+            >
               <option value="latest">최신순</option>
               {tab === "동행" && <option value="deadline">마감임박순</option>}
               <option value="popular">인기순</option>
@@ -668,54 +794,73 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
             />
           )}
           <div className="community-card-grid">
-          {pagedPosts.map(p => {
-            const isCompanionPost = p.type === "동행";
-            const closed = isCompanionPost && isClosedCompanionPost(p);
-            const dateParts = getMeetingDateParts(p.meetingDate ?? p.date);
-            const createdRelative = formatRelativeTime(p.createdAt ?? p.date);
+            {pagedPosts.map((p) => {
+              const isCompanionPost = p.type === "동행";
+              const closed = isCompanionPost && isClosedCompanionPost(p);
+              const dateParts = getMeetingDateParts(p.meetingDate ?? p.date);
+              const createdRelative = formatRelativeTime(p.createdAt ?? p.date);
 
-            return (
-            <article key={p.id} onClick={() => onPost(p)} className={`community-list-card ${isCompanionPost ? "" : "free-post"} ${closed ? "closed" : ""}`}>
-              {isCompanionPost && (
-                <div className={`community-date-block ${closed ? "closed" : ""}`}>
-                  <small>{dateParts.month}</small>
-                  <strong>{dateParts.day}</strong>
-                </div>
-              )}
-              <div className="community-list-card-body">
-                <div className="community-list-card-head">
-                  <div>
-                    {isCompanionPost && (
-                      <span className={closed ? "closed" : "open"}>
-                        {closed ? "마감" : "모집중"}
-                      </span>
-                    )}
-                    {isCompanionPost && <small className="community-location-label"><LocationIcon />{p.place}</small>}
-                  </div>
+              return (
+                <article
+                  key={p.id}
+                  onClick={() => onPost(p)}
+                  className={`community-list-card ${isCompanionPost ? "" : "free-post"} ${closed ? "closed" : ""}`}
+                >
                   {isCompanionPost && (
-                    <div className="community-card-participants">
-                      <ParticipantAvatarStack current={p.current} max={p.max} />
-                      <strong>{p.current}/{p.max}명</strong>
+                    <div className={`community-date-block ${closed ? "closed" : ""}`}>
+                      <small>{dateParts.month}</small>
+                      <strong>{dateParts.day}</strong>
                     </div>
                   )}
-                </div>
-                <h2>{p.title}</h2>
-                <p className="card-preview">{p.content}</p>
-                <div className="community-list-card-foot">
-                  {isCompanionPost && <span>{createdRelative ? `작성 ${createdRelative}` : "작성일 미정"}</span>}
-                  <span className="community-card-stats">
-                    <span><CommunityStatIcon type="comments" />{p.comments}</span>
-                    <span><CommunityStatIcon type="views" />{p.views}</span>
-                  </span>
-                </div>
-              </div>
-            </article>
-            );
-          })}
+                  <div className="community-list-card-body">
+                    <div className="community-list-card-head">
+                      <div>
+                        {isCompanionPost && (
+                          <span className={closed ? "closed" : "open"}>
+                            {closed ? "마감" : "모집중"}
+                          </span>
+                        )}
+                        {isCompanionPost && (
+                          <small className="community-location-label">
+                            <LocationIcon />
+                            {p.place}
+                          </small>
+                        )}
+                      </div>
+                      {isCompanionPost && (
+                        <div className="community-card-participants">
+                          <ParticipantAvatarStack current={p.current} max={p.max} />
+                          <strong>
+                            {p.current}/{p.max}명
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                    <h2>{p.title}</h2>
+                    <p className="card-preview">{p.content}</p>
+                    <div className="community-list-card-foot">
+                      {isCompanionPost && (
+                        <span>{createdRelative ? `작성 ${createdRelative}` : "작성일 미정"}</span>
+                      )}
+                      <span className="community-card-stats">
+                        <span>
+                          <CommunityStatIcon type="comments" />
+                          {p.comments}
+                        </span>
+                        <span>
+                          <CommunityStatIcon type="views" />
+                          {p.views}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
           {totalPages > 1 && status !== "loading" && status !== "error" && (
             <nav className="community-pagination" aria-label={`${tab} 게시판 페이지 이동`}>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map(pageNumber => (
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
                 <button
                   key={pageNumber}
                   type="button"
@@ -734,7 +879,17 @@ export function CommunityListPage({ onPost, onWrite, onBack, initialTab = "동�
 }
 
 // ─── 게시글 상세 ──────────────────────────────────────────────────────
-export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted, showToast, user, onChatRoom, onPlaceClick, onFestivalClick }) {
+export function CommunityPostPage({
+  post: initialPost,
+  onBack,
+  onEdit,
+  onDeleted,
+  showToast,
+  user,
+  onChatRoom,
+  onPlaceClick,
+  onFestivalClick,
+}) {
   const [post, setPost] = useState(initialPost);
   const [comments, setComments] = useState([]);
   const [input, setInput] = useState("");
@@ -778,7 +933,10 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     setReplyTarget(null);
     setReplyInput("");
 
-    if (!initialPost?.id) return () => { ignore = true; };
+    if (!initialPost?.id)
+      return () => {
+        ignore = true;
+      };
 
     fetchCommunityPostDetail(initialPost.id, initialPost.type)
       .then((detail) => {
@@ -788,7 +946,9 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
         if (!ignore) showToast?.(getApiErrorHint(error));
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [initialPost?.id, initialPost?.type]);
 
   const targetLookup = normalizeCompanionTarget(post);
@@ -812,8 +972,10 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
         if (ignore) return;
         setTargetDetail(null);
         setTargetStatus("error");
-    });
-    return () => { ignore = true; };
+      });
+    return () => {
+      ignore = true;
+    };
   }, [post?.id, post?.type, targetLookup.type, targetLookup.id]);
 
   useEffect(() => {
@@ -831,7 +993,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
         .then((data) => {
           if (ignore) return;
           setComments(data);
-          setPost(prev => prev ? { ...prev, comments: data.length } : prev);
+          setPost((prev) => (prev ? { ...prev, comments: data.length } : prev));
         })
         .catch(() => {
           if (!ignore && !silent) setComments([]);
@@ -869,12 +1031,16 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     let ignore = false;
     const linkedRoomId = post.chatRoomId ?? post.roomId ?? post.chatRoom?.chatRoomId;
     if (linkedRoomId) {
-      setExistingRoom(registerCompanionChatRoom({
-        post,
-        room: { chatRoomId: linkedRoomId, id: linkedRoomId },
-        user,
-      }));
-      return () => { ignore = true; };
+      setExistingRoom(
+        registerCompanionChatRoom({
+          post,
+          room: { chatRoomId: linkedRoomId, id: linkedRoomId },
+          user,
+        }),
+      );
+      return () => {
+        ignore = true;
+      };
     }
 
     fetchMyChatRooms({ size: 100 })
@@ -887,26 +1053,47 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
         if (!ignore) setExistingRoom(null);
       });
 
-    return () => { ignore = true; };
-  }, [post?.id, post?.type, post?.chatRoomId, post?.roomId, post?.writerId, post?.author, user?.userId, user?.nickname]);
+    return () => {
+      ignore = true;
+    };
+  }, [
+    post?.id,
+    post?.type,
+    post?.chatRoomId,
+    post?.roomId,
+    post?.writerId,
+    post?.author,
+    user?.userId,
+    user?.nickname,
+  ]);
 
   const sendComment = async () => {
     if (!input.trim()) return;
     let comment;
     try {
-      comment = await createCommunityComment({ postId: post?.id, postType: post?.type, text: input });
+      comment = await createCommunityComment({
+        postId: post?.id,
+        postType: post?.type,
+        text: input,
+      });
     } catch (error) {
       showToast?.(getApiErrorHint(error));
       return;
     }
-    setComments(prev => [...prev, comment]);
-    setPost(prev => prev ? { ...prev, comments: (Number(prev.comments) || comments.length) + 1 } : prev);
+    setComments((prev) => [...prev, comment]);
+    setPost((prev) =>
+      prev ? { ...prev, comments: (Number(prev.comments) || comments.length) + 1 } : prev,
+    );
     setInput("");
   };
 
   const isCommentOwner = (comment) => {
     if (!comment || !user) return false;
-    return comment.writerId != null && user.userId != null && String(comment.writerId) === String(user.userId);
+    return (
+      comment.writerId != null &&
+      user.userId != null &&
+      String(comment.writerId) === String(user.userId)
+    );
   };
 
   const startEditingComment = (comment) => {
@@ -925,13 +1112,25 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     setCommentActionId(comment.id);
     try {
       await updateComment(post.id, post.type, comment.id, nextText);
-      setComments(prev => prev.map(item => item.id === comment.id ? { ...item, text: nextText, updatedAt: new Date().toISOString() } : item));
-      setRepliesByComment(prev => Object.fromEntries(
-        Object.entries(prev).map(([rootId, replies]) => [
-          rootId,
-          replies.map(item => item.id === comment.id ? { ...item, text: nextText, updatedAt: new Date().toISOString() } : item),
-        ]),
-      ));
+      setComments((prev) =>
+        prev.map((item) =>
+          item.id === comment.id
+            ? { ...item, text: nextText, updatedAt: new Date().toISOString() }
+            : item,
+        ),
+      );
+      setRepliesByComment((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).map(([rootId, replies]) => [
+            rootId,
+            replies.map((item) =>
+              item.id === comment.id
+                ? { ...item, text: nextText, updatedAt: new Date().toISOString() }
+                : item,
+            ),
+          ]),
+        ),
+      );
       cancelEditingComment();
       showToast?.("댓글을 수정했습니다.");
     } catch (error) {
@@ -946,20 +1145,32 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     setCommentActionId(comment.id);
     try {
       await deleteComment(post.id, post.type, comment.id);
-      setComments(prev => prev.filter(item => item.id !== comment.id));
-      setRepliesByComment(prev => {
+      setComments((prev) => prev.filter((item) => item.id !== comment.id));
+      setRepliesByComment((prev) => {
         const next = { ...prev };
         if (comment.parentCommentId) {
-          next[comment.parentCommentId] = (next[comment.parentCommentId] ?? []).filter(item => item.id !== comment.id);
+          next[comment.parentCommentId] = (next[comment.parentCommentId] ?? []).filter(
+            (item) => item.id !== comment.id,
+          );
         } else {
           delete next[comment.id];
         }
         return next;
       });
       if (comment.parentCommentId) {
-        setComments(prev => prev.map(item => item.id === comment.parentCommentId ? { ...item, replyCount: Math.max(0, item.replyCount - 1) } : item));
+        setComments((prev) =>
+          prev.map((item) =>
+            item.id === comment.parentCommentId
+              ? { ...item, replyCount: Math.max(0, item.replyCount - 1) }
+              : item,
+          ),
+        );
       }
-      setPost(prev => prev ? { ...prev, comments: Math.max(0, (Number(prev.comments) || comments.length) - 1) } : prev);
+      setPost((prev) =>
+        prev
+          ? { ...prev, comments: Math.max(0, (Number(prev.comments) || comments.length) - 1) }
+          : prev,
+      );
       showToast?.("댓글을 삭제했습니다.");
     } catch (error) {
       showToast?.(getApiErrorHint(error));
@@ -970,7 +1181,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
 
   const toggleReplies = async (comment) => {
     if (repliesByComment[comment.id]) {
-      setRepliesByComment(prev => {
+      setRepliesByComment((prev) => {
         const next = { ...prev };
         delete next[comment.id];
         return next;
@@ -980,7 +1191,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     setLoadingRepliesId(comment.id);
     try {
       const replies = await fetchReplies(post.id, post.type, comment.id);
-      setRepliesByComment(prev => ({ ...prev, [comment.id]: replies }));
+      setRepliesByComment((prev) => ({ ...prev, [comment.id]: replies }));
     } catch (error) {
       showToast?.(getApiErrorHint(error));
     } finally {
@@ -1000,7 +1211,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
       setLoadingRepliesId(rootCommentId);
       try {
         const replies = await fetchReplies(post.id, post.type, rootCommentId);
-        setRepliesByComment(prev => ({ ...prev, [rootCommentId]: replies }));
+        setRepliesByComment((prev) => ({ ...prev, [rootCommentId]: replies }));
       } catch (error) {
         showToast?.(getApiErrorHint(error));
       } finally {
@@ -1020,12 +1231,20 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
         text,
         parentCommentId: replyTarget.rootCommentId,
       });
-      setRepliesByComment(prev => ({
+      setRepliesByComment((prev) => ({
         ...prev,
         [replyTarget.rootCommentId]: [...(prev[replyTarget.rootCommentId] ?? []), reply],
       }));
-      setComments(prev => prev.map(item => item.id === replyTarget.rootCommentId ? { ...item, replyCount: item.replyCount + 1 } : item));
-      setPost(prev => prev ? { ...prev, comments: (Number(prev.comments) || comments.length) + 1 } : prev);
+      setComments((prev) =>
+        prev.map((item) =>
+          item.id === replyTarget.rootCommentId
+            ? { ...item, replyCount: item.replyCount + 1 }
+            : item,
+        ),
+      );
+      setPost((prev) =>
+        prev ? { ...prev, comments: (Number(prev.comments) || comments.length) + 1 } : prev,
+      );
       setReplyTarget(null);
       setReplyInput("");
     } catch (error) {
@@ -1050,7 +1269,11 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
   };
 
   const handleDeletePost = async () => {
-    if (deletingPost || !window.confirm("게시글을 삭제하시겠습니까? 삭제한 게시글은 복구할 수 없습니다.")) return;
+    if (
+      deletingPost ||
+      !window.confirm("게시글을 삭제하시겠습니까? 삭제한 게시글은 복구할 수 없습니다.")
+    )
+      return;
 
     setDeletingPost(true);
     try {
@@ -1099,7 +1322,9 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     return (
       <div style={S.screen}>
         <div style={{ background: COLORS.primary, padding: "44px 16px 16px" }}>
-          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+            ←
+          </span>
         </div>
         <div style={{ padding: 24 }}>
           <EmptyState
@@ -1118,7 +1343,11 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
   const isClosed = isCompanion && isClosedCompanionPost(post);
   const isAuthor = isPostAuthor(post, user);
   const routeItems = post.route ?? [post.place, "주변 명소 둘러보기", "시장 먹거리 탐방"];
-  const goodPoints = post.goodPoints ?? ["동선을 공유했어요", "여행 팁을 남겼어요", "주변 상권과 함께 보기 좋아요"];
+  const goodPoints = post.goodPoints ?? [
+    "동선을 공유했어요",
+    "여행 팁을 남겼어요",
+    "주변 상권과 함께 보기 좋아요",
+  ];
   const meetingDateText = formatKoreanDate(post.meetingDate ?? post.date) || "일정 미정";
   const compactMeetingDateText = formatCompactDate(post.meetingDate ?? post.date) || "일정 미정";
   const createdDateTimeText = formatKoreanDateTime(post.createdAt ?? post.date) || "작성일 미정";
@@ -1126,8 +1355,14 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
   const companionAction = {
     idle: { label: "참여 신청하기", helper: "방장이 신청을 수락하면 채팅방에 참여할 수 있어요." },
     pending: { label: "승인 대기 중", helper: "참여 신청을 보냈습니다. 수락 알림을 기다려주세요." },
-    approved: { label: "채팅방 입장", helper: "참여가 승인되었습니다. 번역 채팅으로 일정을 조율하세요." },
-    rejected: { label: "다른 모집 보기", helper: "이번 모집은 어렵지만 다른 골목 동행을 찾아볼 수 있어요." },
+    approved: {
+      label: "채팅방 입장",
+      helper: "참여가 승인되었습니다. 번역 채팅으로 일정을 조율하세요.",
+    },
+    rejected: {
+      label: "다른 모집 보기",
+      helper: "이번 모집은 어렵지만 다른 골목 동행을 찾아볼 수 있어요.",
+    },
   }[joinState];
 
   const handleCreateChatRoom = async () => {
@@ -1213,7 +1448,8 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
     lat: rawTargetLatitude == null ? Number.NaN : Number(rawTargetLatitude),
     lng: rawTargetLongitude == null ? Number.NaN : Number(rawTargetLongitude),
   };
-  const hasTargetPosition = Number.isFinite(targetPosition.lat) && Number.isFinite(targetPosition.lng);
+  const hasTargetPosition =
+    Number.isFinite(targetPosition.lat) && Number.isFinite(targetPosition.lng);
   const openDirections = () => {
     const name = targetDetail?.name ?? companionTarget.name;
     const url = hasTargetPosition
@@ -1248,17 +1484,28 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
   return (
     <div style={S.screen} className="community-detail-screen">
       <div className="community-detail-topbar">
-        <button type="button" onClick={onBack}>← 목록으로</button>
+        <button type="button" onClick={onBack}>
+          ← 목록으로
+        </button>
         <div className="community-detail-topbar-actions">
           {isAuthor ? (
             <>
-              <button type="button" onClick={() => onEdit?.(post)}>수정</button>
-              <button type="button" className="danger" onClick={handleDeletePost} disabled={deletingPost}>
+              <button type="button" onClick={() => onEdit?.(post)}>
+                수정
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={handleDeletePost}
+                disabled={deletingPost}
+              >
                 {deletingPost ? "삭제 중..." : "삭제"}
               </button>
             </>
           ) : (
-            <button type="button" onClick={openPostReport}>신고</button>
+            <button type="button" onClick={openPostReport}>
+              신고
+            </button>
           )}
         </div>
       </div>
@@ -1268,13 +1515,26 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
           <article className="community-detail-main">
             <section className="community-detail-card community-detail-article">
               <div className="community-detail-meta">
-                <span className={isCompanion ? "type-blue" : "type-green"}>{isCompanion ? "동행" : "자유"}</span>
-                <span className="community-location-label"><LocationIcon />{post.place}</span>
-                {isCompanion && <span className={`type-status ${isClosed ? "closed" : "open"}`}>{isClosed ? "마감" : "모집중"}</span>}
+                <span className={isCompanion ? "type-blue" : "type-green"}>
+                  {isCompanion ? "동행" : "자유"}
+                </span>
+                <span className="community-location-label">
+                  <LocationIcon />
+                  {post.place}
+                </span>
+                {isCompanion && (
+                  <span className={`type-status ${isClosed ? "closed" : "open"}`}>
+                    {isClosed ? "마감" : "모집중"}
+                  </span>
+                )}
               </div>
               <h1>{post.title}</h1>
               <div className="community-detail-author">
-                <CommunityProfileAvatar imageUrl={post.profileImageUrl} name={post.author} className="community-author-avatar" />
+                <CommunityProfileAvatar
+                  imageUrl={post.profileImageUrl}
+                  name={post.author}
+                  className="community-author-avatar"
+                />
                 <div className="community-author-copy">
                   <strong>{post.author}</strong>
                   <span>
@@ -1283,15 +1543,26 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                   </span>
                 </div>
                 <div className="community-author-stats">
-                  <span><CommunityStatIcon type="views" />{post.views}</span>
-                  <span><CommunityStatIcon type="comments" />{comments.length}</span>
+                  <span>
+                    <CommunityStatIcon type="views" />
+                    {post.views}
+                  </span>
+                  <span>
+                    <CommunityStatIcon type="comments" />
+                    {comments.length}
+                  </span>
                 </div>
               </div>
               <p className="community-detail-content">{post.content}</p>
               {!isCompanion && post.imageUrls?.length > 0 && (
                 <div className="community-detail-images">
                   {post.imageUrls.map((imageUrl, index) => (
-                    <img key={`${imageUrl}-${index}`} src={imageUrl} alt={`게시글 첨부 이미지 ${index + 1}`} loading="lazy" />
+                    <img
+                      key={`${imageUrl}-${index}`}
+                      src={imageUrl}
+                      alt={`게시글 첨부 이미지 ${index + 1}`}
+                      loading="lazy"
+                    />
                   ))}
                 </div>
               )}
@@ -1313,7 +1584,9 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                 </div>
                 {post.tags?.length > 0 && (
                   <div className="community-tag-row">
-                    {post.tags.map(tag => <span key={tag}>#{tag}</span>)}
+                    {post.tags.map((tag) => (
+                      <span key={tag}>#{tag}</span>
+                    ))}
                   </div>
                 )}
               </section>
@@ -1321,7 +1594,9 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
               <section className="community-detail-card">
                 <div className="community-section-title">게시글 포인트</div>
                 <div className="community-good-grid">
-                  {goodPoints.map(point => <div key={point}>? {point}</div>)}
+                  {goodPoints.map((point) => (
+                    <div key={point}>? {point}</div>
+                  ))}
                 </div>
                 <div className="community-tip-box">
                   <strong>공유 팁</strong>
@@ -1339,7 +1614,7 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                   description="첫 댓글로 동행 일정이나 궁금한 점을 남겨보세요."
                 />
               )}
-              {comments.map(c => {
+              {comments.map((c) => {
                 const replies = repliesByComment[c.id];
                 const isEditing = editingCommentId === c.id;
                 return (
@@ -1348,73 +1623,197 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                       <div className="community-comment-head">
                         <CommunityProfileAvatar imageUrl={c.profileImageUrl} name={c.author} />
                         <strong>{c.author}</strong>
-                        <span>{formatRelativeTime(c.time ?? c.createdAt) || "방금"}{wasCommentEdited(c) ? " · 수정됨" : ""}</span>
+                        <span>
+                          {formatRelativeTime(c.time ?? c.createdAt) || "방금"}
+                          {wasCommentEdited(c) ? " · 수정됨" : ""}
+                        </span>
                         <div className="community-comment-actions">
-                          {!c.deleted && <button type="button" onClick={() => openReplyInput(c)}>답글</button>}
+                          {!c.deleted && (
+                            <button type="button" onClick={() => openReplyInput(c)}>
+                              답글
+                            </button>
+                          )}
                           {!c.deleted && isCommentOwner(c) ? (
                             <>
-                              <button type="button" onClick={() => startEditingComment(c)}>수정</button>
-                              <button type="button" className="danger" disabled={commentActionId === c.id} onClick={() => removeComment(c)}>삭제</button>
+                              <button type="button" onClick={() => startEditingComment(c)}>
+                                수정
+                              </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                disabled={commentActionId === c.id}
+                                onClick={() => removeComment(c)}
+                              >
+                                삭제
+                              </button>
                             </>
                           ) : !c.deleted ? (
-                            <button type="button" className="danger" onClick={() => openCommentReport(c)}>신고</button>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => openCommentReport(c)}
+                            >
+                              신고
+                            </button>
                           ) : null}
                         </div>
                       </div>
                       {isEditing ? (
                         <div className="community-comment-edit">
-                          <input value={editingCommentText} maxLength={1000} onChange={(e) => setEditingCommentText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEditedComment(c)} autoFocus />
-                          <button type="button" onClick={() => saveEditedComment(c)} disabled={!editingCommentText.trim() || commentActionId === c.id}>저장</button>
-                          <button type="button" className="subtle" onClick={cancelEditingComment}>취소</button>
+                          <input
+                            value={editingCommentText}
+                            maxLength={1000}
+                            onChange={(e) => setEditingCommentText(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && saveEditedComment(c)}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => saveEditedComment(c)}
+                            disabled={!editingCommentText.trim() || commentActionId === c.id}
+                          >
+                            저장
+                          </button>
+                          <button type="button" className="subtle" onClick={cancelEditingComment}>
+                            취소
+                          </button>
                         </div>
                       ) : (
                         <p>{c.deleted ? "삭제된 댓글입니다." : c.text}</p>
                       )}
                       {c.replyCount > 0 && (
-                        <button type="button" className="community-replies-toggle" disabled={loadingRepliesId === c.id} onClick={() => toggleReplies(c)}>
-                          {loadingRepliesId === c.id ? "답글 불러오는 중..." : replies ? "답글 접기 ∧" : `답글 ${c.replyCount}개 보기 ?`}
+                        <button
+                          type="button"
+                          className="community-replies-toggle"
+                          disabled={loadingRepliesId === c.id}
+                          onClick={() => toggleReplies(c)}
+                        >
+                          {loadingRepliesId === c.id
+                            ? "답글 불러오는 중..."
+                            : replies
+                              ? "답글 접기 ∧"
+                              : `답글 ${c.replyCount}개 보기 ?`}
                         </button>
                       )}
                     </div>
                     {replyTarget?.targetCommentId === c.id && (
                       <div className="community-reply-input">
-                        <span><strong>{replyTarget.author}</strong>님에게 답글 · {replyTarget.preview}</span>
+                        <span>
+                          <strong>{replyTarget.author}</strong>님에게 답글 · {replyTarget.preview}
+                        </span>
                         <div>
-                          <input value={replyInput} maxLength={1000} onChange={(e) => setReplyInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="답글을 입력하세요..." autoFocus />
-                          <button type="button" onClick={sendReply} disabled={!replyInput.trim() || sendingReply}>{sendingReply ? "등록 중" : "등록"}</button>
-                          <button type="button" className="subtle" onClick={() => { setReplyTarget(null); setReplyInput(""); }}>취소</button>
+                          <input
+                            value={replyInput}
+                            maxLength={1000}
+                            onChange={(e) => setReplyInput(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && sendReply()}
+                            placeholder="답글을 입력하세요..."
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={sendReply}
+                            disabled={!replyInput.trim() || sendingReply}
+                          >
+                            {sendingReply ? "등록 중" : "등록"}
+                          </button>
+                          <button
+                            type="button"
+                            className="subtle"
+                            onClick={() => {
+                              setReplyTarget(null);
+                              setReplyInput("");
+                            }}
+                          >
+                            취소
+                          </button>
                         </div>
                       </div>
                     )}
                     {replies && (
                       <div className="community-replies">
-                        {replies.length === 0 && <span className="community-replies-empty">표시할 대댓글이 없습니다.</span>}
-                        {replies.map(reply => {
+                        {replies.length === 0 && (
+                          <span className="community-replies-empty">표시할 대댓글이 없습니다.</span>
+                        )}
+                        {replies.map((reply) => {
                           const isReplyEditing = editingCommentId === reply.id;
                           return (
                             <div key={reply.id} className="community-reply-thread">
                               <div className="community-comment-card community-reply-card">
                                 <div className="community-comment-head">
-                                  <CommunityProfileAvatar imageUrl={reply.profileImageUrl} name={reply.author} />
+                                  <CommunityProfileAvatar
+                                    imageUrl={reply.profileImageUrl}
+                                    name={reply.author}
+                                  />
                                   <strong>{reply.author}</strong>
-                                  <span>{formatRelativeTime(reply.time ?? reply.createdAt) || "방금"}{wasCommentEdited(reply) ? " · 수정됨" : ""}</span>
+                                  <span>
+                                    {formatRelativeTime(reply.time ?? reply.createdAt) || "방금"}
+                                    {wasCommentEdited(reply) ? " · 수정됨" : ""}
+                                  </span>
                                   <div className="community-comment-actions">
-                                    {!reply.deleted && <button type="button" onClick={() => openReplyInput(reply, c.id)}>답글</button>}
+                                    {!reply.deleted && (
+                                      <button
+                                        type="button"
+                                        onClick={() => openReplyInput(reply, c.id)}
+                                      >
+                                        답글
+                                      </button>
+                                    )}
                                     {!reply.deleted && isCommentOwner(reply) ? (
                                       <>
-                                        <button type="button" onClick={() => startEditingComment(reply)}>수정</button>
-                                        <button type="button" className="danger" disabled={commentActionId === reply.id} onClick={() => removeComment(reply)}>삭제</button>
+                                        <button
+                                          type="button"
+                                          onClick={() => startEditingComment(reply)}
+                                        >
+                                          수정
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="danger"
+                                          disabled={commentActionId === reply.id}
+                                          onClick={() => removeComment(reply)}
+                                        >
+                                          삭제
+                                        </button>
                                       </>
                                     ) : !reply.deleted ? (
-                                      <button type="button" className="danger" onClick={() => openCommentReport(reply)}>신고</button>
+                                      <button
+                                        type="button"
+                                        className="danger"
+                                        onClick={() => openCommentReport(reply)}
+                                      >
+                                        신고
+                                      </button>
                                     ) : null}
                                   </div>
                                 </div>
                                 {isReplyEditing ? (
                                   <div className="community-comment-edit">
-                                    <input value={editingCommentText} maxLength={1000} onChange={(e) => setEditingCommentText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEditedComment(reply)} autoFocus />
-                                    <button type="button" onClick={() => saveEditedComment(reply)} disabled={!editingCommentText.trim() || commentActionId === reply.id}>저장</button>
-                                    <button type="button" className="subtle" onClick={cancelEditingComment}>취소</button>
+                                    <input
+                                      value={editingCommentText}
+                                      maxLength={1000}
+                                      onChange={(e) => setEditingCommentText(e.target.value)}
+                                      onKeyDown={(e) =>
+                                        e.key === "Enter" && saveEditedComment(reply)
+                                      }
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => saveEditedComment(reply)}
+                                      disabled={
+                                        !editingCommentText.trim() || commentActionId === reply.id
+                                      }
+                                    >
+                                      저장
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="subtle"
+                                      onClick={cancelEditingComment}
+                                    >
+                                      취소
+                                    </button>
                                   </div>
                                 ) : (
                                   <p>{reply.deleted ? "삭제된 댓글입니다." : reply.text}</p>
@@ -1422,11 +1821,36 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                               </div>
                               {replyTarget?.targetCommentId === reply.id && (
                                 <div className="community-reply-input community-nested-reply-input">
-                                  <span><strong>{replyTarget.author}</strong>님에게 답글 · {replyTarget.preview}</span>
+                                  <span>
+                                    <strong>{replyTarget.author}</strong>님에게 답글 ·{" "}
+                                    {replyTarget.preview}
+                                  </span>
                                   <div>
-                                    <input value={replyInput} maxLength={1000} onChange={(e) => setReplyInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="답글을 입력하세요..." autoFocus />
-                                    <button type="button" onClick={sendReply} disabled={!replyInput.trim() || sendingReply}>{sendingReply ? "등록 중" : "등록"}</button>
-                                    <button type="button" className="subtle" onClick={() => { setReplyTarget(null); setReplyInput(""); }}>취소</button>
+                                    <input
+                                      value={replyInput}
+                                      maxLength={1000}
+                                      onChange={(e) => setReplyInput(e.target.value)}
+                                      onKeyDown={(e) => e.key === "Enter" && sendReply()}
+                                      placeholder="답글을 입력하세요..."
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={sendReply}
+                                      disabled={!replyInput.trim() || sendingReply}
+                                    >
+                                      {sendingReply ? "등록 중" : "등록"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="subtle"
+                                      onClick={() => {
+                                        setReplyTarget(null);
+                                        setReplyInput("");
+                                      }}
+                                    >
+                                      취소
+                                    </button>
                                   </div>
                                 </div>
                               )}
@@ -1439,8 +1863,15 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
                 );
               })}
               <div className="community-comment-input">
-                <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendComment()} placeholder="댓글을 입력하세요..." />
-                <button type="button" onClick={sendComment}>등록</button>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendComment()}
+                  placeholder="댓글을 입력하세요..."
+                />
+                <button type="button" onClick={sendComment}>
+                  등록
+                </button>
               </div>
             </section>
           </article>
@@ -1450,84 +1881,162 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
               <section className="community-detail-card community-participant-card">
                 <div className="community-section-title-row">
                   <div className="community-section-title">참여자</div>
-                  <strong>{post.current} / {post.max}명</strong>
+                  <strong>
+                    {post.current} / {post.max}명
+                  </strong>
                 </div>
-                <ParticipantAvatarStack current={post.current} max={post.max} hostLabel={post.author || "방장"} detailed />
+                <ParticipantAvatarStack
+                  current={post.current}
+                  max={post.max}
+                  hostLabel={post.author || "방장"}
+                  detailed
+                />
                 <button
                   type="button"
                   onClick={handleCompanionAction}
-                  disabled={isAuthor ? creatingRoom : (isClosed || joinState === "pending")}
+                  disabled={isAuthor ? creatingRoom : isClosed || joinState === "pending"}
                 >
                   {isAuthor
                     ? existingRoom
                       ? "채팅방 가기"
-                      : (creatingRoom ? "채팅방 생성 중..." : "채팅방 생성")
-                    : isClosed ? "모집 마감" : companionAction.label}
+                      : creatingRoom
+                        ? "채팅방 생성 중..."
+                        : "채팅방 생성"
+                    : isClosed
+                      ? "모집 마감"
+                      : companionAction.label}
                 </button>
-                <p>{isAuthor
-                  ? existingRoom
-                    ? "채팅방에서 참여 신청과 동행 일정을 관리할 수 있어요."
-                    : "채팅방을 생성하면 참여 신청을 관리할 수 있어요."
-                  : companionAction.helper}</p>
+                <p>
+                  {isAuthor
+                    ? existingRoom
+                      ? "채팅방에서 참여 신청과 동행 일정을 관리할 수 있어요."
+                      : "채팅방을 생성하면 참여 신청을 관리할 수 있어요."
+                    : companionAction.helper}
+                </p>
               </section>
             )}
 
             <section className="community-detail-card community-summary-card">
-              <div className="community-section-title">{isCompanion ? "모집 정보" : "게시글 요약"}</div>
+              <div className="community-section-title">
+                {isCompanion ? "모집 정보" : "게시글 요약"}
+              </div>
               {isCompanion ? (
                 <div className="community-info-grid">
-                  <div><span>모임일</span><strong>{meetingDateText}</strong></div>
-                  <div><span>시간</span><strong>{post.meetingTime ?? "시간 협의"}</strong></div>
+                  <div>
+                    <span>모임일</span>
+                    <strong>{meetingDateText}</strong>
+                  </div>
+                  <div>
+                    <span>시간</span>
+                    <strong>{post.meetingTime ?? "시간 협의"}</strong>
+                  </div>
                 </div>
               ) : (
                 <div className="community-info-grid">
-                  <div><span>댓글</span><strong>{comments.length}</strong></div>
-                  <div><span>장소</span><strong>{post.place}</strong></div>
+                  <div>
+                    <span>댓글</span>
+                    <strong>{comments.length}</strong>
+                  </div>
+                  <div>
+                    <span>장소</span>
+                    <strong>{post.place}</strong>
+                  </div>
                 </div>
               )}
             </section>
 
             <section className="community-detail-card community-meeting-card">
-              <div className="community-section-title">{isCompanion ? "만나는 곳" : "게시글 안내"}</div>
+              <div className="community-section-title">
+                {isCompanion ? "만나는 곳" : "게시글 안내"}
+              </div>
               {isCompanion ? (
                 <div className="community-meeting-content">
-                  <p className="community-meeting-point"><LocationIcon />{post.meetingPoint ?? `${companionTarget.name || post.place} 입구`}</p>
+                  <p className="community-meeting-point">
+                    <LocationIcon />
+                    {post.meetingPoint ?? `${companionTarget.name || post.place} 입구`}
+                  </p>
                   <StaticMeetingMap name={companionTarget.name} onOpen={openDirections} />
-                  {targetStatus === "loading" && <p className="community-map-status">위치 정보를 불러오는 중입니다.</p>}
-                  {targetStatus === "error" && <p className="community-map-status">좌표를 불러오지 못해 장소명으로 지도를 엽니다.</p>}
+                  {targetStatus === "loading" && (
+                    <p className="community-map-status">위치 정보를 불러오는 중입니다.</p>
+                  )}
+                  {targetStatus === "error" && (
+                    <p className="community-map-status">
+                      좌표를 불러오지 못해 장소명으로 지도를 엽니다.
+                    </p>
+                  )}
                   <div className="community-meeting-actions">
-                    <button type="button" className="community-direction-action" onClick={openDirections} disabled={!companionTarget.name}>
+                    <button
+                      type="button"
+                      className="community-direction-action"
+                      onClick={openDirections}
+                      disabled={!companionTarget.name}
+                    >
                       <DetailIcon type="route" />
                       길찾기
                     </button>
-                    <button type="button" className="community-detail-action" onClick={openTargetDetail} disabled={!companionTarget.id}>
+                    <button
+                      type="button"
+                      className="community-detail-action"
+                      onClick={openTargetDetail}
+                      disabled={!companionTarget.id}
+                    >
                       <DetailIcon type="info" />
-                      {companionTarget.type === "FESTIVAL" ? "축제 상세 보기" : companionTarget.type === "MARKET" ? "시장 상세 보기" : "장소 상세 보기"}
+                      {companionTarget.type === "FESTIVAL"
+                        ? "축제 상세 보기"
+                        : companionTarget.type === "MARKET"
+                          ? "시장 상세 보기"
+                          : "장소 상세 보기"}
                     </button>
                   </div>
                 </div>
               ) : (
-                <p>장소 리뷰는 관광지/가게 상세 페이지에서 작성하고 확인하는 흐름으로 분리합니다.</p>
+                <p>
+                  장소 리뷰는 관광지/가게 상세 페이지에서 작성하고 확인하는 흐름으로 분리합니다.
+                </p>
               )}
-              {!isCompanion && <button type="button" onClick={handleCompanionAction}>관련 장소 보기</button>}
+              {!isCompanion && (
+                <button type="button" onClick={handleCompanionAction}>
+                  관련 장소 보기
+                </button>
+              )}
             </section>
 
-            <section className={`community-detail-card community-side-panel ${isCompanion ? "companion-confirmation" : ""}`}>
+            <section
+              className={`community-detail-card community-side-panel ${isCompanion ? "companion-confirmation" : ""}`}
+            >
               <div className="community-section-title community-section-title-with-icon">
                 {isCompanion && <DetailIcon type="info" />}
                 {isCompanion ? "참여 전 확인" : "자유 게시판 안내"}
               </div>
               {isCompanion ? (
                 <div className="community-check-list">
-                  <div><span>1</span><p>만나는 시간과 장소를 채팅방에서 한 번 더 확인하세요.</p></div>
-                  <div><span>2</span><p>시장 결제나 예약이 필요하면 엽전 잔액을 미리 확인하세요.</p></div>
-                  <div><span>3</span><p>초행길이라면 지도 탐색으로 주변 출구를 먼저 봐두면 좋아요.</p></div>
+                  <div>
+                    <span>1</span>
+                    <p>만나는 시간과 장소를 채팅방에서 한 번 더 확인하세요.</p>
+                  </div>
+                  <div>
+                    <span>2</span>
+                    <p>시장 결제나 예약이 필요하면 엽전 잔액을 미리 확인하세요.</p>
+                  </div>
+                  <div>
+                    <span>3</span>
+                    <p>초행길이라면 지도 탐색으로 주변 출구를 먼저 봐두면 좋아요.</p>
+                  </div>
                 </div>
               ) : (
                 <div className="community-check-list">
-                  <div><span>1</span><p>자유 게시판은 여행 질문, 팁, 일정 공유 중심으로 사용합니다.</p></div>
-                  <div><span>2</span><p>관광지 리뷰는 상세 페이지에서 거래/방문 맥락과 함께 작성합니다.</p></div>
-                  <div><span>3</span><p>동행이 필요하면 동행 게시판에서 모집글을 작성하세요.</p></div>
+                  <div>
+                    <span>1</span>
+                    <p>자유 게시판은 여행 질문, 팁, 일정 공유 중심으로 사용합니다.</p>
+                  </div>
+                  <div>
+                    <span>2</span>
+                    <p>관광지 리뷰는 상세 페이지에서 거래/방문 맥락과 함께 작성합니다.</p>
+                  </div>
+                  <div>
+                    <span>3</span>
+                    <p>동행이 필요하면 동행 게시판에서 모집글을 작성하세요.</p>
+                  </div>
                 </div>
               )}
             </section>
@@ -1548,7 +2057,13 @@ export function CommunityPostPage({ post: initialPost, onBack, onEdit, onDeleted
 }
 
 // ─── 게시글 작성 ──────────────────────────────────────────────────────
-export function CommunityWritePage({ post: initialPost, initialType = "동행", onBack, onSaved, showToast }) {
+export function CommunityWritePage({
+  post: initialPost,
+  initialType = "동행",
+  onBack,
+  onSaved,
+  showToast,
+}) {
   const isEditing = Boolean(initialPost?.id);
   const todayValue = toLocalDateValue(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -1578,7 +2093,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
   const [marketSearchStatus, setMarketSearchStatus] = useState("idle");
   const [submitting, setSubmitting] = useState(false);
   const [pendingImages, setPendingImages] = useState([]);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const existingImageUrls = Array.isArray(form.imageUrls) ? form.imageUrls : [];
   const totalImageCount = existingImageUrls.length + pendingImages.length;
   const quickMeetingDates = [
@@ -1684,7 +2199,10 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
         .then((page) => {
           if (ignore) return;
           const markets = (page.content ?? [])
-            .filter(item => item.targetType === "MARKET" || item.type === "전통시장" || item.marketId != null)
+            .filter(
+              (item) =>
+                item.targetType === "MARKET" || item.type === "전통시장" || item.marketId != null,
+            )
             .slice(0, 8);
           setMarketResults(markets);
           setMarketSearchStatus(markets.length > 0 ? "success" : "empty");
@@ -1733,10 +2251,18 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
   const handleSelectPlace = (place, source = "place") => {
     const placeName = place.name || place.placeName || "";
     const isFestival = source === "festival";
-    const isMarket = !isFestival && (place.targetType === "MARKET" || place.targetType === "TRADITIONAL_MARKET" || place.marketId != null);
+    const isMarket =
+      !isFestival &&
+      (place.targetType === "MARKET" ||
+        place.targetType === "TRADITIONAL_MARKET" ||
+        place.marketId != null);
     const targetType = isFestival ? "FESTIVAL" : isMarket ? "MARKET" : "PLACE";
-    const targetId = isFestival ? (place.festivalId ?? place.id) : isMarket ? (place.marketId ?? place.id) : (place.placeId ?? place.id);
-    setForm(f => ({
+    const targetId = isFestival
+      ? (place.festivalId ?? place.id)
+      : isMarket
+        ? (place.marketId ?? place.id)
+        : (place.placeId ?? place.id);
+    setForm((f) => ({
       ...f,
       place: placeName,
       placeId: targetType === "PLACE" ? targetId : null,
@@ -1760,7 +2286,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     if (isEditing) return;
     setType(nextType);
     if (nextType === "자유") {
-      setForm(f => ({
+      setForm((f) => ({
         ...f,
         place: "",
         placeId: null,
@@ -1820,43 +2346,65 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
     }
 
     if (accepted.length > 0) {
-      setPendingImages(current => [...current, ...accepted]);
+      setPendingImages((current) => [...current, ...accepted]);
     }
   };
 
   const removeExistingImage = (imageUrl) => {
-    set("imageUrls", existingImageUrls.filter(item => item !== imageUrl));
+    set(
+      "imageUrls",
+      existingImageUrls.filter((item) => item !== imageUrl),
+    );
   };
 
   const removePendingImage = (imageId) => {
-    setPendingImages(current => current.filter(item => item.id !== imageId));
+    setPendingImages((current) => current.filter((item) => item.id !== imageId));
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
-    if (!form.title || !form.content) { showToast("제목과 내용을 입력해주세요."); return; }
+    if (!form.title || !form.content) {
+      showToast("제목과 내용을 입력해주세요.");
+      return;
+    }
     if (type === "동행") {
-      if (!form.place) { showToast("동행할 장소나 축제를 선택해주세요."); return; }
-      if (!form.targetType || !form.targetId) { showToast("검색 결과에서 만나는 곳을 다시 선택해주세요."); return; }
-      if (!form.date) { showToast("모임 날짜를 선택해주세요."); return; }
-      if (form.date < todayValue) { showToast("오늘 이후 날짜를 선택해주세요."); return; }
+      if (!form.place) {
+        showToast("동행할 장소나 축제를 선택해주세요.");
+        return;
+      }
+      if (!form.targetType || !form.targetId) {
+        showToast("검색 결과에서 만나는 곳을 다시 선택해주세요.");
+        return;
+      }
+      if (!form.date) {
+        showToast("모임 날짜를 선택해주세요.");
+        return;
+      }
+      if (form.date < todayValue) {
+        showToast("오늘 이후 날짜를 선택해주세요.");
+        return;
+      }
     }
     setSubmitting(true);
     try {
-      const uploadedImageKeys = type === "자유" && pendingImages.length > 0
-        ? await Promise.all(pendingImages.map(async (image) => {
-            const uploaded = await uploadFreePostImage(image.file);
-            if (!uploaded.key) throw new Error("이미지 업로드 응답에 저장 키가 없습니다.");
-            return uploaded.key;
-          }))
-        : [];
-      const submitForm = type === "동행"
-        ? form
-        : {
-            title: form.title,
-            content: form.content,
-            imageUrls: [...existingImageUrls, ...uploadedImageKeys].filter(Boolean).slice(0, 5),
-          };
+      const uploadedImageKeys =
+        type === "자유" && pendingImages.length > 0
+          ? await Promise.all(
+              pendingImages.map(async (image) => {
+                const uploaded = await uploadFreePostImage(image.file);
+                if (!uploaded.key) throw new Error("이미지 업로드 응답에 저장 키가 없습니다.");
+                return uploaded.key;
+              }),
+            )
+          : [];
+      const submitForm =
+        type === "동행"
+          ? form
+          : {
+              title: form.title,
+              content: form.content,
+              imageUrls: [...existingImageUrls, ...uploadedImageKeys].filter(Boolean).slice(0, 5),
+            };
       const responsePost = isEditing
         ? await updateCommunityPost(initialPost.id, type, submitForm)
         : await createCommunityPost({ type, ...submitForm });
@@ -1877,19 +2425,49 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
-          <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{isEditing ? "게시글 수정" : "게시글 작성"}</span>
+          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+            ←
+          </span>
+          <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>
+            {isEditing ? "게시글 수정" : "게시글 작성"}
+          </span>
         </div>
       </div>
       <div style={{ ...S.scrollArea, padding: 20 }}>
         {/* 게시판 선택 */}
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 10 }}>게시판 선택</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 10 }}>
+            게시판 선택
+          </div>
           <div style={{ display: "flex", gap: 10 }}>
-            {["동행", "자유"].map(t => (
-              <div key={t} onClick={() => handleTypeChange(t)} style={{ flex: 1, background: type === t ? COLORS.primary : "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: isEditing ? "default" : "pointer", opacity: isEditing && type !== t ? 0.45 : 1, color: type === t ? "#fff" : COLORS.textMuted, border: `1.5px solid ${type === t ? COLORS.primary : "rgba(0,0,0,0.08)"}` }}>
+            {["동행", "자유"].map((t) => (
+              <div
+                key={t}
+                onClick={() => handleTypeChange(t)}
+                style={{
+                  flex: 1,
+                  background: type === t ? COLORS.primary : "#fff",
+                  borderRadius: 12,
+                  padding: "12px 0",
+                  textAlign: "center",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: isEditing ? "default" : "pointer",
+                  opacity: isEditing && type !== t ? 0.45 : 1,
+                  color: type === t ? "#fff" : COLORS.textMuted,
+                  border: `1.5px solid ${type === t ? COLORS.primary : "rgba(0,0,0,0.08)"}`,
+                }}
+              >
                 {t === "동행" ? "동행 게시판" : "자유 게시판"}
               </div>
             ))}
@@ -1898,16 +2476,58 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>제목</div>
-            <input value={form.title} onChange={e => set("title", e.target.value)} placeholder="제목을 입력하세요" style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+            <div
+              style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}
+            >
+              제목
+            </div>
+            <input
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="제목을 입력하세요"
+              style={{
+                width: "100%",
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: 12,
+                padding: "12px 16px",
+                fontSize: 14,
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>내용</div>
-            <textarea value={form.content} onChange={e => set("content", e.target.value)} placeholder="내용을 입력하세요" rows={5} style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", resize: "none", boxSizing: "border-box" }} />
+            <div
+              style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}
+            >
+              내용
+            </div>
+            <textarea
+              value={form.content}
+              onChange={(e) => set("content", e.target.value)}
+              placeholder="내용을 입력하세요"
+              rows={5}
+              style={{
+                width: "100%",
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: 12,
+                padding: "12px 16px",
+                fontSize: 14,
+                outline: "none",
+                resize: "none",
+                boxSizing: "border-box",
+              }}
+            />
           </div>
           {type === "동행" && (
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>만나는 곳</div>
+            <div>
+              <div
+                style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}
+              >
+                만나는 곳
+              </div>
               <div className="community-place-search">
                 <div className="community-place-source-tabs" aria-label="장소 선택 방식">
                   {[
@@ -1915,7 +2535,7 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                     { key: "market", label: "전통시장 검색" },
                     { key: "liked", label: "찜한 관광지" },
                     { key: "festival", label: "축제 검색" },
-                  ].map(option => (
+                  ].map((option) => (
                     <button
                       key={option.key}
                       type="button"
@@ -1939,102 +2559,227 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                     value={placeQuery}
                     onChange={(e) => {
                       setPlaceQuery(e.target.value);
-                      setForm(f => ({ ...f, place: "", placeId: null, targetType: null, targetId: null, targetName: "", region: "" }));
+                      setForm((f) => ({
+                        ...f,
+                        place: "",
+                        placeId: null,
+                        targetType: null,
+                        targetId: null,
+                        targetName: "",
+                        region: "",
+                      }));
                     }}
-                    placeholder={placeSource === "festival" ? "축제 이름을 2자 이상 검색하세요" : placeSource === "market" ? "전통시장 이름을 2자 이상 검색하세요" : "관광지 이름을 2자 이상 검색하세요"}
-                    style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                    placeholder={
+                      placeSource === "festival"
+                        ? "축제 이름을 2자 이상 검색하세요"
+                        : placeSource === "market"
+                          ? "전통시장 이름을 2자 이상 검색하세요"
+                          : "관광지 이름을 2자 이상 검색하세요"
+                    }
+                    style={{
+                      width: "100%",
+                      background: "#fff",
+                      border: "1px solid rgba(0,0,0,0.1)",
+                      borderRadius: 12,
+                      padding: "12px 16px",
+                      fontSize: 14,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
                   />
                 )}
                 {form.place && (
                   <div className="community-selected-place">
                     <span>선택됨</span>
                     <strong>{form.place}</strong>
-                    <button type="button" onClick={() => {
-                      setForm(f => ({ ...f, place: "", placeId: null, targetType: null, targetId: null, targetName: "", festivalStartDate: "", festivalEndDate: "" }));
-                      setPlaceQuery("");
-                      setPlaceResults([]);
-                      setFestivalResults([]);
-                      setMarketResults([]);
-                      setPlaceSearchStatus("idle");
-                      setFestivalSearchStatus("idle");
-                      setMarketSearchStatus("idle");
-                    }}>변경</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((f) => ({
+                          ...f,
+                          place: "",
+                          placeId: null,
+                          targetType: null,
+                          targetId: null,
+                          targetName: "",
+                          festivalStartDate: "",
+                          festivalEndDate: "",
+                        }));
+                        setPlaceQuery("");
+                        setPlaceResults([]);
+                        setFestivalResults([]);
+                        setMarketResults([]);
+                        setPlaceSearchStatus("idle");
+                        setFestivalSearchStatus("idle");
+                        setMarketSearchStatus("idle");
+                      }}
+                    >
+                      변경
+                    </button>
                     {form.festivalEndDate && (
                       <em className="community-selected-festival-period">
-                        축제 기간 {formatFestivalRange(form.festivalStartDate, form.festivalEndDate)}
+                        축제 기간{" "}
+                        {formatFestivalRange(form.festivalStartDate, form.festivalEndDate)}
                       </em>
                     )}
                   </div>
                 )}
                 {!form.place && (
-                <>
-                {placeSource === "search" && placeSearchStatus === "loading" && <div className="community-place-search-note">관광지를 검색하는 중입니다.</div>}
-                {placeSource === "search" && placeSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
-                {placeSource === "search" && placeSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 이름으로 검색해보세요.</div>}
-                {placeSource === "search" && placeSearchStatus === "error" && <div className="community-place-search-note error">관광지 검색을 불러오지 못했습니다.</div>}
-                {placeSource === "festival" && festivalSearchStatus === "loading" && <div className="community-place-search-note">축제를 검색하는 중입니다.</div>}
-                {placeSource === "festival" && festivalSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
-                {placeSource === "festival" && festivalSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 이름으로 검색해보세요.</div>}
-                {placeSource === "festival" && festivalSearchStatus === "error" && <div className="community-place-search-note error">축제 검색을 불러오지 못했습니다.</div>}
-                {placeSource === "market" && marketSearchStatus === "loading" && <div className="community-place-search-note">전통시장을 검색하는 중입니다.</div>}
-                {placeSource === "market" && marketSearchStatus === "too-short" && <div className="community-place-search-note">2자 이상 입력하면 검색 결과가 표시됩니다.</div>}
-                {placeSource === "market" && marketSearchStatus === "empty" && <div className="community-place-search-note">검색 결과가 없습니다. 다른 시장 이름으로 검색해보세요.</div>}
-                {placeSource === "market" && marketSearchStatus === "error" && <div className="community-place-search-note error">전통시장 검색을 불러오지 못했습니다.</div>}
-                {placeSource === "liked" && likedStatus === "loading" && <div className="community-place-search-note">찜한 관광지를 불러오는 중입니다.</div>}
-                {placeSource === "liked" && likedStatus === "empty" && <div className="community-place-search-note">아직 찜한 관광지가 없습니다.</div>}
-                {placeSource === "liked" && likedStatus === "error" && <div className="community-place-search-note error">찜한 관광지를 불러오지 못했습니다.</div>}
-                {placeSource === "search" && placeResults.length > 0 && (
-                  <div className="community-place-result-list">
-                    {placeResults.map((place) => (
-                      <button key={place.placeId ?? place.id} type="button" onClick={() => handleSelectPlace(place)}>
-                        <strong>{place.name}</strong>
-                        <span>{place.addr || place.address || place.type || "관광지"}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {placeSource === "liked" && likedPlaces.length > 0 && (
-                  <div className="community-place-result-list">
-                    {likedPlaces.map((place) => (
-                      <button key={place.placeId ?? place.id} type="button" onClick={() => handleSelectPlace(place)}>
-                        <strong>{place.name}</strong>
-                        <span>{place.addr || place.address || place.type || "찜한 관광지"}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {placeSource === "market" && marketResults.length > 0 && (
-                  <div className="community-place-result-list">
-                    {marketResults.map((market) => (
-                      <button key={market.marketId ?? market.placeId ?? market.id} type="button" onClick={() => handleSelectPlace(market, "market")}>
-                        <strong>{market.name}</strong>
-                        <span>{market.address || market.location || market.type || "전통시장"}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {placeSource === "festival" && festivalResults.length > 0 && (
-                  <div className="community-place-result-list">
-                    {festivalResults.map((festival) => (
-                      <button key={festival.festivalId ?? festival.id} type="button" onClick={() => handleSelectPlace(festival, "festival")}>
-                        <strong>{festival.name}</strong>
-                        <span>{festival.address || festival.location || festival.date || "축제"}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                </>
+                  <>
+                    {placeSource === "search" && placeSearchStatus === "loading" && (
+                      <div className="community-place-search-note">관광지를 검색하는 중입니다.</div>
+                    )}
+                    {placeSource === "search" && placeSearchStatus === "too-short" && (
+                      <div className="community-place-search-note">
+                        2자 이상 입력하면 검색 결과가 표시됩니다.
+                      </div>
+                    )}
+                    {placeSource === "search" && placeSearchStatus === "empty" && (
+                      <div className="community-place-search-note">
+                        검색 결과가 없습니다. 다른 이름으로 검색해보세요.
+                      </div>
+                    )}
+                    {placeSource === "search" && placeSearchStatus === "error" && (
+                      <div className="community-place-search-note error">
+                        관광지 검색을 불러오지 못했습니다.
+                      </div>
+                    )}
+                    {placeSource === "festival" && festivalSearchStatus === "loading" && (
+                      <div className="community-place-search-note">축제를 검색하는 중입니다.</div>
+                    )}
+                    {placeSource === "festival" && festivalSearchStatus === "too-short" && (
+                      <div className="community-place-search-note">
+                        2자 이상 입력하면 검색 결과가 표시됩니다.
+                      </div>
+                    )}
+                    {placeSource === "festival" && festivalSearchStatus === "empty" && (
+                      <div className="community-place-search-note">
+                        검색 결과가 없습니다. 다른 이름으로 검색해보세요.
+                      </div>
+                    )}
+                    {placeSource === "festival" && festivalSearchStatus === "error" && (
+                      <div className="community-place-search-note error">
+                        축제 검색을 불러오지 못했습니다.
+                      </div>
+                    )}
+                    {placeSource === "market" && marketSearchStatus === "loading" && (
+                      <div className="community-place-search-note">
+                        전통시장을 검색하는 중입니다.
+                      </div>
+                    )}
+                    {placeSource === "market" && marketSearchStatus === "too-short" && (
+                      <div className="community-place-search-note">
+                        2자 이상 입력하면 검색 결과가 표시됩니다.
+                      </div>
+                    )}
+                    {placeSource === "market" && marketSearchStatus === "empty" && (
+                      <div className="community-place-search-note">
+                        검색 결과가 없습니다. 다른 시장 이름으로 검색해보세요.
+                      </div>
+                    )}
+                    {placeSource === "market" && marketSearchStatus === "error" && (
+                      <div className="community-place-search-note error">
+                        전통시장 검색을 불러오지 못했습니다.
+                      </div>
+                    )}
+                    {placeSource === "liked" && likedStatus === "loading" && (
+                      <div className="community-place-search-note">
+                        찜한 관광지를 불러오는 중입니다.
+                      </div>
+                    )}
+                    {placeSource === "liked" && likedStatus === "empty" && (
+                      <div className="community-place-search-note">
+                        아직 찜한 관광지가 없습니다.
+                      </div>
+                    )}
+                    {placeSource === "liked" && likedStatus === "error" && (
+                      <div className="community-place-search-note error">
+                        찜한 관광지를 불러오지 못했습니다.
+                      </div>
+                    )}
+                    {placeSource === "search" && placeResults.length > 0 && (
+                      <div className="community-place-result-list">
+                        {placeResults.map((place) => (
+                          <button
+                            key={place.placeId ?? place.id}
+                            type="button"
+                            onClick={() => handleSelectPlace(place)}
+                          >
+                            <strong>{place.name}</strong>
+                            <span>{place.addr || place.address || place.type || "관광지"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {placeSource === "liked" && likedPlaces.length > 0 && (
+                      <div className="community-place-result-list">
+                        {likedPlaces.map((place) => (
+                          <button
+                            key={place.placeId ?? place.id}
+                            type="button"
+                            onClick={() => handleSelectPlace(place)}
+                          >
+                            <strong>{place.name}</strong>
+                            <span>
+                              {place.addr || place.address || place.type || "찜한 관광지"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {placeSource === "market" && marketResults.length > 0 && (
+                      <div className="community-place-result-list">
+                        {marketResults.map((market) => (
+                          <button
+                            key={market.marketId ?? market.placeId ?? market.id}
+                            type="button"
+                            onClick={() => handleSelectPlace(market, "market")}
+                          >
+                            <strong>{market.name}</strong>
+                            <span>
+                              {market.address || market.location || market.type || "전통시장"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {placeSource === "festival" && festivalResults.length > 0 && (
+                      <div className="community-place-result-list">
+                        {festivalResults.map((festival) => (
+                          <button
+                            key={festival.festivalId ?? festival.id}
+                            type="button"
+                            onClick={() => handleSelectPlace(festival, "festival")}
+                          >
+                            <strong>{festival.name}</strong>
+                            <span>
+                              {festival.address || festival.location || festival.date || "축제"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-          </div>
+            </div>
           )}
           {type === "동행" && (
             <>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>모임 날짜</div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: COLORS.textMuted,
+                    marginBottom: 8,
+                  }}
+                >
+                  모임 날짜
+                </div>
                 <div className="community-date-picker">
                   <div className="community-date-quick-options" aria-label="빠른 날짜 선택">
-                    {quickMeetingDates.map(option => (
+                    {quickMeetingDates.map((option) => (
                       <button
                         key={option.label}
                         type="button"
@@ -2050,27 +2795,62 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                     className={`community-date-display ${form.date ? "selected" : ""}`}
                     onClick={() => setCalendarOpen(true)}
                   >
-                    <span className="community-date-calendar-icon" aria-hidden="true">▣</span>
+                    <span className="community-date-calendar-icon" aria-hidden="true">
+                      ▣
+                    </span>
                     <span>
                       <small>{form.date ? "선택한 모임 날짜" : "직접 날짜 선택"}</small>
                       <strong>{formatMeetingDate(form.date)}</strong>
                     </span>
                     <em>달력 열기</em>
                   </button>
-                  <p className="community-date-help">과거 날짜는 선택할 수 없어요. 참여자가 확인할 수 있도록 확정된 날짜를 선택해주세요.</p>
+                  <p className="community-date-help">
+                    과거 날짜는 선택할 수 없어요. 참여자가 확인할 수 있도록 확정된 날짜를
+                    선택해주세요.
+                  </p>
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>최대 인원</div>
-                <select value={form.maxPeople} onChange={e => set("maxPeople", e.target.value)} style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}>
-                  {["2", "3", "4", "5", "6", "7", "8"].map(n => <option key={n} value={n}>{n}명</option>)}
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: COLORS.textMuted,
+                    marginBottom: 8,
+                  }}
+                >
+                  최대 인원
+                </div>
+                <select
+                  value={form.maxPeople}
+                  onChange={(e) => set("maxPeople", e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "#fff",
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    fontSize: 14,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {["2", "3", "4", "5", "6", "7", "8"].map((n) => (
+                    <option key={n} value={n}>
+                      {n}명
+                    </option>
+                  ))}
                 </select>
               </div>
             </>
           )}
           {type === "자유" && (
             <div className="community-free-image-field">
-              <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>사진 추가 ({totalImageCount}/5)</div>
+              <div
+                style={{ fontSize: 14, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}
+              >
+                사진 추가 ({totalImageCount}/5)
+              </div>
               <label className={totalImageCount >= 5 || submitting ? "disabled" : ""}>
                 <input
                   type="file"
@@ -2090,13 +2870,25 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
                   {existingImageUrls.map((imageUrl, index) => (
                     <figure key={`${imageUrl}-${index}`}>
                       <img src={imageUrl} alt={`기존 첨부 이미지 ${index + 1}`} />
-                      <button type="button" onClick={() => removeExistingImage(imageUrl)} disabled={submitting}>삭제</button>
+                      <button
+                        type="button"
+                        onClick={() => removeExistingImage(imageUrl)}
+                        disabled={submitting}
+                      >
+                        삭제
+                      </button>
                     </figure>
                   ))}
                   {pendingImages.map((image, index) => (
                     <figure key={image.id}>
                       <img src={image.previewUrl} alt={`새 첨부 이미지 ${index + 1}`} />
-                      <button type="button" onClick={() => removePendingImage(image.id)} disabled={submitting}>삭제</button>
+                      <button
+                        type="button"
+                        onClick={() => removePendingImage(image.id)}
+                        disabled={submitting}
+                      >
+                        삭제
+                      </button>
                     </figure>
                   ))}
                 </div>
@@ -2105,7 +2897,13 @@ export function CommunityWritePage({ post: initialPost, initialType = "동행", 
           )}
           <div className="community-write-actions">
             <button type="button" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? (isEditing ? "수정 중..." : "등록 중...") : (isEditing ? "수정 완료" : "게시글 등록")}
+              {submitting
+                ? isEditing
+                  ? "수정 중..."
+                  : "등록 중..."
+                : isEditing
+                  ? "수정 완료"
+                  : "게시글 등록"}
             </button>
           </div>
         </div>

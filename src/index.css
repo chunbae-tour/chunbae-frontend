@@ -1,42 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&family=Jua&family=Noto+Sans+KR:wght@300;400;500;700&family=Yeon+Sung&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&family=Jua&family=Noto+Sans+KR:wght@300;400;500;700&family=Yeon+Sung&display=swap");
 
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 :root {
-    --font-base: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    --font-traditional: 'Yeon Sung', cursive;
-    --font-cute: 'Dongle', sans-serif;
+  --font-base: "Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-traditional: "Yeon Sung", cursive;
+  --font-cute: "Dongle", sans-serif;
 }
 
 body {
-    margin: 0;
-    padding: 0;
-    background: #F7F5F0;
-    font-family: var(--font-base);
-    color: #1A1A2E;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  background: #f7f5f0;
+  font-family: var(--font-base);
+  color: #1a1a2e;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* 붓글씨는 시그니처 타이틀 전용 — 본문 h2/h3에는 적용하지 않음 */
 /* 사용처: 히어로 광고 타이틀, 코스 카드 대제목, 시그니처 대형 버튼 */
 .title-traditional {
-    font-family: var(--font-traditional);
-    font-weight: normal;
+  font-family: var(--font-traditional);
+  font-weight: normal;
 }
 
 /* 춘배 가이드나 동글동글하고 귀여운 요소용 폰트 */
-.font-cute, .char-balloon {
-    font-family: var(--font-cute);
-    font-size: 1.25rem;
-    line-height: 1.1;
+.font-cute,
+.char-balloon {
+  font-family: var(--font-cute);
+  font-size: 1.25rem;
+  line-height: 1.1;
 }
 
 /* 강제 전통시장 감성 부여 클래스 */
 .font-traditional {
-    font-family: var(--font-traditional);
+  font-family: var(--font-traditional);
 }

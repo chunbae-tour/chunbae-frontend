@@ -28,7 +28,7 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
   }, []);
 
   const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
   };
 
@@ -73,7 +73,7 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
     setError("");
     try {
       const result = await geocodeAddress(form.address);
-      setForm(prev => ({
+      setForm((prev) => ({
         ...prev,
         address: result.addressName || prev.address,
         lat: result.lat == null ? prev.lat : String(result.lat),
@@ -89,18 +89,45 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>🏪 상인 신청</span>
       </div>
       <div style={S.scrollArea} ref={scrollAreaRef}>
         <div style={{ padding: 16 }}>
-          <div style={{ background: "#FFF3D0", borderRadius: 12, padding: "12px 14px", color: "#B87800", fontSize: 14, marginBottom: 16 }}>
+          <div
+            style={{
+              background: "#FFF3D0",
+              borderRadius: 12,
+              padding: "12px 14px",
+              color: "#B87800",
+              fontSize: 14,
+              marginBottom: 16,
+            }}
+          >
             상인 신청 후 관리자 심사를 거쳐 승인되면 상인 기능을 이용할 수 있습니다.
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               가게명 <span style={{ color: "#E24B4A" }}>*</span>
             </label>
             <input
@@ -108,12 +135,26 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               value={form.shopName}
               onChange={(e) => handleChange("shopName", e.target.value)}
               placeholder="예: 우리 가게"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
             />
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               업종
             </label>
             <input
@@ -121,12 +162,26 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               value={form.category}
               onChange={(e) => handleChange("category", e.target.value)}
               placeholder="예: 분식, 한식, 간식"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
             />
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               주소 <span style={{ color: "#E24B4A" }}>*</span>
             </label>
             <input
@@ -134,20 +189,45 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               value={form.address}
               onChange={(e) => handleChange("address", e.target.value)}
               placeholder="예: 서울특별시 종로구 창경궁로 88"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
             />
             <button
               type="button"
               onClick={handleFindCoordinates}
               disabled={geocoding}
-              style={{ width: "100%", marginTop: 10, background: COLORS.greenBg, color: COLORS.green, border: "1px solid rgba(15, 116, 84, 0.2)", borderRadius: 8, padding: "10px 12px", fontSize: 14, fontWeight: 700, cursor: geocoding ? "default" : "pointer" }}
+              style={{
+                width: "100%",
+                marginTop: 10,
+                background: COLORS.greenBg,
+                color: COLORS.green,
+                border: "1px solid rgba(15, 116, 84, 0.2)",
+                borderRadius: 8,
+                padding: "10px 12px",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: geocoding ? "default" : "pointer",
+              }}
             >
               {geocoding ? "좌표 찾는 중..." : "주소로 위경도 찾기"}
             </button>
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               위도 (Latitude) <span style={{ color: "#E24B4A" }}>*</span>
             </label>
             <input
@@ -156,12 +236,26 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               value={form.lat}
               onChange={(e) => handleChange("lat", e.target.value)}
               placeholder="예: 37.5700"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
             />
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               경도 (Longitude) <span style={{ color: "#E24B4A" }}>*</span>
             </label>
             <input
@@ -170,12 +264,26 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               value={form.lng}
               onChange={(e) => handleChange("lng", e.target.value)}
               placeholder="예: 126.9900"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
             />
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               사업자등록번호 <span style={{ color: "#E24B4A" }}>*</span>
             </label>
             <input
@@ -183,12 +291,26 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               value={form.businessNumber}
               onChange={(e) => handleChange("businessNumber", e.target.value)}
               placeholder="예: 123-45-67891"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
             />
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               연락처
             </label>
             <input
@@ -196,12 +318,26 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               value={form.phone}
               onChange={(e) => handleChange("phone", e.target.value)}
               placeholder="예: 02-123-4567 (선택)"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
             />
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 14,
+                fontWeight: 700,
+                color: COLORS.primary,
+                marginBottom: 6,
+              }}
+            >
               가게 소개
             </label>
             <textarea
@@ -209,12 +345,28 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
               onChange={(e) => handleChange("description", e.target.value)}
               placeholder="가게에 대한 간단한 소개를 입력해주세요."
               rows={4}
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 8, fontSize: 14, resize: "none" }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid rgba(0,0,0,0.15)",
+                borderRadius: 8,
+                fontSize: 14,
+                resize: "none",
+              }}
             />
           </div>
 
           {error && (
-            <div style={{ background: "#FFE5E5", borderRadius: 12, padding: "12px 14px", color: "#E24B4A", fontSize: 14, marginBottom: 12 }}>
+            <div
+              style={{
+                background: "#FFE5E5",
+                borderRadius: 12,
+                padding: "12px 14px",
+                color: "#E24B4A",
+                fontSize: 14,
+                marginBottom: 12,
+              }}
+            >
               {error}
             </div>
           )}
@@ -223,7 +375,17 @@ export function MerchantApplyPage({ onBack, showToast, onLogin }) {
             type="button"
             onClick={() => setConfirmOpen(true)}
             disabled={submitting}
-            style={{ width: "100%", background: COLORS.primary, color: "#fff", borderRadius: 12, padding: "14px", fontSize: 16, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? 0.6 : 1 }}
+            style={{
+              width: "100%",
+              background: COLORS.primary,
+              color: "#fff",
+              borderRadius: 12,
+              padding: "14px",
+              fontSize: 16,
+              fontWeight: 700,
+              cursor: submitting ? "not-allowed" : "pointer",
+              opacity: submitting ? 0.6 : 1,
+            }}
           >
             {submitting ? "신청 중..." : "상인 신청하기"}
           </button>
