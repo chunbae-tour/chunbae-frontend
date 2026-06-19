@@ -1037,6 +1037,111 @@ button:disabled,
   background: var(--color-error);
 }
 
+.admin-sanction-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 40px));
+  overflow-y: auto;
+  text-align: left;
+}
+
+.admin-sanction-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.admin-sanction-head p {
+  text-align: left;
+}
+
+.admin-sanction-head > button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-sanction-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-sanction-card {
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-md);
+  background: var(--color-background-primary);
+  padding: 14px;
+}
+
+.admin-sanction-card.active {
+  border-color: rgba(163, 45, 45, 0.2);
+  background: #fffafa;
+}
+
+.admin-sanction-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-sanction-card-top > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-sanction-type {
+  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.admin-sanction-report {
+  border-radius: 999px;
+  background: var(--color-background-secondary);
+  color: var(--color-text-tertiary);
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-sanction-reason {
+  margin-top: 10px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.admin-sanction-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.admin-sanction-meta span {
+  border-radius: 8px;
+  background: var(--color-background-secondary);
+  color: var(--color-text-tertiary);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-sanction-dialog .confirm-dialog-actions {
+  grid-template-columns: 1fr;
+}
+
 .report-dialog {
   width: min(440px, calc(100vw - 32px));
   max-width: 440px;
@@ -15020,6 +15125,30 @@ button:disabled,
   word-break: break-all;
 }
 
+.owned-item-qr-preview {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  border-radius: var(--radius-lg);
+  background: #f7f5f0;
+  padding: 16px;
+}
+
+.owned-item-qr-preview img {
+  width: min(260px, 72vw);
+  height: auto;
+  border: 10px solid #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(31, 39, 51, 0.12);
+}
+
+.owned-item-qr-preview span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .owned-item-qr-error {
   border-radius: var(--radius-md);
   background: #fff1f2;
@@ -18673,6 +18802,30 @@ body {
   margin: 0 !important;
 }
 
+.web-payment-page .payment-method-card {
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+}
+
+.web-payment-page .payment-method-card.locked {
+  background: #fbfaf7;
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.web-payment-page .payment-method-card.locked:hover {
+  box-shadow: none;
+}
+
+.payment-step-note {
+  margin: -4px 0 10px;
+  border-radius: 10px;
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  padding: 9px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .web-payment-page .web-payment-amount-section,
 .web-payment-page .web-payment-method-section,
 .web-payment-page .payment-summary-card {
@@ -18707,9 +18860,9 @@ body {
 }
 
 .web-payment-page .pay-logo {
-  width: 58px;
+  width: 78px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: 999px;
 }
 
 .web-payment-page .pay-logo img {
@@ -18720,11 +18873,12 @@ body {
 
 .web-payment-page .pay-logo.kakao img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
 }
 
 .web-payment-page .pay-logo.toss img {
-  width: 150%;
+  width: 178%;
   height: auto;
 }
 
@@ -18736,7 +18890,173 @@ body {
 
 @media (max-width: 640px) {
   .web-payment-page .payment-method-card {
-    grid-template-columns: 58px minmax(0, 1fr) auto;
+    grid-template-columns: 78px minmax(0, 1fr) auto;
+  }
+}
+
+/* Mobile chat room fit + scroll fix */
+@media (max-width: 899px) {
+  .web-chat-room-page {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh;
+    overflow: hidden !important;
+  }
+
+  .web-chat-room-page > .web-page-topbar {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0;
+    padding: 12px 14px !important;
+    flex: 0 0 auto;
+  }
+
+  .web-chat-room-page.is-embedded > .web-page-topbar {
+    min-height: 0;
+    padding: 12px 14px !important;
+  }
+
+  .web-chat-room-body,
+  .web-chat-room-page.is-embedded .web-chat-room-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    max-width: none;
+    margin: 0 !important;
+    padding: 12px 12px 16px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-padding-bottom: 96px;
+  }
+
+  .web-chat-input,
+  .web-chat-room-page.is-embedded .web-chat-input {
+    flex: 0 0 auto;
+    width: 100% !important;
+    max-width: none;
+    margin: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-radius: 16px 16px 0 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .web-chat-room-page.management-open .web-chat-room-body,
+  .web-chat-room-page.management-open .web-chat-input,
+  .web-chat-room-page.management-open .chat-translation-notice {
+    transform: none;
+  }
+}
+
+/* Mobile landing polish */
+@media (max-width: 640px) {
+  .home-landing {
+    gap: 16px;
+    padding: 12px 12px 96px;
+  }
+
+  .home-landing-hero {
+    gap: 18px;
+    border-radius: 14px;
+    padding: 24px 18px;
+  }
+
+  .home-landing-hero::after {
+    right: 14px;
+    bottom: 10px;
+    font-size: 38px;
+  }
+
+  .home-landing-badge {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .home-landing-hero h1 {
+    font-size: clamp(30px, 11vw, 42px);
+  }
+
+  .home-landing-hero p {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .home-landing-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .home-landing-actions button {
+    width: 100%;
+  }
+
+  .home-landing-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .home-landing-stats div {
+    padding: 12px 14px;
+  }
+
+  .home-landing-search {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 8px;
+  }
+
+  .home-landing-search-field,
+  .home-location-button {
+    min-height: 50px;
+  }
+
+  .home-landing-search-field {
+    padding: 0 14px;
+  }
+
+  .home-landing-section-head {
+    gap: 6px;
+  }
+
+  .home-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .home-feature-card {
+    min-height: 118px;
+    padding: 14px;
+  }
+
+  .home-feature-card > span {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+
+  .home-feature-card > span img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .home-feature-card strong {
+    font-size: 15px;
+  }
+
+  .home-feature-card small {
+    font-size: 12px;
+  }
+
+  .home-recommend-scroll {
+    grid-auto-columns: minmax(220px, 84vw);
+  }
+
+  .home-festival-schedule-card {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .home-signup-banner {
+    padding: 20px 18px;
   }
 }
 
