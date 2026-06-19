@@ -1492,7 +1492,7 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
     setDeleteConfirmOpen(false);
     try {
       await deleteAllNotifications(notifications.map((item) => item.id));
-    } catch (error) {
+    } catch {
       return;
     }
     syncNotifications([]);

@@ -18,7 +18,7 @@ function getPostId(postOrId) {
 export function registerCompanionChatRoom({
   post,
   room = {},
-  user = getStoredAuthSession("USER"),
+  user: _user = getStoredAuthSession("USER"),
 }) {
   const postId = getPostId(post);
   if (!postId) return normalizeChatRoom(room);
@@ -37,13 +37,13 @@ export function registerCompanionChatRoom({
   });
 }
 
-export function getCompanionJoinState({ postId, user = getStoredAuthSession("USER") }) {
+export function getCompanionJoinState({ postId: _postId, user: _user = getStoredAuthSession("USER") }) {
   return "idle";
 }
 
 export async function submitCompanionJoinRequest({
   post,
-  user = getStoredAuthSession("USER"),
+  user: _user = getStoredAuthSession("USER"),
   message = "참여 신청합니다.",
 }) {
   let chatRoomId = post?.chatRoomId ?? post?.roomId ?? post?.chatRoom?.chatRoomId;
@@ -64,7 +64,7 @@ export async function submitCompanionJoinRequest({
   });
 }
 
-export function getCompanionRoomForPost({ postId, user = getStoredAuthSession("USER") }) {
+export function getCompanionRoomForPost({ postId: _postId, user: _user = getStoredAuthSession("USER") }) {
   return null;
 }
 

@@ -94,14 +94,40 @@
 - **인증 토큰** — MVP 기준 `sessionStorage`에 저장합니다.
 
 ```txt
-src/
-├─ components/   공통 컴포넌트
-├─ constants/    색상·mock 데이터
-├─ pages/        화면 단위 컴포넌트 (도메인별 폴더)
-├─ services/     도메인별 API 연동 모듈
-├─ styles/       전역 스타일·디자인 토큰
-├─ utils/        공용 유틸
-└─ App.jsx       screen 상태 기반 라우팅 진입점
+chunbae-frontend/
+├── public/                  정적 파일 (PWA 아이콘, manifest, service worker)
+├── src/
+│   ├── App.jsx              screen 상태 기반 라우팅 진입점
+│   ├── assets/              이미지·SVG 등 정적 에셋
+│   │   └── brand/           마스코트·엽전 아이콘 등 브랜드 에셋
+│   ├── components/          공통 컴포넌트
+│   │   ├── auth/            인증 관련 UI (마스코트 등)
+│   │   ├── common/          앱 셸, 탭바, 공용 UI
+│   │   └── map/             카카오맵 래퍼
+│   ├── constants/           색상 토큰, 이미지 매핑, 카테고리 상수
+│   ├── pages/               화면 단위 컴포넌트 (도메인별 폴더)
+│   │   ├── admin/           관리자 화면
+│   │   ├── auth/            로그인·회원가입·약관
+│   │   ├── chat/            채팅 목록·채팅방
+│   │   ├── community/       동행 모집 커뮤니티
+│   │   ├── festival/        축제 캘린더·상세
+│   │   ├── home/            홈 (로그인 전·후)
+│   │   ├── map/             지도·장소 상세·길찾기
+│   │   ├── merchant/        상인 입점 신청·가게 관리
+│   │   ├── misc/            기타 (알림, 설정 등)
+│   │   ├── my/              마이페이지·보유 아이템
+│   │   ├── payment/         결제·충전·내역
+│   │   ├── store/           스토어 (상품 구매)
+│   │   └── support/         고객센터
+│   ├── services/            도메인별 API 연동 모듈 (24개)
+│   │   └── apiClient.js     공통 요청·인증·에러 처리
+│   ├── styles/              전역 스타일·PWA 셸 CSS
+│   └── utils/               공용 유틸 (지오코딩, QR, 날짜 등)
+├── docs/
+│   ├── api-spec.json        백엔드 API 명세 (OpenAPI)
+│   └── frontend/            프론트 연동 기준 문서
+├── tests/e2e/               Playwright E2E 테스트
+└── index.html               Vite 진입점
 ```
 
 ---
@@ -131,7 +157,7 @@ npm run dev
 | --- | --- |
 | `pnpm dev` | 로컬 개발 서버 |
 | `pnpm dev:mobile` | 모바일 실기기 테스트용 (`--host`, HTTPS) |
-| `pnpm dev:ec2` | EC2 모드 개발 서버 |
+| `pnpm dev:ec2` | ECS 환경 연동 개발 서버 |
 | `pnpm build` | 프로덕션 빌드 |
 | `pnpm preview` | 빌드 결과 미리보기 |
 | `pnpm lint` | ESLint 검사 |
