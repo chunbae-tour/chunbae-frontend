@@ -268,6 +268,37 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
   const descriptionHighlights = splitSentences(currentPlace?.desc, 2);
   const operatingHourLines = formatOperatingHours(currentPlace?.hours);
 
+  const copyShareLink = async () => {
+    if (typeof window === "undefined") return;
+
+    const shareUrl = window.location.href;
+
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = shareUrl;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.top = "-9999px";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand("copy");
+        document.body.removeChild(textarea);
+
+        if (!copied) {
+          throw new Error("copy failed");
+        }
+      }
+      showToast?.("공유 링크가 복사되었습니다!");
+    } catch {
+      showToast?.("복사에 실패했습니다. 주소창의 링크를 직접 복사해주세요.");
+    }
+  };
+
   const handleToggleLike = async () => {
     if (likeLoading) return;
     const placeId = currentPlace?.placeId ?? currentPlace?.id;
@@ -649,7 +680,7 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
           )}
           <div className="web-action-row" style={{ display: "flex", gap: 10, marginTop: 24 }}>
             <div onClick={() => showToast("장소 정보 신고 API가 아직 연결되지 않았습니다.")} style={{ flex: 1, background: COLORS.primary, color: "#fff", borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer" }}>🚩 정보 신고</div>
-            <div onClick={() => showToast("공유 링크가 복사되었습니다!")} style={{ flex: 1, background: COLORS.bg, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", border: "0.5px solid rgba(0,0,0,0.1)" }}>🔗 공유</div>
+            <div onClick={copyShareLink} style={{ flex: 1, background: COLORS.bg, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", border: "0.5px solid rgba(0,0,0,0.1)" }}>🔗 공유</div>
           </div>
         </div>
         </div>
