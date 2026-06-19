@@ -18535,7 +18535,8 @@ body {
   border-top: 0.5px solid rgba(26, 61, 43, 0.14);
 }
 
-.community-meeting-card .community-static-map {
+.community-meeting-card .community-static-map,
+.map-preview .community-static-map {
   position: relative;
   width: 100%;
   min-height: 150px;
@@ -18551,6 +18552,10 @@ body {
   color: #1a3d2b;
   text-align: left;
   cursor: pointer;
+}
+
+.map-preview .community-static-map {
+  min-height: 136px;
 }
 
 .community-static-map::before,
