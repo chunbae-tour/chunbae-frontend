@@ -356,7 +356,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
   const handleUseCustomerItem = async () => {
     const token = itemUseToken.trim();
     if (!token) {
-      showToast("사용자 아이템 코드를 입력해주세요.");
+      showToast("사용자 아이템 QR을 스캔하거나 토큰을 입력해주세요.");
       return;
     }
 
@@ -370,7 +370,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
       showToast("사용자 아이템을 사용 처리했습니다.");
     } catch {
       setItemUseStatus("error");
-      showToast("아이템 사용 처리에 실패했습니다. 코드와 가게 정보를 확인해주세요.");
+      showToast("아이템 사용 처리에 실패했습니다. QR 토큰과 가게 정보를 확인해주세요.");
     }
   };
 
@@ -692,7 +692,7 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
           <div className="merchant-section-head">
             <div>
               <span>아이템 사용 처리</span>
-              <small>사용자가 보유 아이템 화면에서 발급한 코드를 입력합니다.</small>
+              <small>사용자가 보유 아이템 화면에서 발급한 QR을 스캔해 사용 처리합니다.</small>
             </div>
           </div>
           <div className="merchant-item-use-form">
@@ -703,14 +703,14 @@ export function MerchantShopPage({ onBack, showToast, onMenuManage, onSettlement
                 setItemUseStatus("idle");
               }}
               onKeyDown={(event) => event.key === "Enter" && handleUseCustomerItem()}
-              placeholder="사용자 아이템 코드"
+              placeholder="QR 스캔 토큰"
             />
             <button type="button" onClick={handleUseCustomerItem} disabled={itemUseStatus === "loading"}>
               {itemUseStatus === "loading" ? "처리 중" : "사용 처리"}
             </button>
           </div>
           {itemUseStatus === "error" && (
-            <div className="merchant-api-note">아이템 사용 처리에 실패했습니다. 만료되었거나 이미 사용한 코드일 수 있습니다.</div>
+            <div className="merchant-api-note">아이템 사용 처리에 실패했습니다. 만료되었거나 이미 사용한 QR일 수 있습니다.</div>
           )}
           {itemUseResult && (
             <div className="merchant-item-use-result">

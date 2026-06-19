@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchMyReviews, fetchOwnedItemQr, fetchOwnedItems, fetchWishlist, removeWishlistItem } from "../../services/myService.js";
 import { fetchMyReport, fetchMyReportsPage } from "../../services/reportService.js";
+import { createQrSvg } from "../../utils/qrCode.js";
 
 function isRoleDeniedError(error) {
   return error?.status === 403;
@@ -33,6 +34,35 @@ function getReportStatusStyle(status) {
   return { background: "#FFF3CF", color: "#A36300" };
 }
 
+function ItemQrPreview({ token }) {
+  const qrSvgUrl = useMemo(() => {
+    if (!token) return "";
+    try {
+      return `data:image/svg+xml;utf8,${encodeURIComponent(createQrSvg(token, { moduleSize: 5, margin: 4 }))}`;
+    } catch {
+      return "";
+    }
+  }, [token]);
+
+  if (!token) {
+    return <div className="owned-item-qr-error">QR 토큰이 없습니다. 다시 발급해주세요.</div>;
+  }
+
+  if (!qrSvgUrl) {
+    return (
+      <div className="owned-item-qr-error">
+        QR 이미지를 만들지 못했습니다. 토큰이 너무 길거나 형식이 올바르지 않습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div className="owned-item-qr-preview">
+      <img src={qrSvgUrl} alt="상점 아이템 사용 QR 코드" />
+      <span>상인이 이 QR을 스캔하면 사용 처리돼요.</span>
+    </div>
+  );
+}
 const WISHLIST_FILTERS = [
   { value: "ALL", label: "전체" },
   { value: "PLACE", label: "관광지" },
@@ -213,7 +243,6 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
     </div>
   );
 }
-
 // ─── 내 리뷰 목록 ─────────────────────────────────────────────────────
 export function MyReviewPage({ onBack, showToast }) {
   const [reviews, setReviews] = useState([]);
@@ -289,7 +318,6 @@ export function MyReviewPage({ onBack, showToast }) {
     </div>
   );
 }
-
 // ─── 내 신고 내역 ───────────────────────────────────────────────────
 export function MyReportsPage({ onBack }) {
   const [reports, setReports] = useState([]);
@@ -477,7 +505,6 @@ export function MyReportsPage({ onBack }) {
     </div>
   );
 }
-
 // ─── 보유 아이템 ─────────────────────────────────────────────────────
 export function OwnedItemsPage({ onBack, showToast }) {
   const [items, setItems] = useState([]);
@@ -588,8 +615,8 @@ export function OwnedItemsPage({ onBack, showToast }) {
         {qrState.item && (
           <div className="confirm-dialog-backdrop" role="presentation" onMouseDown={closeQrDialog}>
             <div className="confirm-dialog owned-item-qr-dialog" role="dialog" aria-modal="true" aria-labelledby="owned-item-qr-title" onMouseDown={(event) => event.stopPropagation()}>
-              <strong id="owned-item-qr-title">아이템 사용 코드</strong>
-              <p>{qrState.item.name} 사용을 위해 상인에게 아래 코드를 보여주세요.</p>
+              <strong id="owned-item-qr-title">아이템 사용 QR</strong>
+              <p>{qrState.item.name} 사용을 위해 상인에게 아래 QR을 보여주세요.</p>
               {qrState.status === "loading" && <div className="owned-item-qr-token">QR 코드 발급 중...</div>}
               {qrState.status === "error" && (
                 <div className="owned-item-qr-error">
@@ -598,7 +625,7 @@ export function OwnedItemsPage({ onBack, showToast }) {
               )}
               {qrState.status === "success" && (
                 <>
-                  <div className="owned-item-qr-token">{qrState.qr?.token || "토큰 없음"}</div>
+                  <ItemQrPreview token={qrState.qr?.token} />
                   {qrState.qr?.expiresAt && <small>만료 시각 {qrState.qr.expiresAt}</small>}
                 </>
               )}
