@@ -38,6 +38,7 @@ import {
   fetchAdminTraditionalMarketDetail,
   fetchAdminSupportMessages,
   fetchAdminSupportRooms,
+  fetchAdminUserSanctions,
   fetchAdminUsers,
   fetchFestivalsNow,
   fetchMerchantApplications,
@@ -46,6 +47,7 @@ import {
   rejectRefund,
   rejectSettlement,
   rejectMerchantApplication,
+  releaseAdminUserSanction,
   suspendAdminUser,
   syncTouristPlaces,
   syncTraditionalMarkets,
@@ -450,6 +452,11 @@ export function AdminUsersPage({ onBack, showToast }) {
   const [users, setUsers] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [sanctions, setSanctions] = useState([]);
+  const [sanctionStatus, setSanctionStatus] = useState("idle");
+  const [sanctionError, setSanctionError] = useState("");
+  const [releasingSanctionId, setReleasingSanctionId] = useState(null);
 
   useEffect(() => {
     let ignore = false;
@@ -502,6 +509,51 @@ export function AdminUsersPage({ onBack, showToast }) {
       setUsers(prev => prev.map(item => item.id === user.id ? { ...item, status: "정상" } : item));
     } catch (error) {
       showToast(getApiErrorHint(error));
+    }
+  };
+
+  const openSanctions = async (user) => {
+    setSelectedUser(user);
+    setSanctions([]);
+    setSanctionStatus("loading");
+    setSanctionError("");
+    try {
+      const data = await fetchAdminUserSanctions(user.id);
+      setSanctions(data);
+      setSanctionStatus(data.length > 0 ? "success" : "empty");
+    } catch (error) {
+      setSanctionError(getApiErrorHint(error));
+      setSanctionStatus("error");
+    }
+  };
+
+  const closeSanctions = () => {
+    setSelectedUser(null);
+    setSanctions([]);
+    setSanctionStatus("idle");
+    setSanctionError("");
+    setReleasingSanctionId(null);
+  };
+
+  const releaseSanction = async (sanction) => {
+    if (!selectedUser || !sanction?.sanctionId) return;
+    const ok = window.confirm("이 제재를 조기 해제할까요?");
+    if (!ok) return;
+
+    setReleasingSanctionId(sanction.sanctionId);
+    try {
+      await releaseAdminUserSanction(selectedUser.id, sanction.sanctionId);
+      showToast("제재를 조기 해제했습니다.");
+      const data = await fetchAdminUserSanctions(selectedUser.id);
+      setSanctions(data);
+      setSanctionStatus(data.length > 0 ? "success" : "empty");
+      if (!data.some(item => item.active)) {
+        setUsers(prev => prev.map(item => item.id === selectedUser.id ? { ...item, status: "정상" } : item));
+      }
+    } catch (error) {
+      showToast(getApiErrorHint(error));
+    } finally {
+      setReleasingSanctionId(null);
     }
   };
 
@@ -570,7 +622,7 @@ export function AdminUsersPage({ onBack, showToast }) {
             </div>
             <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 10 }}>{u.email} · 가입 {u.date}</div>
             <div style={{ display: "flex", gap: 8 }}>
-              <div onClick={() => showToast("유저 상세 정보")} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.primary }}>상세</div>
+              <div onClick={() => openSanctions(u)} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.primary }}>제재 이력</div>
               <div onClick={() => toggleSuspension(u)} style={{ flex: 1, background: u.status === "정상" ? "#FEE8E8" : COLORS.greenBg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: u.status === "정상" ? "#A32D2D" : COLORS.green }}>
                 {u.status === "정상" ? "정지처리" : "정지해제"}
               </div>
@@ -578,6 +630,67 @@ export function AdminUsersPage({ onBack, showToast }) {
           </div>
         ))}
       </div>
+      {selectedUser && (
+        <div className="confirm-dialog-backdrop" onMouseDown={closeSanctions}>
+          <div className="confirm-dialog admin-sanction-dialog" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="admin-sanction-head">
+              <div>
+                <strong>제재 이력</strong>
+                <p>{selectedUser.nickname} · {selectedUser.email || `userId ${selectedUser.id}`}</p>
+              </div>
+              <button type="button" onClick={closeSanctions} aria-label="닫기">×</button>
+            </div>
+
+            {sanctionStatus === "loading" && <SkeletonList count={3} />}
+            {sanctionStatus === "error" && (
+              <ErrorState
+                title="제재 이력을 불러오지 못했습니다."
+                description={sanctionError}
+                onRetry={() => openSanctions(selectedUser)}
+              />
+            )}
+            {sanctionStatus === "empty" && (
+              <EmptyState icon="🛡️" title="제재 이력이 없습니다." description="이 사용자에게 등록된 제재 내역이 없습니다." />
+            )}
+            {sanctionStatus === "success" && (
+              <div className="admin-sanction-list">
+                {sanctions.map((sanction, index) => (
+                  <div key={sanction.sanctionId ?? `${sanction.reportId}-${index}`} className={`admin-sanction-card ${sanction.active ? "active" : ""}`}>
+                    <div className="admin-sanction-card-top">
+                      <div>
+                        <span className="admin-sanction-type">{sanction.sanctionType || "제재"}</span>
+                        {sanction.reportId != null && <span className="admin-sanction-report">신고 #{sanction.reportId}</span>}
+                      </div>
+                      <AdminStatusBadge status={sanction.status} />
+                    </div>
+                    <div className="admin-sanction-reason">{sanction.reason || "사유가 등록되지 않았습니다."}</div>
+                    <div className="admin-sanction-meta">
+                      <span>시작 {formatDate(sanction.startedAt)}</span>
+                      <span>종료 {formatDate(sanction.endedAt)}</span>
+                      {sanction.releasedAt && <span>해제 {formatDate(sanction.releasedAt)}</span>}
+                      {sanction.releasedBy && <span>해제자 #{sanction.releasedBy}</span>}
+                    </div>
+                    {sanction.active && (
+                      <AdminButton
+                        tone="danger"
+                        disabled={releasingSanctionId === sanction.sanctionId}
+                        onClick={() => releaseSanction(sanction)}
+                        style={{ width: "100%", marginTop: 12 }}
+                      >
+                        {releasingSanctionId === sanction.sanctionId ? "해제 중..." : "조기 해제"}
+                      </AdminButton>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="confirm-dialog-actions">
+              <button type="button" className="secondary" onClick={closeSanctions}>닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

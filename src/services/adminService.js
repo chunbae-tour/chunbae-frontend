@@ -13,6 +13,36 @@ export function normalizeAdminUser(user = {}) {
   };
 }
 
+function getSanctionStatus(sanction = {}) {
+  if (sanction.releasedAt || sanction.releasedBy) return "해제됨";
+  if (!sanction.endedAt) return "진행중";
+
+  const endedAtTime = new Date(sanction.endedAt).getTime();
+  if (Number.isFinite(endedAtTime) && endedAtTime < Date.now()) return "종료됨";
+  return "진행중";
+}
+
+export function normalizeUserSanction(sanction = {}) {
+  const sanctionId = sanction.sanctionId ?? sanction.id;
+  const status = getSanctionStatus(sanction);
+  return {
+    ...sanction,
+    id: sanctionId,
+    sanctionId,
+    reportId: sanction.reportId,
+    targetType: sanction.targetType ?? "",
+    sanctionType: sanction.sanctionType ?? sanction.type ?? "",
+    reason: sanction.reason ?? "",
+    startedAt: sanction.startedAt ?? sanction.startAt ?? sanction.createdAt ?? "",
+    endedAt: sanction.endedAt ?? sanction.endAt ?? "",
+    releasedAt: sanction.releasedAt ?? "",
+    releasedBy: sanction.releasedBy ?? "",
+    createdAt: sanction.createdAt ?? "",
+    status,
+    active: status === "진행중",
+  };
+}
+
 export function normalizeReport(report = {}) {
   const rawStatus = report.status ?? "PENDING";
   return {
@@ -126,6 +156,22 @@ export async function suspendAdminUser(userId, reason = "관리자 처리") {
 
 export async function unsuspendAdminUser(userId) {
   return apiRequest(`/admin/users/${userId}/suspensions`, {
+    method: "DELETE",
+    auth: true,
+    role: "ADMIN",
+  });
+}
+
+export async function fetchAdminUserSanctions(userId) {
+  const data = await apiRequest(`/admin/users/${userId}/sanctions`, {
+    auth: true,
+    role: "ADMIN",
+  });
+  return (Array.isArray(data) ? data : getPageContent(data)).map(normalizeUserSanction);
+}
+
+export async function releaseAdminUserSanction(userId, sanctionId) {
+  return apiRequest(`/admin/users/${userId}/sanctions/${sanctionId}`, {
     method: "DELETE",
     auth: true,
     role: "ADMIN",
