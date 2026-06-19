@@ -499,22 +499,6 @@ export default function MapPage({ onPlaceClick }) {
             loadPlaces(location);
           }}
         />
-        {selectedPlace && (
-          <div className="map-place-popover">
-            <button type="button" onClick={() => setSelectedPlace(null)}>×</button>
-            <span>{selectedPlace.type}</span>
-            <strong>{selectedPlace.name}</strong>
-            <small>{selectedPlace.addr}</small>
-            <div>
-              <em>📍 {selectedPlace.dist || "주변"}</em>
-              <em className="star-score">★ {selectedPlace.rating}</em>
-              <em>리뷰 {selectedPlace.reviews}</em>
-            </div>
-            <div className="map-popover-actions">
-              <button type="button" onClick={() => onPlaceClick({ ...selectedPlace, imageUrl: getPlaceImageUrl(selectedPlace) })}>상세 보기</button>
-            </div>
-          </div>
-        )}
       </div>
 
       {markerNotice && (
