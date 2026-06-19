@@ -45,15 +45,32 @@
 
 ## 🛠 기술 스택
 
-| 영역 | 사용 기술 |
-| --- | --- |
-| 코어 | React 19, Vite 8, JavaScript (ESM) |
-| 스타일 | CSS, 전역 디자인 토큰 (`src/styles`) |
-| 애니메이션 | framer-motion |
-| 실시간 | @stomp/stompjs, sockjs-client (WebSocket) |
-| 외부 연동 | Kakao Map JS API, PortOne 결제 SDK (CDN 동적 import) |
-| 품질 | ESLint, Playwright (E2E) |
-| 패키지 | pnpm |
+**Environment**
+
+![VSCode](https://img.shields.io/badge/VS_Code-007ACC?logo=visualstudiocode&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?logo=git&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)
+
+**Config**
+
+![pnpm](https://img.shields.io/badge/pnpm-F69220?logo=pnpm&logoColor=white)
+
+**Development**
+
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
+![React](https://img.shields.io/badge/React_19-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite_8-646CFF?logo=vite&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
+![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?logo=framer&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-5A0FC8?logo=pwa&logoColor=white)
+![WebSocket](https://img.shields.io/badge/WebSocket_(STOMP)-010101?logo=socketdotio&logoColor=white)
+![Kakao Map](https://img.shields.io/badge/Kakao_Map-FFCD00?logo=kakao&logoColor=black)
+![PortOne](https://img.shields.io/badge/PortOne-00C4C4?logoColor=white)
+
+**Quality**
+
+![ESLint](https://img.shields.io/badge/ESLint-4B32C3?logo=eslint&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white)
 
 ---
 
