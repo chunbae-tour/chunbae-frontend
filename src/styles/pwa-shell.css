@@ -18986,7 +18986,7 @@ body {
 }
 
 .web-payment-page .payment-method-card {
-  grid-template-columns: 78px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
 }
 
 .web-payment-page .payment-method-card.locked {
@@ -19043,37 +19043,37 @@ body {
 }
 
 .web-payment-page .pay-logo {
-  width: 78px;
-  height: 38px;
-  border-radius: 999px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
 }
 
 .web-payment-page .pay-logo img {
   display: block;
-  max-width: none;
+  width: 78%;
+  height: 78%;
   object-fit: contain;
 }
 
 .web-payment-page .pay-logo.kakao img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  width: 90%;
+  height: 90%;
 }
 
 .web-payment-page .pay-logo.toss img {
-  width: 178%;
-  height: auto;
+  width: 82%;
+  height: 82%;
 }
 
 .web-payment-page .pay-logo.eximbay img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
 }
 
 @media (max-width: 640px) {
   .web-payment-page .payment-method-card {
-    grid-template-columns: 78px minmax(0, 1fr) auto;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
   }
 }
 

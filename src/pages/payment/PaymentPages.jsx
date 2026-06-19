@@ -24,6 +24,16 @@ const MIN_CHARGE_AMOUNT = 5000;
 const MAX_CHARGE_AMOUNT = 100000;
 
 const PAYMENT_LOGO_BASE = "/assets/payment-logos";
+function CardSvgIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="2" y="5" width="20" height="14" rx="2.5" stroke="white" strokeWidth="1.8" />
+      <path d="M2 9.5h20" stroke="white" strokeWidth="1.8" />
+      <rect x="5" y="13" width="5" height="2.5" rx="1.2" fill="white" />
+    </svg>
+  );
+}
+
 const PAYMENT_METHODS = [
   {
     label: "카카오페이",
@@ -32,7 +42,6 @@ const PAYMENT_METHODS = [
     logo: `${PAYMENT_LOGO_BASE}/kakaopay.png`,
     logoAlt: "카카오페이",
     logoTone: "kakao",
-    fallback: "pay",
   },
   {
     label: "토스페이",
@@ -41,14 +50,13 @@ const PAYMENT_METHODS = [
     logo: `${PAYMENT_LOGO_BASE}/toss-white.png`,
     logoAlt: "토스페이",
     logoTone: "toss",
-    fallback: "toss",
   },
   {
     label: "신용카드",
     desc: "국내 카드 결제",
     provider: "Card",
     logoTone: "card",
-    fallback: "💳",
+    icon: <CardSvgIcon />,
   },
   {
     label: "해외카드",
@@ -57,7 +65,6 @@ const PAYMENT_METHODS = [
     logo: `${PAYMENT_LOGO_BASE}/eximbay.svg`,
     logoAlt: "Eximbay",
     logoTone: "eximbay",
-    fallback: "EX",
   },
 ];
 
@@ -422,8 +429,9 @@ export function PayChargePage({ onBack, onDone, showToast }) {
                           event.currentTarget.style.display = "none";
                         }}
                       />
+                    ) : m.icon ? (
+                      m.icon
                     ) : null}
-                    <span className="pay-logo-fallback">{m.fallback}</span>
                   </span>
                   <div>
                     <span className="pay-name">{m.label}</span>
