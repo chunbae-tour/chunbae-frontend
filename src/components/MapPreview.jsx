@@ -27,12 +27,19 @@ export default function MapPreview({ name, address, latitude, longitude }) {
 
   return (
     <div className="map-preview">
-      <button type="button" className="community-static-map map-preview-static-map" onClick={openDirections} aria-label={`${name || "목적지"} 카카오맵으로 열기`}>
+      <button
+        type="button"
+        className="community-static-map map-preview-static-map"
+        onClick={openDirections}
+        aria-label={`${name || "목적지"} 카카오맵으로 열기`}
+      >
         <span className="community-map-road road-one" />
         <span className="community-map-road road-two" />
         <span className="community-map-block block-one" />
         <span className="community-map-block block-two" />
-        <span className="community-map-pin" aria-hidden="true"><MapPinIcon /></span>
+        <span className="community-map-pin" aria-hidden="true">
+          <MapPinIcon />
+        </span>
         <span className="community-map-caption">
           <strong>{address || name || "위치 정보"}</strong>
         </span>

@@ -2,7 +2,13 @@
 import { COLORS, S } from "../../constants/colors.js";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { fetchMyReviews, fetchOwnedItemQr, fetchOwnedItems, fetchWishlist, removeWishlistItem } from "../../services/myService.js";
+import {
+  fetchMyReviews,
+  fetchOwnedItemQr,
+  fetchOwnedItems,
+  fetchWishlist,
+  removeWishlistItem,
+} from "../../services/myService.js";
 import { fetchMyReport, fetchMyReportsPage } from "../../services/reportService.js";
 import { createQrSvg } from "../../utils/qrCode.js";
 
@@ -100,12 +106,13 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadWishlist();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
-  const visibleItems = activeType === "ALL"
-    ? items
-    : items.filter((item) => item.targetType === activeType);
+  const visibleItems =
+    activeType === "ALL" ? items : items.filter((item) => item.targetType === activeType);
 
   const getItemKey = (item) => item.wishlistKey ?? `${item.targetType ?? "PLACE"}:${item.id}`;
 
@@ -115,9 +122,11 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
     setErrorMessage("");
     try {
       await removeWishlistItem(item);
-      setItems(prev => prev.filter(p => getItemKey(p) !== itemKey));
+      setItems((prev) => prev.filter((p) => getItemKey(p) !== itemKey));
     } catch (error) {
-      setErrorMessage(getApiErrorHint(error) || "찜 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      setErrorMessage(
+        getApiErrorHint(error) || "찜 취소에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      );
     } finally {
       setRemovingKey("");
     }
@@ -125,13 +134,25 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>❤️ 찜 목록</span>
       </div>
       <div style={S.scrollArea}>
         {status === "loading" ? (
-          <div style={{ padding: 16 }}><SkeletonList count={3} /></div>
+          <div style={{ padding: 16 }}>
+            <SkeletonList count={3} />
+          </div>
         ) : status === "error" ? (
           <div style={{ padding: 16 }}>
             <ErrorState
@@ -152,9 +173,10 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
           <div style={{ padding: 16 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
               {WISHLIST_FILTERS.map((filter) => {
-                const count = filter.value === "ALL"
-                  ? items.length
-                  : items.filter((item) => item.targetType === filter.value).length;
+                const count =
+                  filter.value === "ALL"
+                    ? items.length
+                    : items.filter((item) => item.targetType === filter.value).length;
                 const active = activeType === filter.value;
                 return (
                   <button
@@ -162,7 +184,9 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
                     type="button"
                     onClick={() => setActiveType(filter.value)}
                     style={{
-                      border: active ? `1px solid ${COLORS.primary}` : "0.5px solid rgba(0,0,0,0.08)",
+                      border: active
+                        ? `1px solid ${COLORS.primary}`
+                        : "0.5px solid rgba(0,0,0,0.08)",
                       background: active ? COLORS.primary : "#fff",
                       color: active ? "#fff" : COLORS.textSub,
                       borderRadius: 999,
@@ -178,7 +202,17 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
               })}
             </div>
             {errorMessage && (
-              <div style={{ background: "#FFF0F0", border: "1px solid rgba(226,75,74,0.18)", color: "#A32D2D", borderRadius: 12, padding: 12, fontSize: 13, marginBottom: 12 }}>
+              <div
+                style={{
+                  background: "#FFF0F0",
+                  border: "1px solid rgba(226,75,74,0.18)",
+                  color: "#A32D2D",
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 13,
+                  marginBottom: 12,
+                }}
+              >
                 {errorMessage}
               </div>
             )}
@@ -188,55 +222,107 @@ export function WishlistPage({ onBack, onPlaceClick, onFestivalClick }) {
                 title={`${WISHLIST_FILTERS.find((filter) => filter.value === activeType)?.label ?? "선택한 항목"} 찜이 없어요.`}
                 description="다른 카테고리를 선택하거나 상세 페이지에서 마음에 드는 항목을 찜해보세요."
               />
-            ) : visibleItems.map(p => {
-              const itemKey = getItemKey(p);
-              const canOpenDetail = p.targetType !== "FESTIVAL" || Boolean(onFestivalClick);
-              const openDetail = () => {
-                if (p.targetType === "FESTIVAL") {
-                  onFestivalClick?.(p);
-                  return;
-                }
-                onPlaceClick?.(p);
-              };
-              return (
-              <div key={itemKey} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, display: "flex", gap: 14, alignItems: "center", border: "0.5px solid rgba(0,0,0,0.06)" }}>
-                <div
-                  onClick={() => canOpenDetail && openDetail()}
-                  style={{ fontSize: 34, width: 60, height: 60, background: COLORS.bg, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: canOpenDetail ? "pointer" : "default", flexShrink: 0 }}
-                >
-                  {p.emoji}
-                </div>
-                <div style={{ flex: 1, cursor: canOpenDetail ? "pointer" : "default" }} onClick={() => canOpenDetail && openDetail()}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.primary }}>{p.name}</div>
-                    <span style={{ background: "#E1F5EE", color: "#0F6E56", borderRadius: 999, padding: "3px 8px", fontSize: 11, fontWeight: 800 }}>
-                      {p.typeLabel}
-                    </span>
+            ) : (
+              visibleItems.map((p) => {
+                const itemKey = getItemKey(p);
+                const canOpenDetail = p.targetType !== "FESTIVAL" || Boolean(onFestivalClick);
+                const openDetail = () => {
+                  if (p.targetType === "FESTIVAL") {
+                    onFestivalClick?.(p);
+                    return;
+                  }
+                  onPlaceClick?.(p);
+                };
+                return (
+                  <div
+                    key={itemKey}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 10,
+                      display: "flex",
+                      gap: 14,
+                      alignItems: "center",
+                      border: "0.5px solid rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    <div
+                      onClick={() => canOpenDetail && openDetail()}
+                      style={{
+                        fontSize: 34,
+                        width: 60,
+                        height: 60,
+                        background: COLORS.bg,
+                        borderRadius: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: canOpenDetail ? "pointer" : "default",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {p.emoji}
+                    </div>
+                    <div
+                      style={{ flex: 1, cursor: canOpenDetail ? "pointer" : "default" }}
+                      onClick={() => canOpenDetail && openDetail()}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 4,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.primary }}>
+                          {p.name}
+                        </div>
+                        <span
+                          style={{
+                            background: "#E1F5EE",
+                            color: "#0F6E56",
+                            borderRadius: 999,
+                            padding: "3px 8px",
+                            fontSize: 11,
+                            fontWeight: 800,
+                          }}
+                        >
+                          {p.typeLabel}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 4 }}>
+                        {p.addr || "위치 정보 없음"}
+                      </div>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <span style={{ fontSize: 14, color: COLORS.textMuted }}>📍 {p.dist}</span>
+                        <span style={{ color: "#E8A020", fontSize: 14, fontWeight: 700 }}>
+                          ★ {p.rating}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeLike(p)}
+                      disabled={removingKey === itemKey}
+                      aria-label={`${p.name} 찜 취소`}
+                      style={{
+                        border: 0,
+                        background: "transparent",
+                        fontSize: 22,
+                        cursor: removingKey === itemKey ? "default" : "pointer",
+                        opacity: removingKey === itemKey ? 0.45 : 1,
+                        padding: 6,
+                      }}
+                    >
+                      {removingKey === itemKey ? "…" : "❤️"}
+                    </button>
                   </div>
-                  <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 4 }}>{p.addr || "위치 정보 없음"}</div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <span style={{ fontSize: 14, color: COLORS.textMuted }}>📍 {p.dist}</span>
-                    <span style={{ color: "#E8A020", fontSize: 14, fontWeight: 700 }}>★ {p.rating}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeLike(p)}
-                  disabled={removingKey === itemKey}
-                  aria-label={`${p.name} 찜 취소`}
-                  style={{
-                    border: 0,
-                    background: "transparent",
-                    fontSize: 22,
-                    cursor: removingKey === itemKey ? "default" : "pointer",
-                    opacity: removingKey === itemKey ? 0.45 : 1,
-                    padding: 6,
-                  }}
-                >
-                  {removingKey === itemKey ? "…" : "❤️"}
-                </button>
-              </div>
-            );})}
+                );
+              })
+            )}
           </div>
         )}
       </div>
@@ -267,13 +353,25 @@ export function MyReviewPage({ onBack, showToast }) {
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadReviews();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>✍️ 내 리뷰</span>
       </div>
       <div style={S.scrollArea}>
@@ -293,21 +391,67 @@ export function MyReviewPage({ onBack, showToast }) {
               onRetry={loadReviews}
             />
           )}
-          {reviews.map(r => (
-            <div key={r.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, border: "0.5px solid rgba(0,0,0,0.06)" }}>
+          {reviews.map((r) => (
+            <div
+              key={r.id}
+              style={{
+                background: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 10,
+                border: "0.5px solid rgba(0,0,0,0.06)",
+              }}
+            >
               <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontSize: 28, width: 44, height: 44, background: COLORS.bg, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{r.emoji}</div>
+                <div
+                  style={{
+                    fontSize: 28,
+                    width: 44,
+                    height: 44,
+                    background: COLORS.bg,
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {r.emoji}
+                </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>{r.place}</div>
-                  <div style={{ color: "#E8A020", fontSize: 14 }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>
+                    {r.place}
+                  </div>
+                  <div style={{ color: "#E8A020", fontSize: 14 }}>
+                    {"★".repeat(r.rating)}
+                    {"☆".repeat(5 - r.rating)}
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <span onClick={() => showToast("리뷰 수정")} style={{ fontSize: 18, cursor: "pointer" }}>✏️</span>
-                  <span onClick={() => showToast("리뷰 삭제")} style={{ fontSize: 18, cursor: "pointer" }}>🗑️</span>
+                  <span
+                    onClick={() => showToast("리뷰 수정")}
+                    style={{ fontSize: 18, cursor: "pointer" }}
+                  >
+                    ✏️
+                  </span>
+                  <span
+                    onClick={() => showToast("리뷰 삭제")}
+                    style={{ fontSize: 18, cursor: "pointer" }}
+                  >
+                    🗑️
+                  </span>
                 </div>
               </div>
-              <p style={{ fontSize: 14, color: COLORS.textSub, lineHeight: 1.6, marginBottom: 10 }}>{r.text}</p>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.textMuted }}>
+              <p style={{ fontSize: 14, color: COLORS.textSub, lineHeight: 1.6, marginBottom: 10 }}>
+                {r.text}
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 14,
+                  color: COLORS.textMuted,
+                }}
+              >
                 <span>{formatKoreanDateTime(r.date)}</span>
                 <span>❤️ {r.likes}</span>
               </div>
@@ -362,7 +506,9 @@ export function MyReportsPage({ onBack }) {
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadReports();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const openDetail = async (report) => {
@@ -392,13 +538,25 @@ export function MyReportsPage({ onBack }) {
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>🚩 내 신고 내역</span>
       </div>
       <div style={S.scrollArea}>
         {status === "loading" ? (
-          <div style={{ padding: 16 }}><SkeletonList count={4} /></div>
+          <div style={{ padding: 16 }}>
+            <SkeletonList count={4} />
+          </div>
         ) : status === "error" ? (
           <div style={{ padding: 16 }}>
             <ErrorState
@@ -417,8 +575,20 @@ export function MyReportsPage({ onBack }) {
           </div>
         ) : (
           <div style={{ padding: 16 }}>
-            <div style={{ background: "#FFF7DC", border: "1px solid rgba(255,180,30,0.35)", borderRadius: 14, padding: 14, marginBottom: 12, color: "#8A4B00", fontSize: 14, lineHeight: 1.5 }}>
-              내가 접수한 신고와 처리 상태를 확인할 수 있습니다. 항목을 누르면 접수 내용을 펼쳐볼 수 있어요.
+            <div
+              style={{
+                background: "#FFF7DC",
+                border: "1px solid rgba(255,180,30,0.35)",
+                borderRadius: 14,
+                padding: 14,
+                marginBottom: 12,
+                color: "#8A4B00",
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              내가 접수한 신고와 처리 상태를 확인할 수 있습니다. 항목을 누르면 접수 내용을 펼쳐볼 수
+              있어요.
             </div>
             {reports.map((report) => {
               const statusStyle = getReportStatusStyle(report.status);
@@ -438,11 +608,44 @@ export function MyReportsPage({ onBack }) {
                   }}
                 >
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <div style={{ width: 46, height: 46, borderRadius: 14, background: "#FFF0F0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🚩</div>
+                    <div
+                      style={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: 14,
+                        background: "#FFF0F0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 22,
+                        flexShrink: 0,
+                      }}
+                    >
+                      🚩
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 6 }}>
-                        <strong style={{ fontSize: 15, color: COLORS.primary }}>{report.targetLabel}</strong>
-                        <span style={{ ...statusStyle, borderRadius: 999, padding: "4px 9px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          alignItems: "center",
+                          marginBottom: 6,
+                        }}
+                      >
+                        <strong style={{ fontSize: 15, color: COLORS.primary }}>
+                          {report.targetLabel}
+                        </strong>
+                        <span
+                          style={{
+                            ...statusStyle,
+                            borderRadius: 999,
+                            padding: "4px 9px",
+                            fontSize: 12,
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {report.statusLabel}
                         </span>
                       </div>
@@ -456,16 +659,43 @@ export function MyReportsPage({ onBack }) {
                   </div>
 
                   {isOpen && (
-                    <div style={{ marginTop: 14, borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 14 }}>
-                      {detailStatus === "loading" && <div style={{ fontSize: 14, color: COLORS.textMuted }}>상세 내역을 확인하는 중입니다...</div>}
+                    <div
+                      style={{
+                        marginTop: 14,
+                        borderTop: "1px solid rgba(0,0,0,0.06)",
+                        paddingTop: 14,
+                      }}
+                    >
+                      {detailStatus === "loading" && (
+                        <div style={{ fontSize: 14, color: COLORS.textMuted }}>
+                          상세 내역을 확인하는 중입니다...
+                        </div>
+                      )}
                       {detailStatus === "error" && (
-                        <div style={{ fontSize: 14, color: "#E24B4A" }}>{detailError || "상세 내역을 불러오지 못했습니다."}</div>
+                        <div style={{ fontSize: 14, color: "#E24B4A" }}>
+                          {detailError || "상세 내역을 불러오지 못했습니다."}
+                        </div>
                       )}
                       {detail && detailStatus !== "loading" && (
-                        <div style={{ display: "grid", gap: 8, fontSize: 14, color: COLORS.textSub, lineHeight: 1.5 }}>
-                          <div><b style={{ color: COLORS.textMain }}>신고 대상</b> {detail.targetLabel}</div>
-                          <div><b style={{ color: COLORS.textMain }}>대상 ID</b> {detail.targetId ?? "-"}</div>
-                          <div><b style={{ color: COLORS.textMain }}>처리 상태</b> {detail.statusLabel}</div>
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: 8,
+                            fontSize: 14,
+                            color: COLORS.textSub,
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          <div>
+                            <b style={{ color: COLORS.textMain }}>신고 대상</b> {detail.targetLabel}
+                          </div>
+                          <div>
+                            <b style={{ color: COLORS.textMain }}>대상 ID</b>{" "}
+                            {detail.targetId ?? "-"}
+                          </div>
+                          <div>
+                            <b style={{ color: COLORS.textMain }}>처리 상태</b> {detail.statusLabel}
+                          </div>
                           <div>
                             <b style={{ color: COLORS.textMain }}>신고 내용</b>
                             <p style={{ margin: "6px 0 0", color: COLORS.textSub }}>
@@ -539,7 +769,9 @@ export function OwnedItemsPage({ onBack, showToast }) {
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadOwnedItems();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleIssueQr = async (item) => {
@@ -565,8 +797,18 @@ export function OwnedItemsPage({ onBack, showToast }) {
 
   return (
     <div style={S.screen} className="owned-items-page">
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>🎁 보유 아이템</span>
       </div>
       <div style={S.scrollArea}>
@@ -574,7 +816,11 @@ export function OwnedItemsPage({ onBack, showToast }) {
           <strong>내가 가진 상점 아이템</strong>
           <span>사용하기를 누른 뒤 발급된 코드를 상인에게 보여주세요.</span>
         </div>
-        {status === "loading" && <div style={{ padding: "0 16px 16px" }}><SkeletonList count={3} /></div>}
+        {status === "loading" && (
+          <div style={{ padding: "0 16px 16px" }}>
+            <SkeletonList count={3} />
+          </div>
+        )}
         {status === "empty" && (
           <div style={{ padding: "0 16px 16px" }}>
             <EmptyState
@@ -594,30 +840,42 @@ export function OwnedItemsPage({ onBack, showToast }) {
           </div>
         )}
         <div className="owned-items-list">
-          {items.map(item => (
+          {items.map((item) => (
             <article key={item.id} className="owned-item-card">
               <div>
                 <span className={item.status === "곧 만료" ? "soon" : ""}>{item.status}</span>
                 <h3>{item.name}</h3>
-                <p>{item.market} · {item.shop}</p>
+                <p>
+                  {item.market} · {item.shop}
+                </p>
                 <small>만료일 {item.expires}</small>
               </div>
               <button
                 type="button"
                 onClick={() => handleIssueQr(item)}
-                disabled={qrState.status === "loading" && (qrState.item?.id === item.id)}
+                disabled={qrState.status === "loading" && qrState.item?.id === item.id}
               >
-                {qrState.status === "loading" && qrState.item?.id === item.id ? "발급 중" : "사용하기"}
+                {qrState.status === "loading" && qrState.item?.id === item.id
+                  ? "발급 중"
+                  : "사용하기"}
               </button>
             </article>
           ))}
         </div>
         {qrState.item && (
           <div className="confirm-dialog-backdrop" role="presentation" onMouseDown={closeQrDialog}>
-            <div className="confirm-dialog owned-item-qr-dialog" role="dialog" aria-modal="true" aria-labelledby="owned-item-qr-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div
+              className="confirm-dialog owned-item-qr-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="owned-item-qr-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
               <strong id="owned-item-qr-title">아이템 사용 QR</strong>
               <p>{qrState.item.name} 사용을 위해 상인에게 아래 QR을 보여주세요.</p>
-              {qrState.status === "loading" && <div className="owned-item-qr-token">QR 코드 발급 중...</div>}
+              {qrState.status === "loading" && (
+                <div className="owned-item-qr-token">QR 코드 발급 중...</div>
+              )}
               {qrState.status === "error" && (
                 <div className="owned-item-qr-error">
                   {qrState.errorMessage || "아이템 QR을 발급하지 못했습니다."}
@@ -630,9 +888,17 @@ export function OwnedItemsPage({ onBack, showToast }) {
                 </>
               )}
               <div className="confirm-dialog-actions">
-                <button type="button" className="secondary" onClick={closeQrDialog}>닫기</button>
+                <button type="button" className="secondary" onClick={closeQrDialog}>
+                  닫기
+                </button>
                 {qrState.status === "error" && (
-                  <button type="button" className="primary" onClick={() => handleIssueQr(qrState.item)}>다시 발급</button>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => handleIssueQr(qrState.item)}
+                  >
+                    다시 발급
+                  </button>
                 )}
               </div>
             </div>

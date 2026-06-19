@@ -12,12 +12,20 @@ const PROGRESS_LABELS = {
 };
 
 function getFestivalStatus(festival = {}) {
-  return String(festival.progressStatus ?? festival.dday ?? "").trim().toUpperCase().replace(/-/g, "_");
+  return String(festival.progressStatus ?? festival.dday ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
 }
 
 function getFestivalDotColor(festival = {}) {
   const categoryText = `${festival.category ?? ""} ${festival.name ?? ""}`.toLowerCase();
-  if (categoryText.includes("museum") || categoryText.includes("exhibition") || categoryText.includes("박물관") || categoryText.includes("전시")) {
+  if (
+    categoryText.includes("museum") ||
+    categoryText.includes("exhibition") ||
+    categoryText.includes("박물관") ||
+    categoryText.includes("전시")
+  ) {
     return "#E8A020";
   }
   return getFestivalStatus(festival) === "UPCOMING" ? "#185FA5" : "#2C6E49";
@@ -63,7 +71,7 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
 
   useEffect(() => {
     const lastDate = new Date(year, month, 0).getDate();
-    setSelectedDay(day => Math.min(day, lastDate));
+    setSelectedDay((day) => Math.min(day, lastDate));
     loadMonthFestivals();
   }, [year, month]);
 
@@ -129,36 +137,51 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
   const prevMonth = () => {
     if (month === 1) {
       setMonth(12);
-      setYear(value => value - 1);
+      setYear((value) => value - 1);
       return;
     }
-    setMonth(value => value - 1);
+    setMonth((value) => value - 1);
   };
 
   const nextMonth = () => {
     if (month === 12) {
       setMonth(1);
-      setYear(value => value + 1);
+      setYear((value) => value + 1);
       return;
     }
-    setMonth(value => value + 1);
+    setMonth((value) => value + 1);
   };
 
   return (
     <div style={S.screen} className="festival-page">
-      <div className="festival-page-header festival-calendar-header" style={{ background: COLORS.primary, padding: "44px 16px 0" }}>
+      <div
+        className="festival-page-header festival-calendar-header"
+        style={{ background: COLORS.primary, padding: "44px 16px 0" }}
+      >
         <div className="festival-calendar-month-nav">
-          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+          <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+            ←
+          </span>
           <div>
-            <button type="button" onClick={prevMonth} aria-label="이전 달">‹</button>
-            <strong>{year}년 {month}월</strong>
-            <button type="button" onClick={nextMonth} aria-label="다음 달">›</button>
+            <button type="button" onClick={prevMonth} aria-label="이전 달">
+              ‹
+            </button>
+            <strong>
+              {year}년 {month}월
+            </strong>
+            <button type="button" onClick={nextMonth} aria-label="다음 달">
+              ›
+            </button>
           </div>
           <span />
         </div>
         <div className="festival-view-tabs">
-          <button type="button" onClick={onBack}>목록</button>
-          <button type="button" className="active">캘린더</button>
+          <button type="button" onClick={onBack}>
+            목록
+          </button>
+          <button type="button" className="active">
+            캘린더
+          </button>
         </div>
       </div>
 
@@ -167,24 +190,37 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
           <section className="festival-hanok-calendar">
             <div className="festival-hanok-roof" aria-hidden="true">
               <span />
-              <div>{Array.from({ length: 14 }).map((_, index) => <i key={index} />)}</div>
+              <div>
+                {Array.from({ length: 14 }).map((_, index) => (
+                  <i key={index} />
+                ))}
+              </div>
             </div>
             <div className="festival-hanok-body">
               <div className="festival-calendar-grid">
                 <div className="festival-calendar-weekdays">
                   {DAYS.map((day, index) => (
-                    <div key={day} className={index === 0 ? "sunday" : index === 6 ? "saturday" : ""}>{day}</div>
+                    <div
+                      key={day}
+                      className={index === 0 ? "sunday" : index === 6 ? "saturday" : ""}
+                    >
+                      {day}
+                    </div>
                   ))}
                 </div>
 
                 <div className="festival-calendar-days">
                   {calendarCells.map((cell, index) => {
-                    const dayEvents = cell.monthOffset === 0 ? festByDay[cell.day] ?? [] : [];
+                    const dayEvents = cell.monthOffset === 0 ? (festByDay[cell.day] ?? []) : [];
                     const hasFest = dayEvents.length > 0;
                     const isSelected = cell.monthOffset === 0 && selectedDay === cell.day;
-                    const isToday = cell.day === today.getDate() && cell.month === today.getMonth() + 1 && cell.year === today.getFullYear();
+                    const isToday =
+                      cell.day === today.getDate() &&
+                      cell.month === today.getMonth() + 1 &&
+                      cell.year === today.getFullYear();
                     const weekday = index % 7;
-                    const defaultColor = weekday === 0 ? "#E24B4A" : weekday === 6 ? "#378ADD" : COLORS.primary;
+                    const defaultColor =
+                      weekday === 0 ? "#E24B4A" : weekday === 6 ? "#378ADD" : COLORS.primary;
 
                     return (
                       <button
@@ -193,11 +229,19 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
                         onClick={() => selectCalendarDay(cell)}
                         className={`festival-calendar-day${isSelected ? " selected" : ""}${isToday ? " today" : ""}${cell.monthOffset !== 0 ? " muted" : ""}`}
                       >
-                        <span className="festival-calendar-day-number" style={{ color: !isSelected && !isToday ? defaultColor : undefined }}>{cell.day}</span>
+                        <span
+                          className="festival-calendar-day-number"
+                          style={{ color: !isSelected && !isToday ? defaultColor : undefined }}
+                        >
+                          {cell.day}
+                        </span>
                         {hasFest && (
                           <div className="festival-calendar-dots">
                             {dayEvents.slice(0, 4).map((event, eventIndex) => (
-                              <i key={`${event.festivalId ?? event.id ?? cell.day}-${eventIndex}`} style={{ background: getFestivalDotColor(event) }} />
+                              <i
+                                key={`${event.festivalId ?? event.id ?? cell.day}-${eventIndex}`}
+                                style={{ background: getFestivalDotColor(event) }}
+                              />
                             ))}
                             {dayEvents.length > 4 && <small>+{dayEvents.length - 4}</small>}
                           </div>
@@ -211,43 +255,69 @@ export default function FestivalCalendarPage({ onBack, onFestival }) {
           </section>
 
           <section className="festival-daily-panel">
-          <div className="festival-daily-title">
-            <strong>{month}월 {selectedDay}일 행사</strong>
-            <span>{festivals.length}건</span>
-          </div>
-          {status === "error" && (
-            <div style={{ background: "#FFF3D0", color: "#B87800", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 14 }}>
-              월별 축제 표시를 불러오지 못했습니다. 날짜별 축제 목록은 계속 확인할 수 있습니다.
+            <div className="festival-daily-title">
+              <strong>
+                {month}월 {selectedDay}일 행사
+              </strong>
+              <span>{festivals.length}건</span>
             </div>
-          )}
-          {dailyStatus === "loading" ? (
-            <SkeletonList count={3} />
-          ) : dailyStatus === "error" ? (
-            <ErrorState
-              title="선택한 날짜의 축제를 불러오지 못했습니다."
-              description={errorMessage || "잠시 후 다시 시도해주세요."}
-              onRetry={loadDailyFestivals}
-            />
-          ) : festivals.length === 0 ? (
-            <EmptyState
-              icon="📅"
-              title="이 날 예정된 행사가 없어요."
-              description="다른 날짜를 눌러 진행 예정인 축제와 이벤트를 확인해보세요."
-            />
-          ) : (
-            festivals.map(festival => {
-              const progressStatus = getFestivalStatus(festival);
-              return (
-              <button type="button" onClick={() => onFestival?.(festival)} key={festival.id} className="festival-list-card">
-                <div className="festival-card-copy">
-                  <strong>{festival.name}</strong>
-                  <span className="festival-location-line"><LocationIcon />{festival.location || "장소 미정"} · {festival.date}</span>
-                </div>
-                <span className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}>{PROGRESS_LABELS[progressStatus] ?? progressStatus}</span>
-                <span className="festival-card-chevron" aria-hidden="true">›</span>
-              </button>
-            )})
-          )}
+            {status === "error" && (
+              <div
+                style={{
+                  background: "#FFF3D0",
+                  color: "#B87800",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  marginBottom: 12,
+                  fontSize: 14,
+                }}
+              >
+                월별 축제 표시를 불러오지 못했습니다. 날짜별 축제 목록은 계속 확인할 수 있습니다.
+              </div>
+            )}
+            {dailyStatus === "loading" ? (
+              <SkeletonList count={3} />
+            ) : dailyStatus === "error" ? (
+              <ErrorState
+                title="선택한 날짜의 축제를 불러오지 못했습니다."
+                description={errorMessage || "잠시 후 다시 시도해주세요."}
+                onRetry={loadDailyFestivals}
+              />
+            ) : festivals.length === 0 ? (
+              <EmptyState
+                icon="📅"
+                title="이 날 예정된 행사가 없어요."
+                description="다른 날짜를 눌러 진행 예정인 축제와 이벤트를 확인해보세요."
+              />
+            ) : (
+              festivals.map((festival) => {
+                const progressStatus = getFestivalStatus(festival);
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onFestival?.(festival)}
+                    key={festival.id}
+                    className="festival-list-card"
+                  >
+                    <div className="festival-card-copy">
+                      <strong>{festival.name}</strong>
+                      <span className="festival-location-line">
+                        <LocationIcon />
+                        {festival.location || "장소 미정"} · {festival.date}
+                      </span>
+                    </div>
+                    <span
+                      className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}
+                    >
+                      {PROGRESS_LABELS[progressStatus] ?? progressStatus}
+                    </span>
+                    <span className="festival-card-chevron" aria-hidden="true">
+                      ›
+                    </span>
+                  </button>
+                );
+              })
+            )}
           </section>
         </div>
       </div>

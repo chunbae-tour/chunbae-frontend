@@ -4,7 +4,8 @@ import { getAccessToken, getApiClientConfig } from "./apiClient.js";
 import { normalizeNotification } from "./notificationService.js";
 
 const SOCKJS_ENDPOINT = import.meta.env.VITE_STOMP_SOCKJS_URL || "";
-const NOTIFICATION_QUEUE = import.meta.env.VITE_STOMP_NOTIFICATION_QUEUE || "/user/queue/notifications";
+const NOTIFICATION_QUEUE =
+  import.meta.env.VITE_STOMP_NOTIFICATION_QUEUE || "/user/queue/notifications";
 
 function appendTokenQuery(url, accessToken) {
   if (!accessToken) return url;
@@ -51,7 +52,9 @@ export function createNotificationRealtimeClient({ onNotification, onStatus, onE
         reconnectDelay: 5000,
         heartbeatIncoming: 10000,
         heartbeatOutgoing: 10000,
-        debug: import.meta.env.DEV ? (message) => console.debug("[NOTIFICATION_STOMP]", message) : () => {},
+        debug: import.meta.env.DEV
+          ? (message) => console.debug("[NOTIFICATION_STOMP]", message)
+          : () => {},
         onConnect: () => {
           onStatus?.("connected");
           subscription = client.subscribe(NOTIFICATION_QUEUE, (frame) => {
@@ -60,7 +63,9 @@ export function createNotificationRealtimeClient({ onNotification, onStatus, onE
         },
         onStompError: (frame) => {
           onStatus?.("error");
-          onError?.(new Error(frame.body || frame.headers.message || "알림 STOMP 오류가 발생했습니다."));
+          onError?.(
+            new Error(frame.body || frame.headers.message || "알림 STOMP 오류가 발생했습니다."),
+          );
         },
         onWebSocketError: (event) => {
           if (client?.connected || client?.active) return;

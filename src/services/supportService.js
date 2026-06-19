@@ -53,7 +53,8 @@ export function mergeSupportMessages(current = [], incoming = []) {
   const byKey = new Map();
   [...current, ...incoming].forEach((message) => {
     const normalized = normalizeSupportMessage(message);
-    const key = normalized.messageId ?? `${normalized.senderRole}-${normalized.sentAt}-${normalized.content}`;
+    const key =
+      normalized.messageId ?? `${normalized.senderRole}-${normalized.sentAt}-${normalized.content}`;
     byKey.set(key, normalized);
   });
   return sortSupportMessages([...byKey.values()]);
@@ -83,7 +84,9 @@ export async function fetchSupportMessages(supportRoomId, { cursor, size = 50 } 
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
 
-  const data = await apiRequest(`/support/rooms/${supportRoomId}/messages?${params.toString()}`, { auth: true });
+  const data = await apiRequest(`/support/rooms/${supportRoomId}/messages?${params.toString()}`, {
+    auth: true,
+  });
   return getPageContent(data).map(normalizeSupportMessage);
 }
 

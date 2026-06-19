@@ -43,9 +43,9 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
   const [loading, setLoading] = useState(false);
 
   const set = (key, value) => {
-    setForm(current => ({ ...current, [key]: value }));
+    setForm((current) => ({ ...current, [key]: value }));
     if (errors[key]) {
-      setErrors(current => ({ ...current, [key]: undefined }));
+      setErrors((current) => ({ ...current, [key]: undefined }));
     }
   };
 
@@ -57,9 +57,10 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
     const limits = { year: 4, month: 2, day: 2 };
     const nextValue = rawValue.replace(/\D/g, "").slice(0, limits[key]);
     const parts = { ...getBirthParts(form.birthdate), [key]: nextValue };
-    const birthdate = parts.year || parts.month || parts.day
-      ? `${parts.year}${parts.year.length === 4 || parts.month || parts.day ? "-" : ""}${parts.month}${parts.month.length === 2 || parts.day ? "-" : ""}${parts.day}`
-      : "";
+    const birthdate =
+      parts.year || parts.month || parts.day
+        ? `${parts.year}${parts.year.length === 4 || parts.month || parts.day ? "-" : ""}${parts.month}${parts.month.length === 2 || parts.day ? "-" : ""}${parts.day}`
+        : "";
 
     set("birthdate", birthdate);
 
@@ -79,9 +80,11 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
 
   const validate = () => {
     const nextErrors = {};
-    if (!pending?.signupTicket) nextErrors.ticket = "소셜 가입 인증 정보가 없습니다. 다시 로그인해주세요.";
+    if (!pending?.signupTicket)
+      nextErrors.ticket = "소셜 가입 인증 정보가 없습니다. 다시 로그인해주세요.";
     if (!form.name.trim()) nextErrors.name = "이름을 입력해주세요.";
-    if (!/^01[0-9]{8,9}$/.test(getPhoneDigits(form.phone))) nextErrors.phone = "휴대폰 번호 형식을 확인해주세요.";
+    if (!/^01[0-9]{8,9}$/.test(getPhoneDigits(form.phone)))
+      nextErrors.phone = "휴대폰 번호 형식을 확인해주세요.";
     if (!isValidBirthdate(form.birthdate)) nextErrors.birthdate = "생년월일을 끝까지 입력해주세요.";
     if (!form.nickname.trim()) nextErrors.nickname = "닉네임을 입력해주세요.";
     if (!consents.privacy) nextErrors.privacy = "개인정보 수집·이용 동의가 필요합니다.";
@@ -123,13 +126,28 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
   ];
 
   return (
-    <div className="auth-screen auth-signup-screen" style={{ ...S.screen, overflow: "auto", "--auth-background": "#2d8a5e" }}>
+    <div
+      className="auth-screen auth-signup-screen"
+      style={{ ...S.screen, overflow: "auto", "--auth-background": "#2d8a5e" }}
+    >
       <main className="auth-signup-panel">
-        <button type="button" className="auth-signup-brand-button" onClick={onHome} aria-label="춘배투어 홈으로 이동">
+        <button
+          type="button"
+          className="auth-signup-brand-button"
+          onClick={onHome}
+          aria-label="춘배투어 홈으로 이동"
+        >
           <img src={ChunbaeImg} alt="춘배 캐릭터" />
         </button>
         <div className="auth-signup-heading">
-          <button type="button" className="auth-back-button" onClick={onBack} aria-label="로그인으로 돌아가기">←</button>
+          <button
+            type="button"
+            className="auth-back-button"
+            onClick={onBack}
+            aria-label="로그인으로 돌아가기"
+          >
+            ←
+          </button>
           <div>
             <strong>소셜 회원가입</strong>
             <span>추가 정보를 입력하면 바로 여행을 시작할 수 있어요.</span>
@@ -148,7 +166,7 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
             <span>이름</span>
             <input
               value={form.name}
-              onChange={event => set("name", event.target.value)}
+              onChange={(event) => set("name", event.target.value)}
               type="text"
               placeholder="실명을 입력해주세요."
               aria-invalid={Boolean(errors.name)}
@@ -161,7 +179,7 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
             <span>휴대폰 번호</span>
             <input
               value={form.phone}
-              onChange={event => setPhone(event.target.value)}
+              onChange={(event) => setPhone(event.target.value)}
               type="tel"
               inputMode="numeric"
               placeholder="01012345678"
@@ -176,7 +194,7 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
             <div className="oauth-birth-inputs">
               <input
                 value={birthParts.year}
-                onChange={event => setBirthPart("year", event.target.value)}
+                onChange={(event) => setBirthPart("year", event.target.value)}
                 type="text"
                 inputMode="numeric"
                 placeholder="YYYY"
@@ -188,8 +206,8 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
               <input
                 ref={monthInputRef}
                 value={birthParts.month}
-                onChange={event => setBirthPart("month", event.target.value)}
-                onBlur={event => padBirthPart("month", event.target.value)}
+                onChange={(event) => setBirthPart("month", event.target.value)}
+                onBlur={(event) => padBirthPart("month", event.target.value)}
                 type="text"
                 inputMode="numeric"
                 placeholder="MM"
@@ -201,8 +219,8 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
               <input
                 ref={dayInputRef}
                 value={birthParts.day}
-                onChange={event => setBirthPart("day", event.target.value)}
-                onBlur={event => padBirthPart("day", event.target.value)}
+                onChange={(event) => setBirthPart("day", event.target.value)}
+                onBlur={(event) => padBirthPart("day", event.target.value)}
                 type="text"
                 inputMode="numeric"
                 placeholder="DD"
@@ -215,12 +233,12 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
             {errors.birthdate && <em id="birthdate-error">{errors.birthdate}</em>}
           </fieldset>
 
-          {fields.map(field => (
+          {fields.map((field) => (
             <label key={field.key} className="auth-field">
               <span>{field.label}</span>
               <input
                 value={form[field.key]}
-                onChange={event => set(field.key, event.target.value)}
+                onChange={(event) => set(field.key, event.target.value)}
                 type={field.type}
                 placeholder={field.placeholder}
                 aria-invalid={Boolean(errors[field.key])}
@@ -235,27 +253,44 @@ export default function OauthSignupPage({ onBack, onDone, onPrivacy, onHome }) {
               <input
                 type="checkbox"
                 checked={consents.privacy}
-                onChange={event => {
-                  setConsents(current => ({ ...current, privacy: event.target.checked }));
-                  setErrors(current => ({ ...current, privacy: undefined }));
+                onChange={(event) => {
+                  setConsents((current) => ({ ...current, privacy: event.target.checked }));
+                  setErrors((current) => ({ ...current, privacy: undefined }));
                 }}
               />
-              <span><b>필수</b> 개인정보 수집·이용에 동의합니다.</span>
-              <button type="button" onClick={onPrivacy}>내용 보기</button>
+              <span>
+                <b>필수</b> 개인정보 수집·이용에 동의합니다.
+              </span>
+              <button type="button" onClick={onPrivacy}>
+                내용 보기
+              </button>
             </label>
             {errors.privacy && <em>{errors.privacy}</em>}
             <label className="auth-consent-row">
               <input
                 type="checkbox"
                 checked={consents.marketing}
-                onChange={event => setConsents(current => ({ ...current, marketing: event.target.checked }))}
+                onChange={(event) =>
+                  setConsents((current) => ({ ...current, marketing: event.target.checked }))
+                }
               />
-              <span><i>선택</i> 여행 소식 및 혜택 안내에 동의합니다.</span>
+              <span>
+                <i>선택</i> 여행 소식 및 혜택 안내에 동의합니다.
+              </span>
             </label>
           </div>
 
-          {submitError && <div className="auth-submit-error" role="alert">{submitError}</div>}
-          <button type="button" className="auth-primary-button" disabled={loading || !pending?.signupTicket} onClick={handleSubmit}>
+          {submitError && (
+            <div className="auth-submit-error" role="alert">
+              {submitError}
+            </div>
+          )}
+          <button
+            type="button"
+            className="auth-primary-button"
+            disabled={loading || !pending?.signupTicket}
+            onClick={handleSubmit}
+          >
             {loading ? "가입 완료 중..." : "가입 완료하기"}
           </button>
         </div>

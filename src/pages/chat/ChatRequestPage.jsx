@@ -2,7 +2,11 @@
 import { COLORS, S } from "../../constants/colors";
 import { ConfirmDialog, EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { approveJoinRequest, fetchJoinRequests, rejectJoinRequest } from "../../services/chatService.js";
+import {
+  approveJoinRequest,
+  fetchJoinRequests,
+  rejectJoinRequest,
+} from "../../services/chatService.js";
 
 export default function ChatRequestPage({ room, onBack, showToast }) {
   const [requests, setRequests] = useState([]);
@@ -31,7 +35,9 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadRequests();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [roomId]);
 
   const handle = async (id, action) => {
@@ -49,15 +55,25 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
       return;
     }
     showToast(action === "수락" ? "✅ 참여 신청을 수락했습니다!" : "❌ 참여 신청을 거절했습니다.");
-    setRequests(prev => prev.filter(r => r.id !== id));
+    setRequests((prev) => prev.filter((r) => r.id !== id));
     setRejectConfirmTarget(null);
     setActioningId(null);
   };
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <div>
           <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>참여 신청 목록</div>
           <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>{room?.title}</div>
@@ -65,7 +81,9 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
       </div>
       <div style={S.scrollArea}>
         {status === "loading" ? (
-          <div style={{ padding: 16 }}><SkeletonList count={3} /></div>
+          <div style={{ padding: 16 }}>
+            <SkeletonList count={3} />
+          </div>
         ) : status === "error" ? (
           <div style={{ padding: 16 }}>
             <ErrorState
@@ -84,25 +102,99 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
           </div>
         ) : (
           <div style={{ padding: 16 }}>
-            {requests.map(r => (
-              <div key={r.id} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, border: "0.5px solid rgba(0,0,0,0.06)" }}>
+            {requests.map((r) => (
+              <div
+                key={r.id}
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 12,
+                  border: "0.5px solid rgba(0,0,0,0.06)",
+                }}
+              >
                 <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", overflow: "hidden", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
-                    {r.profileImageUrl
-                      ? <img src={r.profileImageUrl} alt={`${r.name} 프로필`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : "👤"}
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      overflow: "hidden",
+                      background: COLORS.bg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                    }}
+                  >
+                    {r.profileImageUrl ? (
+                      <img
+                        src={r.profileImageUrl}
+                        alt={`${r.name} 프로필`}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      "👤"
+                    )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{r.name}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>
+                      {r.name}
+                    </div>
                     <div style={{ fontSize: 14, color: "#E8A020" }}>★ 동행 점수 {r.score}</div>
                   </div>
                 </div>
-                <div style={{ background: COLORS.bg, borderRadius: 10, padding: "10px 14px", fontSize: 14, color: COLORS.textSub, marginBottom: 12 }}>
+                <div
+                  style={{
+                    background: COLORS.bg,
+                    borderRadius: 10,
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    color: COLORS.textSub,
+                    marginBottom: 12,
+                  }}
+                >
                   "{r.msg}"
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button type="button" disabled={actioningId === r.id} onClick={() => setRejectConfirmTarget(r)} style={{ flex: 1, background: "#fff", border: "1.5px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: actioningId === r.id ? "wait" : "pointer", color: COLORS.textMuted }}>거절</button>
-                  <button type="button" disabled={actioningId === r.id} onClick={() => handle(r.id, "수락")} style={{ flex: 2, background: COLORS.primary, border: 0, borderRadius: 12, padding: "10px 0", textAlign: "center", fontWeight: 700, fontSize: 14, cursor: actioningId === r.id ? "wait" : "pointer", color: "#fff" }}>{actioningId === r.id ? "처리 중" : "수락"}</button>
+                  <button
+                    type="button"
+                    disabled={actioningId === r.id}
+                    onClick={() => setRejectConfirmTarget(r)}
+                    style={{
+                      flex: 1,
+                      background: "#fff",
+                      border: "1.5px solid rgba(0,0,0,0.1)",
+                      borderRadius: 12,
+                      padding: "10px 0",
+                      textAlign: "center",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: actioningId === r.id ? "wait" : "pointer",
+                      color: COLORS.textMuted,
+                    }}
+                  >
+                    거절
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actioningId === r.id}
+                    onClick={() => handle(r.id, "수락")}
+                    style={{
+                      flex: 2,
+                      background: COLORS.primary,
+                      border: 0,
+                      borderRadius: 12,
+                      padding: "10px 0",
+                      textAlign: "center",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: actioningId === r.id ? "wait" : "pointer",
+                      color: "#fff",
+                    }}
+                  >
+                    {actioningId === r.id ? "처리 중" : "수락"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -122,4 +214,3 @@ export default function ChatRequestPage({ room, onBack, showToast }) {
     </div>
   );
 }
-

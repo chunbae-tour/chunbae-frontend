@@ -1,5 +1,9 @@
 import { apiRequest, getPageContent } from "./apiClient.js";
-import { getProductCategoryCode, getProductCategoryLabel, isProductCategoryCode } from "../constants/productCategories.js";
+import {
+  getProductCategoryCode,
+  getProductCategoryLabel,
+  isProductCategoryCode,
+} from "../constants/productCategories.js";
 
 function normalizeProduct(product = {}) {
   const id = product.productId ?? product.id;
@@ -14,7 +18,8 @@ function normalizeProduct(product = {}) {
     stock: product.stock ?? product.remainingStock ?? 0,
     category: categoryCode,
     categoryCode,
-    categoryLabel: product.categoryName ?? product.categoryLabel ?? getProductCategoryLabel(product.category),
+    categoryLabel:
+      product.categoryName ?? product.categoryLabel ?? getProductCategoryLabel(product.category),
     imageUrl: product.imageUrl ?? (Array.isArray(product.imageUrls) ? product.imageUrls[0] : ""),
     imageUrls: Array.isArray(product.imageUrls) ? product.imageUrls : [],
     desc: product.description ?? product.desc ?? "",
@@ -27,7 +32,9 @@ function normalizeStoreOrder(order = {}) {
   const product = order.product ?? {};
   const productName = order.productName ?? product.name ?? order.name ?? "스토어 상품";
   const quantity = Number(order.quantity ?? 1);
-  const totalPrice = Number(order.totalPrice ?? order.totalAmount ?? order.amount ?? order.price ?? 0);
+  const totalPrice = Number(
+    order.totalPrice ?? order.totalAmount ?? order.amount ?? order.price ?? 0,
+  );
 
   return {
     ...order,
@@ -44,7 +51,8 @@ function normalizeStoreOrder(order = {}) {
 
 export async function fetchStoreProducts({ category, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
-  if (category && isProductCategoryCode(category)) params.set("category", getProductCategoryCode(category));
+  if (category && isProductCategoryCode(category))
+    params.set("category", getProductCategoryCode(category));
   const data = await apiRequest(`/store/products?${params.toString()}`);
   return getPageContent(data).map(normalizeProduct);
 }

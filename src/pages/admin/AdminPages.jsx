@@ -1,7 +1,11 @@
 ﻿import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
-import { PRODUCT_CATEGORIES, getProductCategoryCode, getProductCategoryLabel } from "../../constants/productCategories.js";
+import {
+  PRODUCT_CATEGORIES,
+  getProductCategoryCode,
+  getProductCategoryLabel,
+} from "../../constants/productCategories.js";
 import {
   approveAd,
   approveCertification,
@@ -73,9 +77,20 @@ function getApiErrorHint(error) {
 
 function AdminHeader({ title, onBack, right }) {
   return (
-    <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    <div
+      style={{
+        background: COLORS.primary,
+        padding: "44px 16px 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{title}</span>
       </div>
       {right}
@@ -126,7 +141,16 @@ function AdminButton({ children, onClick, tone = "primary", disabled = false, st
 
 function AdminCard({ children, style }) {
   return (
-    <div style={{ background: "#fff", margin: "10px 16px 0", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)", ...style }}>
+    <div
+      style={{
+        background: "#fff",
+        margin: "10px 16px 0",
+        borderRadius: 14,
+        padding: 16,
+        border: "0.5px solid rgba(0,0,0,0.06)",
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
@@ -134,11 +158,41 @@ function AdminCard({ children, style }) {
 
 function AdminStatusBadge({ status }) {
   const normalized = String(status || "대기");
-  const isSuccess = ["APPROVED", "RESOLVED", "COMPLETED", "ACTIVE", "공개", "승인", "처리완료"].includes(normalized);
-  const isDanger = ["REJECTED", "DELETED", "HIDDEN", "SUSPENDED", "CANCELLED", "거절", "비공개", "정지"].includes(normalized);
+  const isSuccess = [
+    "APPROVED",
+    "RESOLVED",
+    "COMPLETED",
+    "ACTIVE",
+    "공개",
+    "승인",
+    "처리완료",
+  ].includes(normalized);
+  const isDanger = [
+    "REJECTED",
+    "DELETED",
+    "HIDDEN",
+    "SUSPENDED",
+    "CANCELLED",
+    "거절",
+    "비공개",
+    "정지",
+  ].includes(normalized);
   const bg = isSuccess ? COLORS.greenBg : isDanger ? "#FEE8E8" : "#FFF3D0";
   const color = isSuccess ? COLORS.green : isDanger ? "#A32D2D" : "#B87800";
-  return <span style={{ fontSize: 13, background: bg, color, borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{normalized}</span>;
+  return (
+    <span
+      style={{
+        fontSize: 13,
+        background: bg,
+        color,
+        borderRadius: 6,
+        padding: "2px 8px",
+        fontWeight: 700,
+      }}
+    >
+      {normalized}
+    </span>
+  );
 }
 
 function formatDate(value) {
@@ -161,20 +215,53 @@ function AdminSupportMessageBody({ message }) {
   const messageType = String(message?.messageType ?? "").toUpperCase();
   if (messageType === "IMAGE" && message.fileUrl) {
     return (
-      <a href={message.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 4, color: COLORS.primary, textDecoration: "none" }}>
+      <a
+        href={message.fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          display: "inline-block",
+          marginTop: 4,
+          color: COLORS.primary,
+          textDecoration: "none",
+        }}
+      >
         <img
           src={message.fileUrl}
           alt={message.fileName || "상담 이미지"}
-          style={{ display: "block", maxWidth: 240, width: "100%", borderRadius: 10, background: COLORS.bg }}
+          style={{
+            display: "block",
+            maxWidth: 240,
+            width: "100%",
+            borderRadius: 10,
+            background: COLORS.bg,
+          }}
         />
-        {message.fileName && <span style={{ display: "block", marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>{message.fileName}</span>}
+        {message.fileName && (
+          <span style={{ display: "block", marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>
+            {message.fileName}
+          </span>
+        )}
       </a>
     );
   }
   if (message.fileUrl) {
     const fileSize = formatSupportFileSize(message.fileSize);
     return (
-      <a href={message.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 4, color: COLORS.primary, textDecoration: "none", fontWeight: 700 }}>
+      <a
+        href={message.fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 4,
+          color: COLORS.primary,
+          textDecoration: "none",
+          fontWeight: 700,
+        }}
+      >
         <span aria-hidden="true">📎</span>
         <span>{message.fileName || "첨부파일"}</span>
         {fileSize && <span style={{ color: COLORS.textMuted, fontSize: 12 }}>{fileSize}</span>}
@@ -186,28 +273,136 @@ function AdminSupportMessageBody({ message }) {
 
 function AdminIcon({ name, size = 20 }) {
   const paths = {
-    usersGroup: <><path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M16 9a3 3 0 1 0 0-6" /><path d="M2 21v-2a6 6 0 0 1 12 0v2" /><path d="M15 15a5 5 0 0 1 5 5v1" /></>,
-    store: <><path d="M4 10v10h16V10" /><path d="M3 10 5 4h14l2 6" /><path d="M8 20v-6h8v6" /><path d="M3 10a3 3 0 0 0 5 2 3 3 0 0 0 4 0 3 3 0 0 0 4 0 3 3 0 0 0 5-2" /></>,
-    shield: <><path d="M12 3 19 6v5c0 4.7-2.7 8-7 10-4.3-2-7-5.3-7-10V6l7-3Z" /><path d="m9 12 2 2 4-4" /></>,
-    clipboard: <><path d="M9 5H6a2 2 0 0 0-2 2v12h16V7a2 2 0 0 0-2-2h-3" /><path d="M9 3h6v4H9zM8 12h8M8 16h5" /></>,
-    users: <><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM17 9a3 3 0 1 0 0-6" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 15a5 5 0 0 1 5 5v1" /></>,
-    mapPin: <><path d="M12 21s7-5 7-11a7 7 0 1 0-14 0c0 6 7 11 7 11Z" /><circle cx="12" cy="10" r="2" /></>,
-    alert: <><path d="m12 3 10 18H2L12 3Z" /><path d="M12 9v4M12 17h.01" /></>,
-    coin: <><circle cx="12" cy="12" r="9" /><path d="M15 8.5a4 4 0 1 0 0 7M12 6v12" /></>,
-    userCog: <><circle cx="9" cy="8" r="4" /><path d="M3 21v-2a6 6 0 0 1 9-5.2M17 15l1-1 2 1v2l1 1-1 2h-2l-1 1-2-1v-2l-1-1 1-2h2Z" /></>,
-    certificate: <><circle cx="12" cy="9" r="6" /><path d="m9 14-1 7 4-2 4 2-1-7M9.5 9l1.5 1.5L14.5 7" /></>,
-    list: <><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></>,
-    confetti: <><path d="m4 20 4-12 8 8-12 4ZM8 8l8 8M14 4h.01M20 10h.01M18 3l-2 3M21 6l-3 1" /></>,
-    photo: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m3 17 5-5 4 4 2-2 7 6" /></>,
-    flag: <><path d="M5 21V4M5 5h11l-2 4 2 4H5" /></>,
-    message: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" /><path d="M8 10h.01M12 10h.01M16 10h.01" /></>,
-    help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-1 .5-1 1-1 2.2M12 17h.01" /></>,
-    receipt: <><path d="M5 3h14v18l-2-1-2 1-3-1-3 1-2-1-2 1V3Z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
-    coins: <><ellipse cx="8" cy="8" rx="5" ry="3" /><path d="M3 8v4c0 1.7 2.2 3 5 3s5-1.3 5-3V8M13 10c4.7 0 8 1.3 8 3s-3.3 3-8 3M8 15v2c0 1.7 2.2 3 5 3s5-1.3 5-3v-3" /></>,
-    speaker: <><path d="M4 10v4h4l8 5V5l-8 5H4ZM8 14l2 6h3" /><path d="M19 9a4 4 0 0 1 0 6" /></>,
-    gift: <><rect x="3" y="9" width="18" height="12" rx="1" /><path d="M3 13h18M12 9v12M12 9H7.5A2.5 2.5 0 1 1 10 6.5L12 9Zm0 0h4.5A2.5 2.5 0 1 0 14 6.5L12 9Z" /></>,
+    usersGroup: (
+      <>
+        <path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+        <path d="M16 9a3 3 0 1 0 0-6" />
+        <path d="M2 21v-2a6 6 0 0 1 12 0v2" />
+        <path d="M15 15a5 5 0 0 1 5 5v1" />
+      </>
+    ),
+    store: (
+      <>
+        <path d="M4 10v10h16V10" />
+        <path d="M3 10 5 4h14l2 6" />
+        <path d="M8 20v-6h8v6" />
+        <path d="M3 10a3 3 0 0 0 5 2 3 3 0 0 0 4 0 3 3 0 0 0 4 0 3 3 0 0 0 5-2" />
+      </>
+    ),
+    shield: (
+      <>
+        <path d="M12 3 19 6v5c0 4.7-2.7 8-7 10-4.3-2-7-5.3-7-10V6l7-3Z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
+    clipboard: (
+      <>
+        <path d="M9 5H6a2 2 0 0 0-2 2v12h16V7a2 2 0 0 0-2-2h-3" />
+        <path d="M9 3h6v4H9zM8 12h8M8 16h5" />
+      </>
+    ),
+    users: (
+      <>
+        <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM17 9a3 3 0 1 0 0-6" />
+        <path d="M3 21v-2a6 6 0 0 1 12 0v2M16 15a5 5 0 0 1 5 5v1" />
+      </>
+    ),
+    mapPin: (
+      <>
+        <path d="M12 21s7-5 7-11a7 7 0 1 0-14 0c0 6 7 11 7 11Z" />
+        <circle cx="12" cy="10" r="2" />
+      </>
+    ),
+    alert: (
+      <>
+        <path d="m12 3 10 18H2L12 3Z" />
+        <path d="M12 9v4M12 17h.01" />
+      </>
+    ),
+    coin: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M15 8.5a4 4 0 1 0 0 7M12 6v12" />
+      </>
+    ),
+    userCog: (
+      <>
+        <circle cx="9" cy="8" r="4" />
+        <path d="M3 21v-2a6 6 0 0 1 9-5.2M17 15l1-1 2 1v2l1 1-1 2h-2l-1 1-2-1v-2l-1-1 1-2h2Z" />
+      </>
+    ),
+    certificate: (
+      <>
+        <circle cx="12" cy="9" r="6" />
+        <path d="m9 14-1 7 4-2 4 2-1-7M9.5 9l1.5 1.5L14.5 7" />
+      </>
+    ),
+    list: (
+      <>
+        <path d="M9 6h11M9 12h11M9 18h11" />
+        <path d="M4 6h.01M4 12h.01M4 18h.01" />
+      </>
+    ),
+    confetti: (
+      <>
+        <path d="m4 20 4-12 8 8-12 4ZM8 8l8 8M14 4h.01M20 10h.01M18 3l-2 3M21 6l-3 1" />
+      </>
+    ),
+    photo: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <circle cx="9" cy="10" r="2" />
+        <path d="m3 17 5-5 4 4 2-2 7 6" />
+      </>
+    ),
+    flag: (
+      <>
+        <path d="M5 21V4M5 5h11l-2 4 2 4H5" />
+      </>
+    ),
+    message: (
+      <>
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" />
+        <path d="M8 10h.01M12 10h.01M16 10h.01" />
+      </>
+    ),
+    help: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-1 .5-1 1-1 2.2M12 17h.01" />
+      </>
+    ),
+    receipt: (
+      <>
+        <path d="M5 3h14v18l-2-1-2 1-3-1-3 1-2-1-2 1V3Z" />
+        <path d="M9 8h6M9 12h6M9 16h3" />
+      </>
+    ),
+    coins: (
+      <>
+        <ellipse cx="8" cy="8" rx="5" ry="3" />
+        <path d="M3 8v4c0 1.7 2.2 3 5 3s5-1.3 5-3V8M13 10c4.7 0 8 1.3 8 3s-3.3 3-8 3M8 15v2c0 1.7 2.2 3 5 3s5-1.3 5-3v-3" />
+      </>
+    ),
+    speaker: (
+      <>
+        <path d="M4 10v4h4l8 5V5l-8 5H4ZM8 14l2 6h3" />
+        <path d="M19 9a4 4 0 0 1 0 6" />
+      </>
+    ),
+    gift: (
+      <>
+        <rect x="3" y="9" width="18" height="12" rx="1" />
+        <path d="M3 13h18M12 9v12M12 9H7.5A2.5 2.5 0 1 1 10 6.5L12 9Zm0 0h4.5A2.5 2.5 0 1 0 14 6.5L12 9Z" />
+      </>
+    ),
     chevron: <path d="m9 18 6-6-6-6" />,
-    crown: <><path d="m3 6 4 4 5-7 5 7 4-4-2 13H5L3 6Z" /><path d="M5 19h14" /></>,
+    crown: (
+      <>
+        <path d="m3 6 4 4 5-7 5 7 4-4-2 13H5L3 6Z" />
+        <path d="M5 19h14" />
+      </>
+    ),
   };
 
   return (
@@ -231,11 +426,20 @@ function getItemId(item, keys) {
 }
 
 function AdminLoadState({ status, errorMessage, emptyTitle, emptyDescription, onRetry }) {
-  if (status === "loading") return <div style={{ margin: 16 }}><SkeletonList count={4} /></div>;
+  if (status === "loading")
+    return (
+      <div style={{ margin: 16 }}>
+        <SkeletonList count={4} />
+      </div>
+    );
   if (status === "error") {
     return (
       <div style={{ margin: 16 }}>
-        <ErrorState title="목록을 불러오지 못했습니다." description={errorMessage} onRetry={onRetry} />
+        <ErrorState
+          title="목록을 불러오지 못했습니다."
+          description={errorMessage}
+          onRetry={onRetry}
+        />
       </div>
     );
   }
@@ -271,7 +475,9 @@ function useAdminList(loader) {
         setErrorMessage(getApiErrorHint(error));
         setStatus("error");
       });
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   };
 
   useEffect(() => load(), []);
@@ -303,7 +509,9 @@ export function AdminDashboardPage({ onBack, onNav }) {
         setStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   };
 
   useEffect(() => {
@@ -312,16 +520,41 @@ export function AdminDashboardPage({ onBack, onNav }) {
 
   const dashboardData = dashboard ?? {};
   const stats = [
-    { label: "전체 회원", value: Number(dashboardData.totalUsers || 0).toLocaleString(), icon: "usersGroup", color: "#2C6E49" },
-    { label: "전체 가게", value: Number(dashboardData.totalShops || 0).toLocaleString(), icon: "store", color: "#2C6E49" },
-    { label: "인증 대기", value: Number(dashboardData.pendingCertifications || 0).toLocaleString(), icon: "shield", color: "#0F6E56", alert: Number(dashboardData.pendingCertifications || 0) > 0 },
-    { label: "상인 신청 대기", value: Number(dashboardData.pendingMerchantApplications || 0).toLocaleString(), icon: "clipboard", color: "#854F0B", alert: Number(dashboardData.pendingMerchantApplications || 0) > 0 },
+    {
+      label: "전체 회원",
+      value: Number(dashboardData.totalUsers || 0).toLocaleString(),
+      icon: "usersGroup",
+      color: "#2C6E49",
+    },
+    {
+      label: "전체 가게",
+      value: Number(dashboardData.totalShops || 0).toLocaleString(),
+      icon: "store",
+      color: "#2C6E49",
+    },
+    {
+      label: "인증 대기",
+      value: Number(dashboardData.pendingCertifications || 0).toLocaleString(),
+      icon: "shield",
+      color: "#0F6E56",
+      alert: Number(dashboardData.pendingCertifications || 0) > 0,
+    },
+    {
+      label: "상인 신청 대기",
+      value: Number(dashboardData.pendingMerchantApplications || 0).toLocaleString(),
+      icon: "clipboard",
+      color: "#854F0B",
+      alert: Number(dashboardData.pendingMerchantApplications || 0) > 0,
+    },
   ];
   const summaryRows = [
     ["👤 오늘 신규 가입", `${Number(dashboardData.newUsersToday || 0).toLocaleString()}명`],
     ["⛔ 정지 회원", `${Number(dashboardData.suspendedUsers || 0).toLocaleString()}명`],
     ["📍 등록 관광지", `${Number(dashboardData.totalPlaces || 0).toLocaleString()}개`],
-    ["🖼️ 활성 배너", `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개`],
+    [
+      "🖼️ 활성 배너",
+      `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개`,
+    ],
   ];
   const quickMenuGroups = [
     {
@@ -330,8 +563,18 @@ export function AdminDashboardPage({ onBack, onNav }) {
       tone: "green",
       items: [
         { icon: "userCog", label: "유저 관리", key: "adminUsers" },
-        { icon: "store", label: "상인 신청", key: "adminMerchant", badge: dashboardData.pendingMerchantApplications },
-        { icon: "certificate", label: "가게 인증", key: "adminCertifications", badge: dashboardData.pendingCertifications },
+        {
+          icon: "store",
+          label: "상인 신청",
+          key: "adminMerchant",
+          badge: dashboardData.pendingMerchantApplications,
+        },
+        {
+          icon: "certificate",
+          label: "가게 인증",
+          key: "adminCertifications",
+          badge: dashboardData.pendingCertifications,
+        },
       ],
     },
     {
@@ -341,7 +584,12 @@ export function AdminDashboardPage({ onBack, onNav }) {
       items: [
         { icon: "list", label: "콘텐츠 관리", key: "adminContent" },
         { icon: "confetti", label: "축제 관리", key: "adminFestivals" },
-        { icon: "photo", label: "배너 관리", key: "adminBanners", badge: `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개` },
+        {
+          icon: "photo",
+          label: "배너 관리",
+          key: "adminBanners",
+          badge: `${Number(dashboardData.activeBanners || 0).toLocaleString()} / ${Number(dashboardData.totalBanners || 0).toLocaleString()}개`,
+        },
       ],
     },
     {
@@ -371,14 +619,26 @@ export function AdminDashboardPage({ onBack, onNav }) {
     <div style={S.screen}>
       <div className="admin-dashboard-header">
         <div>
-          <div className="admin-dashboard-kicker"><AdminIcon name="crown" size={14} /> 관리자</div>
+          <div className="admin-dashboard-kicker">
+            <AdminIcon name="crown" size={14} /> 관리자
+          </div>
           <div className="admin-dashboard-title">춘배투어 대시보드</div>
         </div>
-        <button type="button" className="admin-dashboard-exit" onClick={onBack}>← 나가기</button>
+        <button type="button" className="admin-dashboard-exit" onClick={onBack}>
+          ← 나가기
+        </button>
       </div>
       <div style={S.scrollArea}>
         {/* 통계 카드 */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10, padding: 16, paddingBottom: 0 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+            gap: 10,
+            padding: 16,
+            paddingBottom: 0,
+          }}
+        >
           {status === "loading" && (
             <div style={{ gridColumn: "1 / -1" }}>
               <SkeletonList count={4} />
@@ -393,20 +653,57 @@ export function AdminDashboardPage({ onBack, onNav }) {
               />
             </div>
           )}
-          {status === "success" && stats.map(s => (
-            <div key={s.label} style={{ background: "#fff", borderRadius: 16, padding: 16, border: s.alert ? `2px solid #E24B4A` : "0.5px solid rgba(0,0,0,0.06)" }}>
-              <div className="admin-stat-icon" style={{ color: s.color }}><AdminIcon name={s.icon} size={24} /></div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: s.alert ? "#E24B4A" : COLORS.primary }}>{s.value}</div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>{s.label}</div>
-            </div>
-          ))}
+          {status === "success" &&
+            stats.map((s) => (
+              <div
+                key={s.label}
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  padding: 16,
+                  border: s.alert ? `2px solid #E24B4A` : "0.5px solid rgba(0,0,0,0.06)",
+                }}
+              >
+                <div className="admin-stat-icon" style={{ color: s.color }}>
+                  <AdminIcon name={s.icon} size={24} />
+                </div>
+                <div
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: s.alert ? "#E24B4A" : COLORS.primary,
+                  }}
+                >
+                  {s.value}
+                </div>
+                <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>{s.label}</div>
+              </div>
+            ))}
         </div>
 
         {status === "success" && (
-          <div style={{ background: "#fff", margin: 16, borderRadius: 16, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>📊 운영 현황</div>
+          <div
+            style={{
+              background: "#fff",
+              margin: 16,
+              borderRadius: 16,
+              padding: 16,
+              border: "0.5px solid rgba(0,0,0,0.06)",
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>
+              📊 운영 현황
+            </div>
             {summaryRows.map(([k, v]) => (
-              <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>
+              <div
+                key={k}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "8px 0",
+                  borderBottom: "0.5px solid rgba(0,0,0,0.05)",
+                }}
+              >
                 <span style={{ fontSize: 14, color: COLORS.textMuted }}>{k}</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>{v}</span>
               </div>
@@ -420,11 +717,20 @@ export function AdminDashboardPage({ onBack, onNav }) {
           <div className="admin-quick-menu-grid">
             {quickMenuGroups.map((group) => (
               <section key={group.title} className={`admin-quick-menu-card ${group.tone}`}>
-                <h3><AdminIcon name={group.icon} size={18} /> {group.title}</h3>
+                <h3>
+                  <AdminIcon name={group.icon} size={18} /> {group.title}
+                </h3>
                 <div>
                   {group.items.map((item) => (
-                    <button key={item.key} type="button" className="admin-quick-menu-item" onClick={() => onNav(item.key)}>
-                      <span><AdminIcon name={item.icon} size={17} /> {item.label}</span>
+                    <button
+                      key={item.key}
+                      type="button"
+                      className="admin-quick-menu-item"
+                      onClick={() => onNav(item.key)}
+                    >
+                      <span>
+                        <AdminIcon name={item.icon} size={17} /> {item.label}
+                      </span>
                       {item.badge !== undefined ? (
                         <em>{item.badge}</em>
                       ) : item.urgent ? (
@@ -483,11 +789,12 @@ export function AdminUsersPage({ onBack, showToast }) {
     };
   }, [filter, query, roleFilter]);
 
-  const filtered = users.filter(u => (
-    (filter === "전체" || u.status === filter)
-    && (roleFilter === "전체" || u.role === roleFilter)
-    && (u.nickname.includes(query) || u.email.includes(query))
-  ));
+  const filtered = users.filter(
+    (u) =>
+      (filter === "전체" || u.status === filter) &&
+      (roleFilter === "전체" || u.role === roleFilter) &&
+      (u.nickname.includes(query) || u.email.includes(query)),
+  );
   const roleMeta = {
     USER: { label: "일반 사용자", background: "#E6F1FB", color: "#185FA5" },
     MERCHANT: { label: "상인", background: COLORS.greenBg, color: COLORS.green },
@@ -501,12 +808,16 @@ export function AdminUsersPage({ onBack, showToast }) {
         if (reason === null) return;
         await suspendAdminUser(user.id, reason);
         showToast("정지 처리되었습니다.");
-        setUsers(prev => prev.map(item => item.id === user.id ? { ...item, status: "정지" } : item));
+        setUsers((prev) =>
+          prev.map((item) => (item.id === user.id ? { ...item, status: "정지" } : item)),
+        );
         return;
       }
       await unsuspendAdminUser(user.id);
       showToast("정지가 해제되었습니다.");
-      setUsers(prev => prev.map(item => item.id === user.id ? { ...item, status: "정상" } : item));
+      setUsers((prev) =>
+        prev.map((item) => (item.id === user.id ? { ...item, status: "정상" } : item)),
+      );
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
@@ -547,8 +858,10 @@ export function AdminUsersPage({ onBack, showToast }) {
       const data = await fetchAdminUserSanctions(selectedUser.id);
       setSanctions(data);
       setSanctionStatus(data.length > 0 ? "success" : "empty");
-      if (!data.some(item => item.active)) {
-        setUsers(prev => prev.map(item => item.id === selectedUser.id ? { ...item, status: "정상" } : item));
+      if (!data.some((item) => item.active)) {
+        setUsers((prev) =>
+          prev.map((item) => (item.id === selectedUser.id ? { ...item, status: "정상" } : item)),
+        );
       }
     } catch (error) {
       showToast(getApiErrorHint(error));
@@ -559,18 +872,68 @@ export function AdminUsersPage({ onBack, showToast }) {
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>유저 관리</span>
       </div>
-      <div style={{ padding: 16, background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="🔍 이메일/닉네임 검색" style={{ width: "100%", background: COLORS.bg, border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
+      <div
+        style={{ padding: 16, background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}
+      >
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="🔍 이메일/닉네임 검색"
+          style={{
+            width: "100%",
+            background: COLORS.bg,
+            border: "none",
+            borderRadius: 12,
+            padding: "10px 14px",
+            fontSize: 14,
+            outline: "none",
+            boxSizing: "border-box",
+            marginBottom: 10,
+          }}
+        />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {["전체", "정상", "정지"].map(f => (
-            <div key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: filter === f ? COLORS.primary : COLORS.bg, color: filter === f ? "#fff" : COLORS.textMuted }}>{f}</div>
+          {["전체", "정상", "정지"].map((f) => (
+            <div
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 20,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                background: filter === f ? COLORS.primary : COLORS.bg,
+                color: filter === f ? "#fff" : COLORS.textMuted,
+              }}
+            >
+              {f}
+            </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, paddingTop: 8, borderTop: "0.5px solid rgba(0,0,0,0.06)" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "0.5px solid rgba(0,0,0,0.06)",
+          }}
+        >
           {[
             ["전체", "전체 역할"],
             ["USER", "일반 사용자"],
@@ -598,7 +961,11 @@ export function AdminUsersPage({ onBack, showToast }) {
         </div>
       </div>
       <div style={S.scrollArea}>
-        {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={4} /></div>}
+        {status === "loading" && (
+          <div style={{ margin: 16 }}>
+            <SkeletonList count={4} />
+          </div>
+        )}
         {status === "error" && (
           <div style={{ margin: 16 }}>
             <ErrorState title="유저 목록을 불러오지 못했습니다." description={errorMessage} />
@@ -606,24 +973,98 @@ export function AdminUsersPage({ onBack, showToast }) {
         )}
         {status === "empty" && (
           <div style={{ margin: 16 }}>
-            <EmptyState icon="👤" title="표시할 유저가 없습니다." description="검색어 또는 상태 필터를 바꿔 다시 확인해보세요." />
+            <EmptyState
+              icon="👤"
+              title="표시할 유저가 없습니다."
+              description="검색어 또는 상태 필터를 바꿔 다시 확인해보세요."
+            />
           </div>
         )}
-        {filtered.map(u => (
-          <div key={u.id} style={{ background: "#fff", margin: "10px 16px 0", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 }}>
+        {filtered.map((u) => (
+          <div
+            key={u.id}
+            style={{
+              background: "#fff",
+              margin: "10px 16px 0",
+              borderRadius: 14,
+              padding: 16,
+              border: "0.5px solid rgba(0,0,0,0.06)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 6,
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{u.nickname}</span>
-                <span style={{ fontSize: 11, background: roleMeta[u.role]?.background ?? COLORS.bg, color: roleMeta[u.role]?.color ?? COLORS.textMuted, borderRadius: 6, padding: "3px 7px", fontWeight: 700 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>
+                  {u.nickname}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    background: roleMeta[u.role]?.background ?? COLORS.bg,
+                    color: roleMeta[u.role]?.color ?? COLORS.textMuted,
+                    borderRadius: 6,
+                    padding: "3px 7px",
+                    fontWeight: 700,
+                  }}
+                >
                   {roleMeta[u.role]?.label ?? u.role}
                 </span>
               </div>
-              <span style={{ fontSize: 12, background: u.status === "정상" ? COLORS.greenBg : "#FEE8E8", color: u.status === "정상" ? COLORS.green : "#A32D2D", borderRadius: 6, padding: "3px 8px", fontWeight: 700, flexShrink: 0 }}>{u.status}</span>
+              <span
+                style={{
+                  fontSize: 12,
+                  background: u.status === "정상" ? COLORS.greenBg : "#FEE8E8",
+                  color: u.status === "정상" ? COLORS.green : "#A32D2D",
+                  borderRadius: 6,
+                  padding: "3px 8px",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {u.status}
+              </span>
             </div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 10 }}>{u.email} · 가입 {u.date}</div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 10 }}>
+              {u.email} · 가입 {u.date}
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <div onClick={() => openSanctions(u)} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.primary }}>제재 이력</div>
-              <div onClick={() => toggleSuspension(u)} style={{ flex: 1, background: u.status === "정상" ? "#FEE8E8" : COLORS.greenBg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: u.status === "정상" ? "#A32D2D" : COLORS.green }}>
+              <div
+                onClick={() => openSanctions(u)}
+                style={{
+                  flex: 1,
+                  background: COLORS.bg,
+                  borderRadius: 10,
+                  padding: "8px 0",
+                  textAlign: "center",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  color: COLORS.primary,
+                }}
+              >
+                제재 이력
+              </div>
+              <div
+                onClick={() => toggleSuspension(u)}
+                style={{
+                  flex: 1,
+                  background: u.status === "정상" ? "#FEE8E8" : COLORS.greenBg,
+                  borderRadius: 10,
+                  padding: "8px 0",
+                  textAlign: "center",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  color: u.status === "정상" ? "#A32D2D" : COLORS.green,
+                }}
+              >
                 {u.status === "정상" ? "정지처리" : "정지해제"}
               </div>
             </div>
@@ -632,13 +1073,20 @@ export function AdminUsersPage({ onBack, showToast }) {
       </div>
       {selectedUser && (
         <div className="confirm-dialog-backdrop" onMouseDown={closeSanctions}>
-          <div className="confirm-dialog admin-sanction-dialog" onMouseDown={(event) => event.stopPropagation()}>
+          <div
+            className="confirm-dialog admin-sanction-dialog"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="admin-sanction-head">
               <div>
                 <strong>제재 이력</strong>
-                <p>{selectedUser.nickname} · {selectedUser.email || `userId ${selectedUser.id}`}</p>
+                <p>
+                  {selectedUser.nickname} · {selectedUser.email || `userId ${selectedUser.id}`}
+                </p>
               </div>
-              <button type="button" onClick={closeSanctions} aria-label="닫기">×</button>
+              <button type="button" onClick={closeSanctions} aria-label="닫기">
+                ×
+              </button>
             </div>
 
             {sanctionStatus === "loading" && <SkeletonList count={3} />}
@@ -650,20 +1098,33 @@ export function AdminUsersPage({ onBack, showToast }) {
               />
             )}
             {sanctionStatus === "empty" && (
-              <EmptyState icon="🛡️" title="제재 이력이 없습니다." description="이 사용자에게 등록된 제재 내역이 없습니다." />
+              <EmptyState
+                icon="🛡️"
+                title="제재 이력이 없습니다."
+                description="이 사용자에게 등록된 제재 내역이 없습니다."
+              />
             )}
             {sanctionStatus === "success" && (
               <div className="admin-sanction-list">
                 {sanctions.map((sanction, index) => (
-                  <div key={sanction.sanctionId ?? `${sanction.reportId}-${index}`} className={`admin-sanction-card ${sanction.active ? "active" : ""}`}>
+                  <div
+                    key={sanction.sanctionId ?? `${sanction.reportId}-${index}`}
+                    className={`admin-sanction-card ${sanction.active ? "active" : ""}`}
+                  >
                     <div className="admin-sanction-card-top">
                       <div>
-                        <span className="admin-sanction-type">{sanction.sanctionType || "제재"}</span>
-                        {sanction.reportId != null && <span className="admin-sanction-report">신고 #{sanction.reportId}</span>}
+                        <span className="admin-sanction-type">
+                          {sanction.sanctionType || "제재"}
+                        </span>
+                        {sanction.reportId != null && (
+                          <span className="admin-sanction-report">신고 #{sanction.reportId}</span>
+                        )}
                       </div>
                       <AdminStatusBadge status={sanction.status} />
                     </div>
-                    <div className="admin-sanction-reason">{sanction.reason || "사유가 등록되지 않았습니다."}</div>
+                    <div className="admin-sanction-reason">
+                      {sanction.reason || "사유가 등록되지 않았습니다."}
+                    </div>
                     <div className="admin-sanction-meta">
                       <span>시작 {formatDate(sanction.startedAt)}</span>
                       <span>종료 {formatDate(sanction.endedAt)}</span>
@@ -686,7 +1147,9 @@ export function AdminUsersPage({ onBack, showToast }) {
             )}
 
             <div className="confirm-dialog-actions">
-              <button type="button" className="secondary" onClick={closeSanctions}>닫기</button>
+              <button type="button" className="secondary" onClick={closeSanctions}>
+                닫기
+              </button>
             </div>
           </div>
         </div>
@@ -728,40 +1191,93 @@ export function AdminReportsPage({ onBack, showToast }) {
         setStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [tab]);
 
   const handleStatusUpdate = async (id, nextStatus) => {
     const nextLabel = nextStatus === "DISMISSED" ? "기각" : "처리완료";
     try {
       await updateAdminReportStatus(id, nextStatus);
-      showToast(nextStatus === "DISMISSED" ? "신고를 기각했습니다." : "신고를 처리완료로 변경했습니다.");
-      setReports(prev => prev.map(r => r.id === id ? { ...r, rawStatus: nextStatus, status: nextLabel } : r));
+      showToast(
+        nextStatus === "DISMISSED" ? "신고를 기각했습니다." : "신고를 처리완료로 변경했습니다.",
+      );
+      setReports((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, rawStatus: nextStatus, status: nextLabel } : r)),
+      );
       if (tab === "미처리") {
-        setPendingCount(prev => Math.max(0, prev - 1));
+        setPendingCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
   };
 
-  const filtered = reports.filter(r => r.status === tab);
+  const filtered = reports.filter((r) => r.status === tab);
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>신고 관리</span>
       </div>
-      <div style={{ display: "flex", background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-        {["미처리", "처리완료", "기각"].map(t => (
-          <div key={t} onClick={() => setTab(t)} style={{ flex: 1, textAlign: "center", padding: "14px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", color: tab === t ? COLORS.primary : COLORS.textMuted, borderBottom: tab === t ? `2px solid ${COLORS.primary}` : "none" }}>
-            {t} {t === "미처리" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, borderRadius: 20, padding: "1px 6px", marginLeft: 4 }}>{pendingCount}</span>}
+      <div
+        style={{
+          display: "flex",
+          background: "#fff",
+          borderBottom: "0.5px solid rgba(0,0,0,0.06)",
+        }}
+      >
+        {["미처리", "처리완료", "기각"].map((t) => (
+          <div
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              flex: 1,
+              textAlign: "center",
+              padding: "14px 0",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: "pointer",
+              color: tab === t ? COLORS.primary : COLORS.textMuted,
+              borderBottom: tab === t ? `2px solid ${COLORS.primary}` : "none",
+            }}
+          >
+            {t}{" "}
+            {t === "미처리" && (
+              <span
+                style={{
+                  background: "#E24B4A",
+                  color: "#fff",
+                  fontSize: 14,
+                  borderRadius: 20,
+                  padding: "1px 6px",
+                  marginLeft: 4,
+                }}
+              >
+                {pendingCount}
+              </span>
+            )}
           </div>
         ))}
       </div>
       <div style={S.scrollArea}>
-        {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={4} /></div>}
+        {status === "loading" && (
+          <div style={{ margin: 16 }}>
+            <SkeletonList count={4} />
+          </div>
+        )}
         {status === "error" && (
           <div style={{ margin: 16 }}>
             <ErrorState title="신고 목록을 불러오지 못했습니다." description={errorMessage} />
@@ -769,21 +1285,82 @@ export function AdminReportsPage({ onBack, showToast }) {
         )}
         {status === "empty" && (
           <div style={{ margin: 16 }}>
-            <EmptyState icon="🚨" title="표시할 신고가 없습니다." description="현재 필터에 해당하는 신고가 없습니다." />
+            <EmptyState
+              icon="🚨"
+              title="표시할 신고가 없습니다."
+              description="현재 필터에 해당하는 신고가 없습니다."
+            />
           </div>
         )}
-        {filtered.map(r => (
-          <div key={r.id} style={{ background: "#fff", margin: "10px 16px 0", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
+        {filtered.map((r) => (
+          <div
+            key={r.id}
+            style={{
+              background: "#fff",
+              margin: "10px 16px 0",
+              borderRadius: 14,
+              padding: 16,
+              border: "0.5px solid rgba(0,0,0,0.06)",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>🚨 {r.type}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.primary }}>
+                🚨 {r.type}
+              </span>
               <span style={{ fontSize: 14, color: COLORS.textMuted }}>{r.date}</span>
             </div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>사유: {r.reason} · 신고자: {r.reporter}</div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>
+              사유: {r.reason} · 신고자: {r.reporter}
+            </div>
             {r.status === "미처리" && (
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <div onClick={() => showToast("상세 보기")} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>상세보기</div>
-                <div onClick={() => handleStatusUpdate(r.id, "RESOLVED")} style={{ flex: 1, background: COLORS.greenBg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.green }}>처리완료</div>
-                <div onClick={() => handleStatusUpdate(r.id, "DISMISSED")} style={{ flex: 1, background: COLORS.bg, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: COLORS.textMuted }}>기각</div>
+                <div
+                  onClick={() => showToast("상세 보기")}
+                  style={{
+                    flex: 1,
+                    background: COLORS.bg,
+                    borderRadius: 10,
+                    padding: "8px 0",
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  상세보기
+                </div>
+                <div
+                  onClick={() => handleStatusUpdate(r.id, "RESOLVED")}
+                  style={{
+                    flex: 1,
+                    background: COLORS.greenBg,
+                    borderRadius: 10,
+                    padding: "8px 0",
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    color: COLORS.green,
+                  }}
+                >
+                  처리완료
+                </div>
+                <div
+                  onClick={() => handleStatusUpdate(r.id, "DISMISSED")}
+                  style={{
+                    flex: 1,
+                    background: COLORS.bg,
+                    borderRadius: 10,
+                    padding: "8px 0",
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    color: COLORS.textMuted,
+                  }}
+                >
+                  기각
+                </div>
               </div>
             )}
           </div>
@@ -810,12 +1387,23 @@ const EMPTY_PLACE_FORM = {
   tags: "",
 };
 
-const PLACE_UPDATE_FIELDS = ["name", "description", "address", "operatingHours", "closedDays", "phone", "admissionFee", "tags"];
+const PLACE_UPDATE_FIELDS = [
+  "name",
+  "description",
+  "address",
+  "operatingHours",
+  "closedDays",
+  "phone",
+  "admissionFee",
+  "tags",
+];
 
 function optionalPlaceFields(form, fields) {
-  return Object.fromEntries(fields
-    .filter((field) => String(form[field] ?? "").trim())
-    .map((field) => [field, String(form[field]).trim()]));
+  return Object.fromEntries(
+    fields
+      .filter((field) => String(form[field] ?? "").trim())
+      .map((field) => [field, String(form[field]).trim()]),
+  );
 }
 
 export function AdminContentPage({ onBack, showToast }) {
@@ -866,7 +1454,9 @@ export function AdminContentPage({ onBack, showToast }) {
         setStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [filter]);
 
   const handleTouristPlaceSync = async () => {
@@ -875,14 +1465,18 @@ export function AdminContentPage({ onBack, showToast }) {
     setSyncingPlaces(true);
     try {
       const result = await syncTouristPlaces();
-      showToast(`관광지 수집 완료 · 수신 ${result.fetched ?? 0} · 신규 ${result.created ?? 0} · 갱신 ${result.updated ?? 0} · 제외 ${result.skipped ?? 0}`);
+      showToast(
+        `관광지 수집 완료 · 수신 ${result.fetched ?? 0} · 신규 ${result.created ?? 0} · 갱신 ${result.updated ?? 0} · 제외 ${result.skipped ?? 0}`,
+      );
       if (filter !== "전체" && filter !== "관광지") {
         setFilter("관광지");
       } else {
         await loadContents();
       }
     } catch {
-      showToast("관광지 수집에 실패했습니다. 관리자 권한, 관광공사 API 키, 백엔드 로그를 확인해주세요.");
+      showToast(
+        "관광지 수집에 실패했습니다. 관리자 권한, 관광공사 API 키, 백엔드 로그를 확인해주세요.",
+      );
     } finally {
       setSyncingPlaces(false);
     }
@@ -918,7 +1512,9 @@ export function AdminContentPage({ onBack, showToast }) {
         setFilter("축제");
       }
     } catch {
-      showToast("축제 수집에 실패했습니다. 관리자 권한, 공공데이터 키, 백엔드 로그를 확인해주세요.");
+      showToast(
+        "축제 수집에 실패했습니다. 관리자 권한, 공공데이터 키, 백엔드 로그를 확인해주세요.",
+      );
     } finally {
       setSyncingFestivals(false);
     }
@@ -957,7 +1553,12 @@ export function AdminContentPage({ onBack, showToast }) {
     setSavingPlace(true);
     try {
       if (placeFormMode === "create") {
-        if (!placeForm.name.trim() || !placeForm.address.trim() || placeForm.lat === "" || placeForm.lng === "") {
+        if (
+          !placeForm.name.trim() ||
+          !placeForm.address.trim() ||
+          placeForm.lat === "" ||
+          placeForm.lng === ""
+        ) {
           showToast("이름, 주소, 위도, 경도는 필수입니다.");
           return;
         }
@@ -968,8 +1569,14 @@ export function AdminContentPage({ onBack, showToast }) {
           lat: Number(placeForm.lat),
           lng: Number(placeForm.lng),
           ...optionalPlaceFields(placeForm, [
-            "description", "thumbnailUrl", "imageUrls", "operatingHours",
-            "closedDays", "phone", "admissionFee", "tags",
+            "description",
+            "thumbnailUrl",
+            "imageUrls",
+            "operatingHours",
+            "closedDays",
+            "phone",
+            "admissionFee",
+            "tags",
           ]),
         });
         showToast("관광지를 등록했습니다.");
@@ -998,7 +1605,7 @@ export function AdminContentPage({ onBack, showToast }) {
     }
     try {
       await deleteAdminPlace(place.id);
-      setContents(prev => prev.filter(item => item.id !== place.id));
+      setContents((prev) => prev.filter((item) => item.id !== place.id));
       showToast("관광지를 삭제했습니다.");
     } catch (error) {
       showToast(error?.message || "관광지 삭제에 실패했습니다.");
@@ -1018,67 +1625,274 @@ export function AdminContentPage({ onBack, showToast }) {
     }
   };
 
-  const filtered = filter === "전체" ? contents : contents.filter(c => c.type === filter);
+  const filtered = filter === "전체" ? contents : contents.filter((c) => c.type === filter);
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>콘텐츠 관리</span>
       </div>
-      <div style={{ display: "flex", gap: 8, padding: "12px 16px", background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-        {["전체", "관광지", "전통시장", "축제"].map(f => (
-          <div key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: 20, fontSize: 14, fontWeight: 600, cursor: "pointer", background: filter === f ? COLORS.primary : COLORS.bg, color: filter === f ? "#fff" : COLORS.textMuted }}>{f}</div>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          padding: "12px 16px",
+          background: "#fff",
+          borderBottom: "0.5px solid rgba(0,0,0,0.06)",
+        }}
+      >
+        {["전체", "관광지", "전통시장", "축제"].map((f) => (
+          <div
+            key={f}
+            onClick={() => setFilter(f)}
+            style={{
+              padding: "6px 16px",
+              borderRadius: 20,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              background: filter === f ? COLORS.primary : COLORS.bg,
+              color: filter === f ? "#fff" : COLORS.textMuted,
+            }}
+          >
+            {f}
+          </div>
         ))}
       </div>
       <div style={S.scrollArea}>
         <div style={{ padding: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
-            <button type="button" onClick={openCreatePlace} style={{ border: 0, background: COLORS.accent, color: COLORS.primary, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ 관광지 등록</button>
-            <button type="button" disabled={syncingPlaces} onClick={handleTouristPlaceSync} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingPlaces ? "#F7F5F0" : COLORS.greenBg, color: syncingPlaces ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingPlaces ? "wait" : "pointer", fontFamily: "inherit" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 10,
+              marginBottom: 16,
+            }}
+          >
+            <button
+              type="button"
+              onClick={openCreatePlace}
+              style={{
+                border: 0,
+                background: COLORS.accent,
+                color: COLORS.primary,
+                borderRadius: 12,
+                padding: "12px 0",
+                textAlign: "center",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              + 관광지 등록
+            </button>
+            <button
+              type="button"
+              disabled={syncingPlaces}
+              onClick={handleTouristPlaceSync}
+              style={{
+                border: "1px solid rgba(47,133,95,0.2)",
+                background: syncingPlaces ? "#F7F5F0" : COLORS.greenBg,
+                color: syncingPlaces ? COLORS.textMuted : COLORS.green,
+                borderRadius: 12,
+                padding: "12px 0",
+                textAlign: "center",
+                fontWeight: 700,
+                cursor: syncingPlaces ? "wait" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
               {syncingPlaces ? "관광지 수집 중..." : "관광지 데이터 수집"}
             </button>
-            <button type="button" disabled={syncingMarkets} onClick={handleTraditionalMarketSync} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingMarkets ? "#F7F5F0" : COLORS.greenBg, color: syncingMarkets ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingMarkets ? "wait" : "pointer", fontFamily: "inherit" }}>
+            <button
+              type="button"
+              disabled={syncingMarkets}
+              onClick={handleTraditionalMarketSync}
+              style={{
+                border: "1px solid rgba(47,133,95,0.2)",
+                background: syncingMarkets ? "#F7F5F0" : COLORS.greenBg,
+                color: syncingMarkets ? COLORS.textMuted : COLORS.green,
+                borderRadius: 12,
+                padding: "12px 0",
+                textAlign: "center",
+                fontWeight: 700,
+                cursor: syncingMarkets ? "wait" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
               {syncingMarkets ? "전통시장 동기화 중..." : "전통시장 데이터 동기화"}
             </button>
-            <button type="button" disabled={syncingFestivals} onClick={handleFestivalFetch} style={{ border: "1px solid rgba(47,133,95,0.2)", background: syncingFestivals ? "#F7F5F0" : COLORS.greenBg, color: syncingFestivals ? COLORS.textMuted : COLORS.green, borderRadius: 12, padding: "12px 0", textAlign: "center", fontWeight: 700, cursor: syncingFestivals ? "wait" : "pointer", fontFamily: "inherit" }}>
+            <button
+              type="button"
+              disabled={syncingFestivals}
+              onClick={handleFestivalFetch}
+              style={{
+                border: "1px solid rgba(47,133,95,0.2)",
+                background: syncingFestivals ? "#F7F5F0" : COLORS.greenBg,
+                color: syncingFestivals ? COLORS.textMuted : COLORS.green,
+                borderRadius: 12,
+                padding: "12px 0",
+                textAlign: "center",
+                fontWeight: 700,
+                cursor: syncingFestivals ? "wait" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
               {syncingFestivals ? "축제 수집 중..." : "축제 데이터 수집"}
             </button>
           </div>
           {status === "loading" && <SkeletonList count={4} />}
-          {status === "error" && <ErrorState title="콘텐츠 목록을 불러오지 못했습니다." description={errorMessage} onRetry={loadContents} />}
-          {status === "empty" && (
-            <EmptyState icon="📍" title="표시할 콘텐츠가 없습니다." description="카테고리 필터를 바꾸거나 새 콘텐츠를 추가해보세요." />
+          {status === "error" && (
+            <ErrorState
+              title="콘텐츠 목록을 불러오지 못했습니다."
+              description={errorMessage}
+              onRetry={loadContents}
+            />
           )}
-          {filtered.map(c => (
-            <div key={c.id} style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 10, border: "0.5px solid rgba(0,0,0,0.06)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          {status === "empty" && (
+            <EmptyState
+              icon="📍"
+              title="표시할 콘텐츠가 없습니다."
+              description="카테고리 필터를 바꾸거나 새 콘텐츠를 추가해보세요."
+            />
+          )}
+          {filtered.map((c) => (
+            <div
+              key={c.id}
+              style={{
+                background: "#fff",
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 10,
+                border: "0.5px solid rgba(0,0,0,0.06)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14, background: c.type === "관광지" ? "#FEE8E8" : c.type === "축제" ? "#FFF3D0" : COLORS.greenBg, color: c.type === "관광지" ? "#A32D2D" : c.type === "축제" ? "#B87800" : COLORS.green, borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{c.type}</span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{c.name}</span>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      background:
+                        c.type === "관광지"
+                          ? "#FEE8E8"
+                          : c.type === "축제"
+                            ? "#FFF3D0"
+                            : COLORS.greenBg,
+                      color:
+                        c.type === "관광지"
+                          ? "#A32D2D"
+                          : c.type === "축제"
+                            ? "#B87800"
+                            : COLORS.green,
+                      borderRadius: 6,
+                      padding: "2px 8px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {c.type}
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>
+                    {c.name}
+                  </span>
                 </div>
-                <span style={{ borderRadius: 999, background: c.status === "공개" ? COLORS.greenBg : COLORS.bg, color: c.status === "공개" ? COLORS.green : COLORS.textMuted, padding: "5px 10px", fontSize: 13, fontWeight: 700 }}>{c.status}</span>
+                <span
+                  style={{
+                    borderRadius: 999,
+                    background: c.status === "공개" ? COLORS.greenBg : COLORS.bg,
+                    color: c.status === "공개" ? COLORS.green : COLORS.textMuted,
+                    padding: "5px 10px",
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  {c.status}
+                </span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
                 <div style={{ display: "flex", gap: 8 }}>
-                  <span style={{ fontSize: 14, color: c.status === "공개" ? COLORS.green : COLORS.textMuted, fontWeight: 600 }}>{c.status}</span>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: c.status === "공개" ? COLORS.green : COLORS.textMuted,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {c.status}
+                  </span>
                   <span style={{ fontSize: 14, color: COLORS.textMuted }}>· {c.updatedAt}</span>
-                  {c.readOnly && <span style={{ fontSize: 14, color: COLORS.textMuted }}>· 외부 수집 데이터</span>}
+                  {c.readOnly && (
+                    <span style={{ fontSize: 14, color: COLORS.textMuted }}>
+                      · 외부 수집 데이터
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {c.source === "traditional-market" && (
                     <button
                       type="button"
                       onClick={() => openTraditionalMarketDetail(c)}
-                      style={{ border: "1px solid rgba(44,110,73,0.2)", borderRadius: 8, background: COLORS.greenBg, color: COLORS.green, fontSize: 13, fontWeight: 800, cursor: "pointer", padding: "4px 9px" }}
+                      style={{
+                        border: "1px solid rgba(44,110,73,0.2)",
+                        borderRadius: 8,
+                        background: COLORS.greenBg,
+                        color: COLORS.green,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        padding: "4px 9px",
+                      }}
                     >
                       상세
                     </button>
                   )}
                   {!c.readOnly && (
                     <>
-                      <button type="button" onClick={() => openEditPlace(c)} aria-label="관광지 수정" style={{ border: 0, background: "transparent", fontSize: 18, cursor: "pointer" }}>✏️</button>
-                      <button type="button" onClick={() => removePlace(c)} aria-label="관광지 삭제" style={{ border: 0, background: "transparent", fontSize: 18, cursor: "pointer" }}>🗑️</button>
+                      <button
+                        type="button"
+                        onClick={() => openEditPlace(c)}
+                        aria-label="관광지 수정"
+                        style={{
+                          border: 0,
+                          background: "transparent",
+                          fontSize: 18,
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removePlace(c)}
+                        aria-label="관광지 삭제"
+                        style={{
+                          border: 0,
+                          background: "transparent",
+                          fontSize: 18,
+                          cursor: "pointer",
+                        }}
+                      >
+                        🗑️
+                      </button>
                     </>
                   )}
                 </div>
@@ -1092,12 +1906,17 @@ export function AdminContentPage({ onBack, showToast }) {
           <div className="admin-place-modal" onClick={(event) => event.stopPropagation()}>
             <div className="admin-place-modal-head">
               <strong>전통시장 상세</strong>
-              <button type="button" onClick={() => setMarketDetail(null)} aria-label="닫기">×</button>
+              <button type="button" onClick={() => setMarketDetail(null)} aria-label="닫기">
+                ×
+              </button>
             </div>
             <p className="admin-place-form-note">공공데이터로 수집된 전통시장 정보를 확인합니다.</p>
             {marketDetailStatus === "loading" && <SkeletonList count={3} />}
             {marketDetailStatus === "error" && (
-              <ErrorState title="전통시장 상세를 불러오지 못했습니다." description="관리자 전통시장 상세 API 연결 상태를 확인해주세요." />
+              <ErrorState
+                title="전통시장 상세를 불러오지 못했습니다."
+                description="관리자 전통시장 상세 API 연결 상태를 확인해주세요."
+              />
             )}
             {marketDetailStatus === "success" && (
               <dl className="admin-detail-list">
@@ -1125,8 +1944,12 @@ export function AdminContentPage({ onBack, showToast }) {
                   <dt>홈페이지</dt>
                   <dd>
                     {marketDetail.homepageUrl ? (
-                      <a href={marketDetail.homepageUrl} target="_blank" rel="noreferrer">{marketDetail.homepageUrl}</a>
-                    ) : "-"}
+                      <a href={marketDetail.homepageUrl} target="_blank" rel="noreferrer">
+                        {marketDetail.homepageUrl}
+                      </a>
+                    ) : (
+                      "-"
+                    )}
                   </dd>
                 </div>
               </dl>
@@ -1139,30 +1962,142 @@ export function AdminContentPage({ onBack, showToast }) {
           <div className="admin-place-modal" onClick={(event) => event.stopPropagation()}>
             <div className="admin-place-modal-head">
               <strong>{placeFormMode === "create" ? "관광지 등록" : "관광지 수정"}</strong>
-              <button type="button" onClick={closePlaceForm} aria-label="닫기">×</button>
+              <button type="button" onClick={closePlaceForm} aria-label="닫기">
+                ×
+              </button>
             </div>
             <div className="admin-place-form-grid">
-              <label>이름<input value={placeForm.name} onChange={(event) => setPlaceForm(prev => ({ ...prev, name: event.target.value }))} /></label>
-              <label className="wide">주소<input value={placeForm.address} onChange={(event) => setPlaceForm(prev => ({ ...prev, address: event.target.value }))} /></label>
+              <label>
+                이름
+                <input
+                  value={placeForm.name}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="wide">
+                주소
+                <input
+                  value={placeForm.address}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, address: event.target.value }))
+                  }
+                />
+              </label>
               {placeFormMode === "create" && (
                 <>
-                  <label>위도<input type="number" step="any" value={placeForm.lat} onChange={(event) => setPlaceForm(prev => ({ ...prev, lat: event.target.value }))} /></label>
-                  <label>경도<input type="number" step="any" value={placeForm.lng} onChange={(event) => setPlaceForm(prev => ({ ...prev, lng: event.target.value }))} /></label>
-                  <label className="wide">썸네일 URL<input value={placeForm.thumbnailUrl} onChange={(event) => setPlaceForm(prev => ({ ...prev, thumbnailUrl: event.target.value }))} /></label>
-                  <label className="wide">이미지 URL JSON 배열<input placeholder='["https://..."]' value={placeForm.imageUrls} onChange={(event) => setPlaceForm(prev => ({ ...prev, imageUrls: event.target.value }))} /></label>
+                  <label>
+                    위도
+                    <input
+                      type="number"
+                      step="any"
+                      value={placeForm.lat}
+                      onChange={(event) =>
+                        setPlaceForm((prev) => ({ ...prev, lat: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    경도
+                    <input
+                      type="number"
+                      step="any"
+                      value={placeForm.lng}
+                      onChange={(event) =>
+                        setPlaceForm((prev) => ({ ...prev, lng: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="wide">
+                    썸네일 URL
+                    <input
+                      value={placeForm.thumbnailUrl}
+                      onChange={(event) =>
+                        setPlaceForm((prev) => ({ ...prev, thumbnailUrl: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="wide">
+                    이미지 URL JSON 배열
+                    <input
+                      placeholder='["https://..."]'
+                      value={placeForm.imageUrls}
+                      onChange={(event) =>
+                        setPlaceForm((prev) => ({ ...prev, imageUrls: event.target.value }))
+                      }
+                    />
+                  </label>
                 </>
               )}
-              <label className="wide">소개<textarea value={placeForm.description} onChange={(event) => setPlaceForm(prev => ({ ...prev, description: event.target.value }))} /></label>
-              <label>운영시간<input value={placeForm.operatingHours} onChange={(event) => setPlaceForm(prev => ({ ...prev, operatingHours: event.target.value }))} /></label>
-              <label>휴무일<input value={placeForm.closedDays} onChange={(event) => setPlaceForm(prev => ({ ...prev, closedDays: event.target.value }))} /></label>
-              <label>연락처<input value={placeForm.phone} onChange={(event) => setPlaceForm(prev => ({ ...prev, phone: event.target.value }))} /></label>
-              <label>입장료<input value={placeForm.admissionFee} onChange={(event) => setPlaceForm(prev => ({ ...prev, admissionFee: event.target.value }))} /></label>
-              <label className="wide">태그 JSON 배열<input placeholder='["궁궐","서울"]' value={placeForm.tags} onChange={(event) => setPlaceForm(prev => ({ ...prev, tags: event.target.value }))} /></label>
+              <label className="wide">
+                소개
+                <textarea
+                  value={placeForm.description}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, description: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                운영시간
+                <input
+                  value={placeForm.operatingHours}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, operatingHours: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                휴무일
+                <input
+                  value={placeForm.closedDays}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, closedDays: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                연락처
+                <input
+                  value={placeForm.phone}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, phone: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                입장료
+                <input
+                  value={placeForm.admissionFee}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, admissionFee: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="wide">
+                태그 JSON 배열
+                <input
+                  placeholder='["궁궐","서울"]'
+                  value={placeForm.tags}
+                  onChange={(event) =>
+                    setPlaceForm((prev) => ({ ...prev, tags: event.target.value }))
+                  }
+                />
+              </label>
             </div>
-            {placeFormMode === "edit" && <p className="admin-place-form-note">수정 API가 허용하는 필드만 표시합니다. 입력한 값만 부분 수정됩니다.</p>}
+            {placeFormMode === "edit" && (
+              <p className="admin-place-form-note">
+                수정 API가 허용하는 필드만 표시합니다. 입력한 값만 부분 수정됩니다.
+              </p>
+            )}
             <div className="admin-place-modal-actions">
-              <button type="button" onClick={closePlaceForm}>취소</button>
-              <button type="button" disabled={savingPlace} onClick={savePlace}>{savingPlace ? "저장 중..." : "저장"}</button>
+              <button type="button" onClick={closePlaceForm}>
+                취소
+              </button>
+              <button type="button" disabled={savingPlace} onClick={savePlace}>
+                {savingPlace ? "저장 중..." : "저장"}
+              </button>
             </div>
           </div>
         </div>
@@ -1193,7 +2128,9 @@ export function AdminMerchantPage({ onBack, showToast }) {
         setStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handle = async (id, action) => {
@@ -1205,8 +2142,12 @@ export function AdminMerchantPage({ onBack, showToast }) {
         if (rejectReason === null) return;
         await rejectMerchantApplication(id, rejectReason);
       }
-      showToast(action === "승인" ? "✅ 상인 신청이 승인되었습니다." : "❌ 상인 신청이 거절되었습니다.");
-      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action === "승인" ? "승인" : "거절" } : r));
+      showToast(
+        action === "승인" ? "✅ 상인 신청이 승인되었습니다." : "❌ 상인 신청이 거절되었습니다.",
+      );
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: action === "승인" ? "승인" : "거절" } : r)),
+      );
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
@@ -1214,12 +2155,26 @@ export function AdminMerchantPage({ onBack, showToast }) {
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>상인 신청 관리</span>
       </div>
       <div style={S.scrollArea}>
-        {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={4} /></div>}
+        {status === "loading" && (
+          <div style={{ margin: 16 }}>
+            <SkeletonList count={4} />
+          </div>
+        )}
         {status === "error" && (
           <div style={{ margin: 16 }}>
             <ErrorState title="상인 신청 목록을 불러오지 못했습니다." description={errorMessage} />
@@ -1227,20 +2182,88 @@ export function AdminMerchantPage({ onBack, showToast }) {
         )}
         {status === "empty" && (
           <div style={{ margin: 16 }}>
-            <EmptyState icon="🏪" title="표시할 상인 신청이 없습니다." description="새 신청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다." />
+            <EmptyState
+              icon="🏪"
+              title="표시할 상인 신청이 없습니다."
+              description="새 신청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다."
+            />
           </div>
         )}
-        {requests.map(r => (
-          <div key={r.id} style={{ background: "#fff", margin: "10px 16px 0", borderRadius: 14, padding: 16, border: "0.5px solid rgba(0,0,0,0.06)" }}>
+        {requests.map((r) => (
+          <div
+            key={r.id}
+            style={{
+              background: "#fff",
+              margin: "10px 16px 0",
+              borderRadius: 14,
+              padding: 16,
+              border: "0.5px solid rgba(0,0,0,0.06)",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{r.shopName}</span>
-              <span style={{ fontSize: 14, background: r.status === "대기" ? "#FFF3D0" : r.status === "승인" ? COLORS.greenBg : "#FEE8E8", color: r.status === "대기" ? "#B87800" : r.status === "승인" ? COLORS.green : "#A32D2D", borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{r.status}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>
+                {r.shopName}
+              </span>
+              <span
+                style={{
+                  fontSize: 14,
+                  background:
+                    r.status === "대기"
+                      ? "#FFF3D0"
+                      : r.status === "승인"
+                        ? COLORS.greenBg
+                        : "#FEE8E8",
+                  color:
+                    r.status === "대기"
+                      ? "#B87800"
+                      : r.status === "승인"
+                        ? COLORS.green
+                        : "#A32D2D",
+                  borderRadius: 6,
+                  padding: "2px 8px",
+                  fontWeight: 700,
+                }}
+              >
+                {r.status}
+              </span>
             </div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>신청자: {r.name} · {r.market} · {r.date}</div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 6 }}>
+              신청자: {r.name} · {r.market} · {r.date}
+            </div>
             {r.status === "대기" && (
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <div onClick={() => handle(r.id, "거절")} style={{ flex: 1, background: "#FEE8E8", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: "#A32D2D" }}>거절</div>
-                <div onClick={() => handle(r.id, "승인")} style={{ flex: 2, background: COLORS.primary, borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 14, fontWeight: 700, cursor: "pointer", color: "#fff" }}>승인</div>
+                <div
+                  onClick={() => handle(r.id, "거절")}
+                  style={{
+                    flex: 1,
+                    background: "#FEE8E8",
+                    borderRadius: 10,
+                    padding: "8px 0",
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    color: "#A32D2D",
+                  }}
+                >
+                  거절
+                </div>
+                <div
+                  onClick={() => handle(r.id, "승인")}
+                  style={{
+                    flex: 2,
+                    background: COLORS.primary,
+                    borderRadius: 10,
+                    padding: "8px 0",
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    color: "#fff",
+                  }}
+                >
+                  승인
+                </div>
               </div>
             )}
           </div>
@@ -1251,7 +2274,9 @@ export function AdminMerchantPage({ onBack, showToast }) {
 }
 
 export function AdminRefundsPage({ onBack, showToast }) {
-  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminRefunds({ size: 100 }));
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() =>
+    fetchAdminRefunds({ size: 100 }),
+  );
 
   const handleDecision = async (refund, decision) => {
     const refundId = getItemId(refund, ["refundId", "id"]);
@@ -1261,14 +2286,26 @@ export function AdminRefundsPage({ onBack, showToast }) {
       if (decision === "approve") {
         await approveRefund(refundId);
         showToast("환불을 승인했습니다.");
-        setItems(prev => prev.map(item => getItemId(item, ["refundId", "id"]) === refundId ? { ...item, status: "APPROVED" } : item));
+        setItems((prev) =>
+          prev.map((item) =>
+            getItemId(item, ["refundId", "id"]) === refundId
+              ? { ...item, status: "APPROVED" }
+              : item,
+          ),
+        );
         return;
       }
       const reason = promptReason("환불 거절 사유를 입력해주세요.", "환불 조건 미충족");
       if (reason === null) return;
       await rejectRefund(refundId, reason);
       showToast("환불을 거절했습니다.");
-      setItems(prev => prev.map(item => getItemId(item, ["refundId", "id"]) === refundId ? { ...item, status: "REJECTED", rejectReason: reason } : item));
+      setItems((prev) =>
+        prev.map((item) =>
+          getItemId(item, ["refundId", "id"]) === refundId
+            ? { ...item, status: "REJECTED", rejectReason: reason }
+            : item,
+        ),
+      );
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
@@ -1276,35 +2313,62 @@ export function AdminRefundsPage({ onBack, showToast }) {
 
   return (
     <AdminShell title="환불 관리" onBack={onBack}>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="환불 요청이 없습니다." emptyDescription="사용자의 환불 요청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다." onRetry={reload} />
-      {status === "success" && items.map((refund) => {
-        const refundId = getItemId(refund, ["refundId", "id"]);
-        return (
-          <AdminCard key={refundId}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <strong style={{ color: COLORS.primary }}>환불 #{refundId}</strong>
-              <AdminStatusBadge status={refund.status} />
-            </div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
-              주문 {refund.paymentOrderId ?? "-"} · 사용자 {refund.userId ?? "-"} · {formatDate(refund.createdAt)}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(refund.amount)} 엽전</div>
-            {(refund.reason || refund.rejectReason) && <div style={{ marginTop: 8, fontSize: 14, color: COLORS.textMuted }}>{refund.reason || refund.rejectReason}</div>}
-            {refund.status === "PENDING" && (
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <AdminButton tone="danger" onClick={() => handleDecision(refund, "reject")} style={{ flex: 1 }}>거절</AdminButton>
-                <AdminButton onClick={() => handleDecision(refund, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="환불 요청이 없습니다."
+        emptyDescription="사용자의 환불 요청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((refund) => {
+          const refundId = getItemId(refund, ["refundId", "id"]);
+          return (
+            <AdminCard key={refundId}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary }}>환불 #{refundId}</strong>
+                <AdminStatusBadge status={refund.status} />
               </div>
-            )}
-          </AdminCard>
-        );
-      })}
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                주문 {refund.paymentOrderId ?? "-"} · 사용자 {refund.userId ?? "-"} ·{" "}
+                {formatDate(refund.createdAt)}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>
+                {formatNumber(refund.amount)} 엽전
+              </div>
+              {(refund.reason || refund.rejectReason) && (
+                <div style={{ marginTop: 8, fontSize: 14, color: COLORS.textMuted }}>
+                  {refund.reason || refund.rejectReason}
+                </div>
+              )}
+              {refund.status === "PENDING" && (
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <AdminButton
+                    tone="danger"
+                    onClick={() => handleDecision(refund, "reject")}
+                    style={{ flex: 1 }}
+                  >
+                    거절
+                  </AdminButton>
+                  <AdminButton
+                    onClick={() => handleDecision(refund, "approve")}
+                    style={{ flex: 2 }}
+                  >
+                    승인
+                  </AdminButton>
+                </div>
+              )}
+            </AdminCard>
+          );
+        })}
     </AdminShell>
   );
 }
 
 export function AdminSettlementsPage({ onBack, showToast }) {
-  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminSettlements({ size: 100 }));
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() =>
+    fetchAdminSettlements({ size: 100 }),
+  );
 
   const handleDecision = async (settlement, decision) => {
     const settlementId = getItemId(settlement, ["settlementId", "id"]);
@@ -1314,14 +2378,26 @@ export function AdminSettlementsPage({ onBack, showToast }) {
       if (decision === "approve") {
         await approveSettlement(settlementId);
         showToast("정산을 승인했습니다.");
-        setItems(prev => prev.map(item => getItemId(item, ["settlementId", "id"]) === settlementId ? { ...item, status: "APPROVED" } : item));
+        setItems((prev) =>
+          prev.map((item) =>
+            getItemId(item, ["settlementId", "id"]) === settlementId
+              ? { ...item, status: "APPROVED" }
+              : item,
+          ),
+        );
         return;
       }
       const reason = promptReason("정산 거절 사유를 입력해주세요.", "정산 조건 미충족");
       if (reason === null) return;
       await rejectSettlement(settlementId, reason);
       showToast("정산을 거절했습니다.");
-      setItems(prev => prev.map(item => getItemId(item, ["settlementId", "id"]) === settlementId ? { ...item, status: "REJECTED", rejectReason: reason } : item));
+      setItems((prev) =>
+        prev.map((item) =>
+          getItemId(item, ["settlementId", "id"]) === settlementId
+            ? { ...item, status: "REJECTED", rejectReason: reason }
+            : item,
+        ),
+      );
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
@@ -1329,36 +2405,65 @@ export function AdminSettlementsPage({ onBack, showToast }) {
 
   return (
     <AdminShell title="정산 관리" onBack={onBack}>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="정산 요청이 없습니다." emptyDescription="상인 정산 신청이 들어오면 이곳에서 처리할 수 있습니다." onRetry={reload} />
-      {status === "success" && items.map((settlement) => {
-        const settlementId = getItemId(settlement, ["settlementId", "id"]);
-        return (
-          <AdminCard key={settlementId}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <strong style={{ color: COLORS.primary }}>정산 #{settlementId}</strong>
-              <AdminStatusBadge status={settlement.status} />
-            </div>
-            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(settlement.amount)} 엽전</div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
-              가게 {settlement.shopId ?? "-"} · {settlement.bankName ?? "-"} {settlement.accountNumber ?? ""} · {settlement.accountHolder ?? "-"}
-            </div>
-            <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 14 }}>{formatDate(settlement.createdAt)}</div>
-            {settlement.rejectReason && <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>{settlement.rejectReason}</div>}
-            {settlement.status === "PENDING" && (
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <AdminButton tone="danger" onClick={() => handleDecision(settlement, "reject")} style={{ flex: 1 }}>거절</AdminButton>
-                <AdminButton onClick={() => handleDecision(settlement, "approve")} style={{ flex: 2 }}>승인</AdminButton>
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="정산 요청이 없습니다."
+        emptyDescription="상인 정산 신청이 들어오면 이곳에서 처리할 수 있습니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((settlement) => {
+          const settlementId = getItemId(settlement, ["settlementId", "id"]);
+          return (
+            <AdminCard key={settlementId}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary }}>정산 #{settlementId}</strong>
+                <AdminStatusBadge status={settlement.status} />
               </div>
-            )}
-          </AdminCard>
-        );
-      })}
+              <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>
+                {formatNumber(settlement.amount)} 엽전
+              </div>
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                가게 {settlement.shopId ?? "-"} · {settlement.bankName ?? "-"}{" "}
+                {settlement.accountNumber ?? ""} · {settlement.accountHolder ?? "-"}
+              </div>
+              <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 14 }}>
+                {formatDate(settlement.createdAt)}
+              </div>
+              {settlement.rejectReason && (
+                <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>
+                  {settlement.rejectReason}
+                </div>
+              )}
+              {settlement.status === "PENDING" && (
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <AdminButton
+                    tone="danger"
+                    onClick={() => handleDecision(settlement, "reject")}
+                    style={{ flex: 1 }}
+                  >
+                    거절
+                  </AdminButton>
+                  <AdminButton
+                    onClick={() => handleDecision(settlement, "approve")}
+                    style={{ flex: 2 }}
+                  >
+                    승인
+                  </AdminButton>
+                </div>
+              )}
+            </AdminCard>
+          );
+        })}
     </AdminShell>
   );
 }
 
 export function AdminAdsPage({ onBack, showToast }) {
-  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminAds({ size: 100 }));
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() =>
+    fetchAdminAds({ size: 100 }),
+  );
   const [detailById, setDetailById] = useState({});
   const [loadingDetailId, setLoadingDetailId] = useState(null);
 
@@ -1370,14 +2475,26 @@ export function AdminAdsPage({ onBack, showToast }) {
       if (decision === "approve") {
         await approveAd(adId);
         showToast("광고를 승인했습니다.");
-        setItems(prev => prev.map(item => getItemId(item, ["applicationId", "adId", "id"]) === adId ? { ...item, status: "APPROVED" } : item));
+        setItems((prev) =>
+          prev.map((item) =>
+            getItemId(item, ["applicationId", "adId", "id"]) === adId
+              ? { ...item, status: "APPROVED" }
+              : item,
+          ),
+        );
         return;
       }
       const reason = promptReason("광고 거절 사유를 입력해주세요.", "광고 조건 미충족");
       if (reason === null) return;
       await rejectAd(adId, reason);
       showToast("광고를 거절했습니다.");
-      setItems(prev => prev.map(item => getItemId(item, ["applicationId", "adId", "id"]) === adId ? { ...item, status: "REJECTED", rejectReason: reason } : item));
+      setItems((prev) =>
+        prev.map((item) =>
+          getItemId(item, ["applicationId", "adId", "id"]) === adId
+            ? { ...item, status: "REJECTED", rejectReason: reason }
+            : item,
+        ),
+      );
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
@@ -1387,7 +2504,7 @@ export function AdminAdsPage({ onBack, showToast }) {
     setLoadingDetailId(adId);
     try {
       const detail = await fetchAdminAd(adId);
-      setDetailById(prev => ({ ...prev, [adId]: detail }));
+      setDetailById((prev) => ({ ...prev, [adId]: detail }));
     } catch (error) {
       showToast(getApiErrorHint(error));
     } finally {
@@ -1397,45 +2514,77 @@ export function AdminAdsPage({ onBack, showToast }) {
 
   return (
     <AdminShell title="광고 신청 관리" onBack={onBack}>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="광고 신청이 없습니다." emptyDescription="상인의 광고 신청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다." onRetry={reload} />
-      {status === "success" && items.map((ad) => {
-        const adId = getItemId(ad, ["applicationId", "adId", "id"]);
-        return (
-          <AdminCard key={adId}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <strong style={{ color: COLORS.primary }}>광고 #{adId}</strong>
-              <AdminStatusBadge status={ad.status} />
-            </div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
-              가게 {ad.shopId ?? "-"} · {ad.adType ?? "BANNER"} · {ad.startDate ?? "-"} ~ {ad.endDate ?? "-"}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(ad.cost)} 엽전</div>
-            {detailById[adId] && (
-              <div style={{ marginTop: 8, fontSize: 14, color: COLORS.textMuted, lineHeight: 1.6 }}>
-                신청자 {detailById[adId].merchantId ?? detailById[adId].userId ?? "-"} · 제목 {detailById[adId].title ?? detailById[adId].adTitle ?? "-"}
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="광고 신청이 없습니다."
+        emptyDescription="상인의 광고 신청이 들어오면 이곳에서 승인 또는 거절할 수 있습니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((ad) => {
+          const adId = getItemId(ad, ["applicationId", "adId", "id"]);
+          return (
+            <AdminCard key={adId}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary }}>광고 #{adId}</strong>
+                <AdminStatusBadge status={ad.status} />
               </div>
-            )}
-            {ad.rejectReason && <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>{ad.rejectReason}</div>}
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <AdminButton tone="ghost" onClick={() => loadAdDetail(adId)} disabled={loadingDetailId === adId} style={{ flex: 1 }}>
-                {loadingDetailId === adId ? "조회 중" : "상세 조회"}
-              </AdminButton>
-              {ad.status === "PENDING" && (
-                <>
-                <AdminButton tone="danger" onClick={() => handleDecision(ad, "reject")} style={{ flex: 1 }}>거절</AdminButton>
-                <AdminButton onClick={() => handleDecision(ad, "approve")} style={{ flex: 2 }}>승인</AdminButton>
-                </>
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                가게 {ad.shopId ?? "-"} · {ad.adType ?? "BANNER"} · {ad.startDate ?? "-"} ~{" "}
+                {ad.endDate ?? "-"}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>
+                {formatNumber(ad.cost)} 엽전
+              </div>
+              {detailById[adId] && (
+                <div
+                  style={{ marginTop: 8, fontSize: 14, color: COLORS.textMuted, lineHeight: 1.6 }}
+                >
+                  신청자 {detailById[adId].merchantId ?? detailById[adId].userId ?? "-"} · 제목{" "}
+                  {detailById[adId].title ?? detailById[adId].adTitle ?? "-"}
+                </div>
               )}
-            </div>
-          </AdminCard>
-        );
-      })}
+              {ad.rejectReason && (
+                <div style={{ marginTop: 8, fontSize: 14, color: "#A32D2D" }}>
+                  {ad.rejectReason}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <AdminButton
+                  tone="ghost"
+                  onClick={() => loadAdDetail(adId)}
+                  disabled={loadingDetailId === adId}
+                  style={{ flex: 1 }}
+                >
+                  {loadingDetailId === adId ? "조회 중" : "상세 조회"}
+                </AdminButton>
+                {ad.status === "PENDING" && (
+                  <>
+                    <AdminButton
+                      tone="danger"
+                      onClick={() => handleDecision(ad, "reject")}
+                      style={{ flex: 1 }}
+                    >
+                      거절
+                    </AdminButton>
+                    <AdminButton onClick={() => handleDecision(ad, "approve")} style={{ flex: 2 }}>
+                      승인
+                    </AdminButton>
+                  </>
+                )}
+              </div>
+            </AdminCard>
+          );
+        })}
     </AdminShell>
   );
 }
 
 export function AdminCertificationsPage({ onBack, showToast }) {
-  const { items, setItems, status, errorMessage, reload } = useAdminList(() => fetchAdminCertifications({ size: 100 }));
+  const { items, setItems, status, errorMessage, reload } = useAdminList(() =>
+    fetchAdminCertifications({ size: 100 }),
+  );
 
   const handleCertification = async (certification, action) => {
     const certificationId = getItemId(certification, ["certificationId", "id"]);
@@ -1445,20 +2594,41 @@ export function AdminCertificationsPage({ onBack, showToast }) {
       if (action === "approve") {
         await approveCertification(certificationId);
         showToast("인증을 승인했습니다.");
-        setItems(prev => prev.map(item => getItemId(item, ["certificationId", "id"]) === certificationId ? { ...item, status: "APPROVED" } : item));
+        setItems((prev) =>
+          prev.map((item) =>
+            getItemId(item, ["certificationId", "id"]) === certificationId
+              ? { ...item, status: "APPROVED" }
+              : item,
+          ),
+        );
         return;
       }
-      const reason = promptReason(action === "cancel" ? "인증 취소 사유를 입력해주세요." : "인증 거절 사유를 입력해주세요.", action === "cancel" ? "관리자 인증 취소" : "인증 조건 미충족");
+      const reason = promptReason(
+        action === "cancel" ? "인증 취소 사유를 입력해주세요." : "인증 거절 사유를 입력해주세요.",
+        action === "cancel" ? "관리자 인증 취소" : "인증 조건 미충족",
+      );
       if (reason === null) return;
       if (action === "cancel") {
         await cancelCertification(certificationId, reason);
         showToast("인증을 취소했습니다.");
-        setItems(prev => prev.map(item => getItemId(item, ["certificationId", "id"]) === certificationId ? { ...item, status: "CANCELLED" } : item));
+        setItems((prev) =>
+          prev.map((item) =>
+            getItemId(item, ["certificationId", "id"]) === certificationId
+              ? { ...item, status: "CANCELLED" }
+              : item,
+          ),
+        );
         return;
       }
       await rejectCertification(certificationId, reason);
       showToast("인증을 거절했습니다.");
-      setItems(prev => prev.map(item => getItemId(item, ["certificationId", "id"]) === certificationId ? { ...item, status: "REJECTED" } : item));
+      setItems((prev) =>
+        prev.map((item) =>
+          getItemId(item, ["certificationId", "id"]) === certificationId
+            ? { ...item, status: "REJECTED" }
+            : item,
+        ),
+      );
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
@@ -1466,36 +2636,68 @@ export function AdminCertificationsPage({ onBack, showToast }) {
 
   return (
     <AdminShell title="가게 인증 관리" onBack={onBack}>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="인증 신청이 없습니다." emptyDescription="가게 인증 신청이 들어오면 이곳에서 처리할 수 있습니다." onRetry={reload} />
-      {status === "success" && items.map((certification) => {
-        const certificationId = getItemId(certification, ["certificationId", "id"]);
-        return (
-          <AdminCard key={certificationId}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <strong style={{ color: COLORS.primary }}>인증 #{certificationId}</strong>
-              <AdminStatusBadge status={certification.status} />
-            </div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
-              가게 {certification.shopId ?? "-"} · 신청 {formatDate(certification.submittedAt)} · 처리 {formatDate(certification.processedAt)}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              {certification.status === "PENDING" && (
-                <>
-                  <AdminButton tone="danger" onClick={() => handleCertification(certification, "reject")} style={{ flex: 1 }}>거절</AdminButton>
-                  <AdminButton onClick={() => handleCertification(certification, "approve")} style={{ flex: 2 }}>승인</AdminButton>
-                </>
-              )}
-              {certification.status === "APPROVED" && <AdminButton tone="danger" onClick={() => handleCertification(certification, "cancel")} style={{ flex: 1 }}>인증 취소</AdminButton>}
-            </div>
-          </AdminCard>
-        );
-      })}
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="인증 신청이 없습니다."
+        emptyDescription="가게 인증 신청이 들어오면 이곳에서 처리할 수 있습니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((certification) => {
+          const certificationId = getItemId(certification, ["certificationId", "id"]);
+          return (
+            <AdminCard key={certificationId}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary }}>인증 #{certificationId}</strong>
+                <AdminStatusBadge status={certification.status} />
+              </div>
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                가게 {certification.shopId ?? "-"} · 신청 {formatDate(certification.submittedAt)} ·
+                처리 {formatDate(certification.processedAt)}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                {certification.status === "PENDING" && (
+                  <>
+                    <AdminButton
+                      tone="danger"
+                      onClick={() => handleCertification(certification, "reject")}
+                      style={{ flex: 1 }}
+                    >
+                      거절
+                    </AdminButton>
+                    <AdminButton
+                      onClick={() => handleCertification(certification, "approve")}
+                      style={{ flex: 2 }}
+                    >
+                      승인
+                    </AdminButton>
+                  </>
+                )}
+                {certification.status === "APPROVED" && (
+                  <AdminButton
+                    tone="danger"
+                    onClick={() => handleCertification(certification, "cancel")}
+                    style={{ flex: 1 }}
+                  >
+                    인증 취소
+                  </AdminButton>
+                )}
+              </div>
+            </AdminCard>
+          );
+        })}
     </AdminShell>
   );
 }
 
 export function AdminSupportPage({ onBack, showToast }) {
-  const { items: rooms, status, errorMessage, reload } = useAdminList(() => fetchAdminSupportRooms({ size: 100 }));
+  const {
+    items: rooms,
+    status,
+    errorMessage,
+    reload,
+  } = useAdminList(() => fetchAdminSupportRooms({ size: 100 }));
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messagesStatus, setMessagesStatus] = useState("idle");
@@ -1550,7 +2752,7 @@ export function AdminSupportPage({ onBack, showToast }) {
       role: "ADMIN",
       onStatus: setRealtimeStatus,
       onMessage: (message) => {
-        setMessages(prev => mergeSupportMessages(prev, [message]));
+        setMessages((prev) => mergeSupportMessages(prev, [message]));
         setMessagesStatus("success");
       },
       onError: (error) => {
@@ -1642,46 +2844,121 @@ export function AdminSupportPage({ onBack, showToast }) {
 
   return (
     <AdminShell title="상담 관리" onBack={onBack}>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="상담방이 없습니다." emptyDescription="고객센터 상담방이 생성되면 이곳에서 확인할 수 있습니다." onRetry={reload} />
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="상담방이 없습니다."
+        emptyDescription="고객센터 상담방이 생성되면 이곳에서 확인할 수 있습니다."
+        onRetry={reload}
+      />
       {status === "success" && (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: 12, padding: "0 16px 16px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)",
+            gap: 12,
+            padding: "0 16px 16px",
+          }}
+        >
           <div>
             {rooms.map((room) => (
-              <div key={room.supportRoomId} onClick={() => loadMessages(room)} style={{ background: selectedRoom?.supportRoomId === room.supportRoomId ? COLORS.greenBg : "#fff", borderRadius: 14, padding: 14, marginTop: 10, border: "0.5px solid rgba(0,0,0,0.06)", cursor: "pointer" }}>
+              <div
+                key={room.supportRoomId}
+                onClick={() => loadMessages(room)}
+                style={{
+                  background:
+                    selectedRoom?.supportRoomId === room.supportRoomId ? COLORS.greenBg : "#fff",
+                  borderRadius: 14,
+                  padding: 14,
+                  marginTop: 10,
+                  border: "0.5px solid rgba(0,0,0,0.06)",
+                  cursor: "pointer",
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <strong style={{ color: COLORS.primary }}>상담 #{room.supportRoomId}</strong>
                   <AdminStatusBadge status={room.status} />
                 </div>
-                <div style={{ marginTop: 6, fontSize: 14, color: COLORS.textMuted }}>{room.userNickname ?? `사용자 ${room.userId ?? "-"}`}</div>
-                <div style={{ marginTop: 6, fontSize: 14, color: COLORS.textMuted }}>{room.lastMessage?.content ?? "아직 메시지가 없습니다."}</div>
+                <div style={{ marginTop: 6, fontSize: 14, color: COLORS.textMuted }}>
+                  {room.userNickname ?? `사용자 ${room.userId ?? "-"}`}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 14, color: COLORS.textMuted }}>
+                  {room.lastMessage?.content ?? "아직 메시지가 없습니다."}
+                </div>
               </div>
             ))}
           </div>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginTop: 10, border: "0.5px solid rgba(0,0,0,0.06)", minHeight: 320 }}>
-            {!selectedRoom && <EmptyState icon="💬" title="상담방을 선택해주세요." description="왼쪽 목록에서 상담방을 누르면 메시지를 확인할 수 있습니다." />}
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              padding: 16,
+              marginTop: 10,
+              border: "0.5px solid rgba(0,0,0,0.06)",
+              minHeight: 320,
+            }}
+          >
+            {!selectedRoom && (
+              <EmptyState
+                icon="💬"
+                title="상담방을 선택해주세요."
+                description="왼쪽 목록에서 상담방을 누르면 메시지를 확인할 수 있습니다."
+              />
+            )}
             {selectedRoom && (
               <>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
                   <div>
-                    <strong style={{ color: COLORS.primary }}>상담 #{selectedRoom.supportRoomId}</strong>
+                    <strong style={{ color: COLORS.primary }}>
+                      상담 #{selectedRoom.supportRoomId}
+                    </strong>
                     <div style={{ marginTop: 4, fontSize: 13, color: COLORS.textMuted }}>
                       {realtimeStatus === "connected" ? "실시간 연결됨" : "실시간 연결 확인 중"}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <AdminButton tone="ghost" onClick={() => handleAssign(selectedRoom)}>배정</AdminButton>
-                    <AdminButton tone="danger" onClick={() => handleClose(selectedRoom)}>종료</AdminButton>
+                    <AdminButton tone="ghost" onClick={() => handleAssign(selectedRoom)}>
+                      배정
+                    </AdminButton>
+                    <AdminButton tone="danger" onClick={() => handleClose(selectedRoom)}>
+                      종료
+                    </AdminButton>
                   </div>
                 </div>
                 {messagesStatus === "loading" && <SkeletonList count={3} />}
-                {messagesStatus === "empty" && <EmptyState icon="💬" title="상담 메시지가 없습니다." description="상담 메시지가 생기면 이곳에 표시됩니다." />}
-                {messagesStatus === "error" && <ErrorState title="메시지를 불러오지 못했습니다." description="상담 메시지 조회 API 상태를 확인해주세요." />}
-                {messagesStatus === "success" && messages.map((message) => (
-                  <div key={message.messageId} style={{ padding: "10px 0", borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>
-                    <div style={{ fontSize: 13, color: COLORS.textMuted }}>{message.senderRole ?? "UNKNOWN"} · {formatDate(message.sentAt)}</div>
-                    <AdminSupportMessageBody message={message} />
-                  </div>
-                ))}
+                {messagesStatus === "empty" && (
+                  <EmptyState
+                    icon="💬"
+                    title="상담 메시지가 없습니다."
+                    description="상담 메시지가 생기면 이곳에 표시됩니다."
+                  />
+                )}
+                {messagesStatus === "error" && (
+                  <ErrorState
+                    title="메시지를 불러오지 못했습니다."
+                    description="상담 메시지 조회 API 상태를 확인해주세요."
+                  />
+                )}
+                {messagesStatus === "success" &&
+                  messages.map((message) => (
+                    <div
+                      key={message.messageId}
+                      style={{ padding: "10px 0", borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}
+                    >
+                      <div style={{ fontSize: 13, color: COLORS.textMuted }}>
+                        {message.senderRole ?? "UNKNOWN"} · {formatDate(message.sentAt)}
+                      </div>
+                      <AdminSupportMessageBody message={message} />
+                    </div>
+                  ))}
                 <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                   <label
                     title="이미지/파일 첨부"
@@ -1695,7 +2972,8 @@ export function AdminSupportPage({ onBack, showToast }) {
                       justifyContent: "center",
                       color: COLORS.primary,
                       background: "#fff",
-                      cursor: selectedRoom.status === "CLOSED" || uploading ? "not-allowed" : "pointer",
+                      cursor:
+                        selectedRoom.status === "CLOSED" || uploading ? "not-allowed" : "pointer",
                       opacity: selectedRoom.status === "CLOSED" || uploading ? 0.45 : 1,
                       fontWeight: 900,
                     }}
@@ -1714,10 +2992,19 @@ export function AdminSupportPage({ onBack, showToast }) {
                     disabled={selectedRoom.status === "CLOSED" || uploading}
                     onChange={(event) => setReply(event.target.value)}
                     onKeyDown={(event) => event.key === "Enter" && handleSend()}
-                    placeholder={selectedRoom.status === "CLOSED" ? "종료된 상담입니다." : "관리자 답장을 입력하세요."}
+                    placeholder={
+                      selectedRoom.status === "CLOSED"
+                        ? "종료된 상담입니다."
+                        : "관리자 답장을 입력하세요."
+                    }
                     style={{ ...adminInputStyle, flex: 1 }}
                   />
-                  <AdminButton onClick={handleSend} disabled={!reply.trim() || sending || uploading || selectedRoom.status === "CLOSED"}>
+                  <AdminButton
+                    onClick={handleSend}
+                    disabled={
+                      !reply.trim() || sending || uploading || selectedRoom.status === "CLOSED"
+                    }
+                  >
                     {uploading ? "첨부 중" : sending ? "전송 중" : "답장"}
                   </AdminButton>
                 </div>
@@ -1740,7 +3027,9 @@ const EMPTY_BANNER_FORM = {
 };
 
 export function AdminBannersPage({ onBack, showToast }) {
-  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminBanners({ size: 100 }));
+  const { items, status, errorMessage, reload } = useAdminList(() =>
+    fetchAdminBanners({ size: 100 }),
+  );
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_BANNER_FORM);
   const isEditing = editingId != null;
@@ -1800,32 +3089,82 @@ export function AdminBannersPage({ onBack, showToast }) {
     <AdminShell title="배너 관리" onBack={onBack}>
       <AdminCard>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <input placeholder="제목" value={form.title} onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="우선순위" type="number" value={form.priority} onChange={(e) => setForm(prev => ({ ...prev, priority: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="이미지 URL" value={form.imageUrl} onChange={(e) => setForm(prev => ({ ...prev, imageUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
-          <input placeholder="링크 URL" value={form.linkUrl} onChange={(e) => setForm(prev => ({ ...prev, linkUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
-          <input type="date" value={form.startDate} onChange={(e) => setForm(prev => ({ ...prev, startDate: e.target.value }))} style={adminInputStyle} />
-          <input type="date" value={form.endDate} onChange={(e) => setForm(prev => ({ ...prev, endDate: e.target.value }))} style={adminInputStyle} />
+          <input
+            placeholder="제목"
+            value={form.title}
+            onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+            style={adminInputStyle}
+          />
+          <input
+            placeholder="우선순위"
+            type="number"
+            value={form.priority}
+            onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}
+            style={adminInputStyle}
+          />
+          <input
+            placeholder="이미지 URL"
+            value={form.imageUrl}
+            onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+            style={{ ...adminInputStyle, gridColumn: "1 / -1" }}
+          />
+          <input
+            placeholder="링크 URL"
+            value={form.linkUrl}
+            onChange={(e) => setForm((prev) => ({ ...prev, linkUrl: e.target.value }))}
+            style={{ ...adminInputStyle, gridColumn: "1 / -1" }}
+          />
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
+            style={adminInputStyle}
+          />
+          <input
+            type="date"
+            value={form.endDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
+            style={adminInputStyle}
+          />
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          {isEditing && <AdminButton tone="subtle" onClick={startCreate} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
-          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "배너 등록"}</AdminButton>
+          {isEditing && (
+            <AdminButton tone="subtle" onClick={startCreate} style={{ flex: 1 }}>
+              새 등록으로 전환
+            </AdminButton>
+          )}
+          <AdminButton onClick={save} style={{ flex: 2 }}>
+            {isEditing ? "수정 저장" : "배너 등록"}
+          </AdminButton>
         </div>
       </AdminCard>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="등록된 배너가 없습니다." emptyDescription="운영 배너를 등록하면 이곳에 표시됩니다." onRetry={reload} />
-      {status === "success" && items.map((banner) => (
-        <AdminCard key={banner.id}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-            <strong style={{ color: COLORS.primary }}>{banner.title}</strong>
-            <AdminStatusBadge status={banner.status} />
-          </div>
-          <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>우선순위 {banner.priority ?? 0} · {banner.startDate ?? "-"} ~ {banner.endDate ?? "-"}</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <AdminButton tone="subtle" onClick={() => startEdit(banner)} style={{ flex: 1 }}>수정</AdminButton>
-            <AdminButton tone="danger" onClick={() => remove(banner.id)} style={{ flex: 1 }}>삭제</AdminButton>
-          </div>
-        </AdminCard>
-      ))}
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="등록된 배너가 없습니다."
+        emptyDescription="운영 배너를 등록하면 이곳에 표시됩니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((banner) => (
+          <AdminCard key={banner.id}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ color: COLORS.primary }}>{banner.title}</strong>
+              <AdminStatusBadge status={banner.status} />
+            </div>
+            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+              우선순위 {banner.priority ?? 0} · {banner.startDate ?? "-"} ~ {banner.endDate ?? "-"}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <AdminButton tone="subtle" onClick={() => startEdit(banner)} style={{ flex: 1 }}>
+                수정
+              </AdminButton>
+              <AdminButton tone="danger" onClick={() => remove(banner.id)} style={{ flex: 1 }}>
+                삭제
+              </AdminButton>
+            </div>
+          </AdminCard>
+        ))}
     </AdminShell>
   );
 }
@@ -1856,7 +3195,11 @@ export function AdminFaqsPage({ onBack, showToast }) {
 
   const edit = (faq) => {
     setEditingId(faq.faqId ?? faq.id);
-    setForm({ question: faq.question ?? "", answer: faq.answer ?? "", category: faq.category ?? "GENERAL" });
+    setForm({
+      question: faq.question ?? "",
+      answer: faq.answer ?? "",
+      category: faq.category ?? "GENERAL",
+    });
   };
 
   const save = async () => {
@@ -1888,32 +3231,66 @@ export function AdminFaqsPage({ onBack, showToast }) {
   return (
     <AdminShell title="FAQ 관리" onBack={onBack}>
       <AdminCard>
-        <input placeholder="카테고리" value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} style={adminInputStyle} />
-        <input placeholder="질문" value={form.question} onChange={(e) => setForm(prev => ({ ...prev, question: e.target.value }))} style={{ ...adminInputStyle, marginTop: 8 }} />
-        <textarea placeholder="답변" value={form.answer} onChange={(e) => setForm(prev => ({ ...prev, answer: e.target.value }))} style={{ ...adminInputStyle, marginTop: 8, minHeight: 90, resize: "vertical" }} />
+        <input
+          placeholder="카테고리"
+          value={form.category}
+          onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+          style={adminInputStyle}
+        />
+        <input
+          placeholder="질문"
+          value={form.question}
+          onChange={(e) => setForm((prev) => ({ ...prev, question: e.target.value }))}
+          style={{ ...adminInputStyle, marginTop: 8 }}
+        />
+        <textarea
+          placeholder="답변"
+          value={form.answer}
+          onChange={(e) => setForm((prev) => ({ ...prev, answer: e.target.value }))}
+          style={{ ...adminInputStyle, marginTop: 8, minHeight: 90, resize: "vertical" }}
+        />
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          {isEditing && <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
-          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "FAQ 등록"}</AdminButton>
+          {isEditing && (
+            <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>
+              새 등록으로 전환
+            </AdminButton>
+          )}
+          <AdminButton onClick={save} style={{ flex: 2 }}>
+            {isEditing ? "수정 저장" : "FAQ 등록"}
+          </AdminButton>
         </div>
       </AdminCard>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="등록된 FAQ가 없습니다." emptyDescription="FAQ를 등록하면 이곳에 표시됩니다." onRetry={reload} />
-      {status === "success" && items.map((faq) => {
-        const faqId = faq.faqId ?? faq.id;
-        return (
-          <AdminCard key={faqId}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <strong style={{ color: COLORS.primary }}>{faq.question}</strong>
-              <AdminStatusBadge status={faq.isActive === false ? "HIDDEN" : "ACTIVE"} />
-            </div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{faq.category} · {formatDate(faq.updatedAt ?? faq.createdAt)}</div>
-            <div style={{ marginTop: 8, color: COLORS.text }}>{faq.answer}</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <AdminButton tone="subtle" onClick={() => edit(faq)} style={{ flex: 1 }}>수정</AdminButton>
-              <AdminButton tone="danger" onClick={() => remove(faqId)} style={{ flex: 1 }}>삭제</AdminButton>
-            </div>
-          </AdminCard>
-        );
-      })}
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="등록된 FAQ가 없습니다."
+        emptyDescription="FAQ를 등록하면 이곳에 표시됩니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((faq) => {
+          const faqId = faq.faqId ?? faq.id;
+          return (
+            <AdminCard key={faqId}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary }}>{faq.question}</strong>
+                <AdminStatusBadge status={faq.isActive === false ? "HIDDEN" : "ACTIVE"} />
+              </div>
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                {faq.category} · {formatDate(faq.updatedAt ?? faq.createdAt)}
+              </div>
+              <div style={{ marginTop: 8, color: COLORS.text }}>{faq.answer}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <AdminButton tone="subtle" onClick={() => edit(faq)} style={{ flex: 1 }}>
+                  수정
+                </AdminButton>
+                <AdminButton tone="danger" onClick={() => remove(faqId)} style={{ flex: 1 }}>
+                  삭제
+                </AdminButton>
+              </div>
+            </AdminCard>
+          );
+        })}
     </AdminShell>
   );
 }
@@ -1941,7 +3318,10 @@ const PRODUCT_STATUS_LABELS = {
 function ProductFormField({ label, required = false, hint, wide = false, children }) {
   return (
     <label className={wide ? "admin-product-field wide" : "admin-product-field"}>
-      <span>{label}{required && <b>필수</b>}</span>
+      <span>
+        {label}
+        {required && <b>필수</b>}
+      </span>
       {children}
       {hint && <small>{hint}</small>}
     </label>
@@ -1955,15 +3335,20 @@ function parseImageUrlsInput(value) {
     const parsed = JSON.parse(trimmed);
     return Array.isArray(parsed) ? parsed.filter(Boolean) : undefined;
   }
-  return trimmed.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+  return trimmed
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function AdminProductsPage({ onBack, showToast }) {
   const [filterCategory, setFilterCategory] = useState("");
-  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminProducts({
-    category: filterCategory,
-    size: 100,
-  }));
+  const { items, status, errorMessage, reload } = useAdminList(() =>
+    fetchAdminProducts({
+      category: filterCategory,
+      size: 100,
+    }),
+  );
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_PRODUCT_FORM);
   const isEditing = editingId != null;
@@ -1983,7 +3368,9 @@ export function AdminProductsPage({ onBack, showToast }) {
       price: String(product.price ?? ""),
       originalPrice: String(product.originalPrice ?? ""),
       stock: String(product.stock ?? ""),
-      imageUrls: Array.isArray(product.imageUrls) ? product.imageUrls.join("\n") : product.imageUrls ?? "",
+      imageUrls: Array.isArray(product.imageUrls)
+        ? product.imageUrls.join("\n")
+        : (product.imageUrls ?? ""),
       merchantName: product.merchantName ?? "",
       validityDays: String(product.validityDays ?? ""),
       maxPerPerson: String(product.maxPerPerson ?? "1"),
@@ -1992,7 +3379,13 @@ export function AdminProductsPage({ onBack, showToast }) {
   };
 
   const save = async () => {
-    if (!form.name.trim() || !form.category.trim() || !form.price || !form.stock || !form.maxPerPerson) {
+    if (
+      !form.name.trim() ||
+      !form.category.trim() ||
+      !form.price ||
+      !form.stock ||
+      !form.maxPerPerson
+    ) {
       showToast("상품명, 카테고리, 가격, 재고, 1인 제한 수량은 필수입니다.");
       return;
     }
@@ -2049,16 +3442,25 @@ export function AdminProductsPage({ onBack, showToast }) {
     <AdminShell title="상품 관리" onBack={onBack}>
       <AdminCard style={{ background: "#FFF7D7" }}>
         <div style={{ fontSize: 14, color: "#8A4B00", fontWeight: 700 }}>
-          관리자 상품 목록 API가 아직 공개되지 않아 판매 중인 공개 상품만 표시합니다. 숨김 상품 조회와 상태 필터는 백엔드 API 공개 후 지원됩니다.
+          관리자 상품 목록 API가 아직 공개되지 않아 판매 중인 공개 상품만 표시합니다. 숨김 상품
+          조회와 상태 필터는 백엔드 API 공개 후 지원됩니다.
         </div>
       </AdminCard>
       <AdminCard>
         <div className="admin-product-filter-row">
           <label>
             <span>카테고리</span>
-            <select value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)} style={adminInputStyle}>
+            <select
+              value={filterCategory}
+              onChange={(event) => setFilterCategory(event.target.value)}
+              style={adminInputStyle}
+            >
               <option value="">전체 카테고리</option>
-              {PRODUCT_CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {PRODUCT_CATEGORIES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </label>
           <AdminButton onClick={reload}>목록 조회</AdminButton>
@@ -2070,22 +3472,44 @@ export function AdminProductsPage({ onBack, showToast }) {
             <strong>{isEditing ? "상품 수정" : "새 상품 등록"}</strong>
             <span>필수 항목만 입력해도 바로 등록할 수 있습니다.</span>
           </div>
-          {isEditing && <AdminStatusBadge status={PRODUCT_STATUS_LABELS[form.status] ?? form.status} />}
+          {isEditing && (
+            <AdminStatusBadge status={PRODUCT_STATUS_LABELS[form.status] ?? form.status} />
+          )}
         </div>
 
         <div className="admin-product-form-section">
           <h3>기본 정보</h3>
           <div className="admin-product-form-grid">
             <ProductFormField label="상품명" required>
-              <input maxLength={100} placeholder="예: 경복궁 입장권" value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} style={adminInputStyle} />
+              <input
+                maxLength={100}
+                placeholder="예: 경복궁 입장권"
+                value={form.name}
+                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                style={adminInputStyle}
+              />
             </ProductFormField>
             <ProductFormField label="카테고리" required>
-              <select value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} style={adminInputStyle}>
-                {PRODUCT_CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              <select
+                value={form.category}
+                onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+                style={adminInputStyle}
+              >
+                {PRODUCT_CATEGORIES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </ProductFormField>
             <ProductFormField label="상품 설명" hint={`${form.description.length} / 2,000자`} wide>
-              <textarea maxLength={2000} placeholder="사용 방법, 포함 사항, 주의사항 등을 입력하세요." value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, minHeight: 90, resize: "vertical" }} />
+              <textarea
+                maxLength={2000}
+                placeholder="사용 방법, 포함 사항, 주의사항 등을 입력하세요."
+                value={form.description}
+                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                style={{ ...adminInputStyle, minHeight: 90, resize: "vertical" }}
+              />
             </ProductFormField>
           </div>
         </div>
@@ -2095,38 +3519,74 @@ export function AdminProductsPage({ onBack, showToast }) {
           <div className="admin-product-form-grid">
             <ProductFormField label="판매가" required hint="사용자에게 실제로 차감되는 엽전">
               <div className="admin-product-unit-input">
-                <input type="number" min="1" placeholder="0" value={form.price} onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value }))} />
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="0"
+                  value={form.price}
+                  onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
+                />
                 <span>엽전</span>
               </div>
             </ProductFormField>
             <ProductFormField label="정가" hint="할인 전 가격, 선택 사항">
               <div className="admin-product-unit-input">
-                <input type="number" min="0" placeholder="선택" value={form.originalPrice} onChange={(e) => setForm(prev => ({ ...prev, originalPrice: e.target.value }))} />
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="선택"
+                  value={form.originalPrice}
+                  onChange={(e) => setForm((prev) => ({ ...prev, originalPrice: e.target.value }))}
+                />
                 <span>엽전</span>
               </div>
             </ProductFormField>
             <ProductFormField label="재고" required>
               <div className="admin-product-unit-input">
-                <input type="number" min="0" value={form.stock} onChange={(e) => setForm(prev => ({ ...prev, stock: e.target.value }))} />
+                <input
+                  type="number"
+                  min="0"
+                  value={form.stock}
+                  onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
+                />
                 <span>개</span>
               </div>
             </ProductFormField>
             <ProductFormField label="1인 구매 제한" required>
               <div className="admin-product-unit-input">
-                <input type="number" min="1" value={form.maxPerPerson} onChange={(e) => setForm(prev => ({ ...prev, maxPerPerson: e.target.value }))} />
+                <input
+                  type="number"
+                  min="1"
+                  value={form.maxPerPerson}
+                  onChange={(e) => setForm((prev) => ({ ...prev, maxPerPerson: e.target.value }))}
+                />
                 <span>개</span>
               </div>
             </ProductFormField>
             <ProductFormField label="유효 기간" hint="미입력 시 별도 만료일 없음">
               <div className="admin-product-unit-input">
-                <input type="number" min="1" placeholder="선택" value={form.validityDays} onChange={(e) => setForm(prev => ({ ...prev, validityDays: e.target.value }))} />
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="선택"
+                  value={form.validityDays}
+                  onChange={(e) => setForm((prev) => ({ ...prev, validityDays: e.target.value }))}
+                />
                 <span>일</span>
               </div>
             </ProductFormField>
             {isEditing && (
               <ProductFormField label="판매 상태">
-                <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
-                  {Object.entries(PRODUCT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
+                  style={adminInputStyle}
+                >
+                  {Object.entries(PRODUCT_STATUS_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </ProductFormField>
             )}
@@ -2137,37 +3597,70 @@ export function AdminProductsPage({ onBack, showToast }) {
           <h3>선택 정보</h3>
           <div className="admin-product-form-grid">
             <ProductFormField label="판매처 이름" hint="목록과 상세 화면에 노출할 상인·기관명">
-              <input maxLength={100} placeholder="예: 경복궁 관리소" value={form.merchantName} onChange={(e) => setForm(prev => ({ ...prev, merchantName: e.target.value }))} style={adminInputStyle} />
+              <input
+                maxLength={100}
+                placeholder="예: 경복궁 관리소"
+                value={form.merchantName}
+                onChange={(e) => setForm((prev) => ({ ...prev, merchantName: e.target.value }))}
+                style={adminInputStyle}
+              />
             </ProductFormField>
             <ProductFormField label="이미지 URL" hint="한 줄에 하나씩, 최대 10개" wide>
-              <textarea placeholder={"https://example.com/image-1.jpg\nhttps://example.com/image-2.jpg"} value={form.imageUrls} onChange={(e) => setForm(prev => ({ ...prev, imageUrls: e.target.value }))} style={{ ...adminInputStyle, minHeight: 76, resize: "vertical" }} />
+              <textarea
+                placeholder={"https://example.com/image-1.jpg\nhttps://example.com/image-2.jpg"}
+                value={form.imageUrls}
+                onChange={(e) => setForm((prev) => ({ ...prev, imageUrls: e.target.value }))}
+                style={{ ...adminInputStyle, minHeight: 76, resize: "vertical" }}
+              />
             </ProductFormField>
           </div>
         </div>
 
         <div className="admin-product-form-actions">
-          {isEditing && <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
-          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "상품 등록"}</AdminButton>
+          {isEditing && (
+            <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>
+              새 등록으로 전환
+            </AdminButton>
+          )}
+          <AdminButton onClick={save} style={{ flex: 2 }}>
+            {isEditing ? "수정 저장" : "상품 등록"}
+          </AdminButton>
         </div>
       </AdminCard>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="표시할 상품이 없습니다." emptyDescription="상품을 등록하면 이곳에 표시됩니다." onRetry={reload} />
-      {status === "success" && items.map((product) => {
-        const productId = product.productId ?? product.id;
-        return (
-          <AdminCard key={productId}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <strong style={{ color: COLORS.primary }}>{product.name}</strong>
-              <AdminStatusBadge status={product.status ?? "ACTIVE"} />
-            </div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{getProductCategoryLabel(product.category)} · 재고 {formatNumber(product.stock)} · 판매 {formatNumber(product.soldCount)}</div>
-            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>{formatNumber(product.price)} 엽전</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <AdminButton tone="subtle" onClick={() => edit(product)} style={{ flex: 1 }}>수정</AdminButton>
-              <AdminButton tone="danger" onClick={() => remove(productId)} style={{ flex: 1 }}>숨김</AdminButton>
-            </div>
-          </AdminCard>
-        );
-      })}
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="표시할 상품이 없습니다."
+        emptyDescription="상품을 등록하면 이곳에 표시됩니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((product) => {
+          const productId = product.productId ?? product.id;
+          return (
+            <AdminCard key={productId}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary }}>{product.name}</strong>
+                <AdminStatusBadge status={product.status ?? "ACTIVE"} />
+              </div>
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                {getProductCategoryLabel(product.category)} · 재고 {formatNumber(product.stock)} ·
+                판매 {formatNumber(product.soldCount)}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.primary }}>
+                {formatNumber(product.price)} 엽전
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <AdminButton tone="subtle" onClick={() => edit(product)} style={{ flex: 1 }}>
+                  수정
+                </AdminButton>
+                <AdminButton tone="danger" onClick={() => remove(productId)} style={{ flex: 1 }}>
+                  숨김
+                </AdminButton>
+              </div>
+            </AdminCard>
+          );
+        })}
     </AdminShell>
   );
 }
@@ -2185,7 +3678,9 @@ const EMPTY_FESTIVAL_FORM = {
 };
 
 export function AdminFestivalsPage({ onBack, showToast }) {
-  const { items, status, errorMessage, reload } = useAdminList(() => fetchAdminFestivals({ size: 100 }));
+  const { items, status, errorMessage, reload } = useAdminList(() =>
+    fetchAdminFestivals({ size: 100 }),
+  );
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FESTIVAL_FORM);
   const isEditing = editingId != null;
@@ -2212,7 +3707,13 @@ export function AdminFestivalsPage({ onBack, showToast }) {
   };
 
   const save = async () => {
-    if (!form.name.trim() || !form.region.trim() || !form.address.trim() || !form.startDate || !form.endDate) {
+    if (
+      !form.name.trim() ||
+      !form.region.trim() ||
+      !form.address.trim() ||
+      !form.startDate ||
+      !form.endDate
+    ) {
       showToast("축제명, 지역, 주소, 시작일, 종료일은 필수입니다.");
       return;
     }
@@ -2252,44 +3753,107 @@ export function AdminFestivalsPage({ onBack, showToast }) {
     <AdminShell title="축제 관리" onBack={onBack}>
       <AdminCard>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <input placeholder="축제명" value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="지역" value={form.region} onChange={(e) => setForm(prev => ({ ...prev, region: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="주소" value={form.address} onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
-          <input type="date" value={form.startDate} onChange={(e) => setForm(prev => ({ ...prev, startDate: e.target.value }))} style={adminInputStyle} />
-          <input type="date" value={form.endDate} onChange={(e) => setForm(prev => ({ ...prev, endDate: e.target.value }))} style={adminInputStyle} />
-          <input placeholder="이미지 URL" value={form.imageUrl} onChange={(e) => setForm(prev => ({ ...prev, imageUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
-          <input placeholder="관련 URL" value={form.relatedUrl} onChange={(e) => setForm(prev => ({ ...prev, relatedUrl: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1" }} />
+          <input
+            placeholder="축제명"
+            value={form.name}
+            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+            style={adminInputStyle}
+          />
+          <input
+            placeholder="지역"
+            value={form.region}
+            onChange={(e) => setForm((prev) => ({ ...prev, region: e.target.value }))}
+            style={adminInputStyle}
+          />
+          <input
+            placeholder="주소"
+            value={form.address}
+            onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+            style={{ ...adminInputStyle, gridColumn: "1 / -1" }}
+          />
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
+            style={adminInputStyle}
+          />
+          <input
+            type="date"
+            value={form.endDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
+            style={adminInputStyle}
+          />
+          <input
+            placeholder="이미지 URL"
+            value={form.imageUrl}
+            onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+            style={{ ...adminInputStyle, gridColumn: "1 / -1" }}
+          />
+          <input
+            placeholder="관련 URL"
+            value={form.relatedUrl}
+            onChange={(e) => setForm((prev) => ({ ...prev, relatedUrl: e.target.value }))}
+            style={{ ...adminInputStyle, gridColumn: "1 / -1" }}
+          />
           {isEditing && (
-            <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
+            <select
+              value={form.status}
+              onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
+              style={adminInputStyle}
+            >
               <option value="ACTIVE">ACTIVE</option>
               <option value="HIDDEN">HIDDEN</option>
               <option value="DELETED">DELETED</option>
             </select>
           )}
-          <textarea placeholder="축제 설명" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 80, resize: "vertical" }} />
+          <textarea
+            placeholder="축제 설명"
+            value={form.description}
+            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+            style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 80, resize: "vertical" }}
+          />
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          {isEditing && <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>새 등록으로 전환</AdminButton>}
-          <AdminButton onClick={save} style={{ flex: 2 }}>{isEditing ? "수정 저장" : "축제 등록"}</AdminButton>
+          {isEditing && (
+            <AdminButton tone="subtle" onClick={reset} style={{ flex: 1 }}>
+              새 등록으로 전환
+            </AdminButton>
+          )}
+          <AdminButton onClick={save} style={{ flex: 2 }}>
+            {isEditing ? "수정 저장" : "축제 등록"}
+          </AdminButton>
         </div>
       </AdminCard>
-      <AdminLoadState status={status} errorMessage={errorMessage} emptyTitle="등록된 축제가 없습니다." emptyDescription="축제를 등록하거나 데이터를 수집하면 이곳에 표시됩니다." onRetry={reload} />
-      {status === "success" && items.map((festival) => {
-        const festivalId = festival.festivalId ?? festival.id;
-        return (
-          <AdminCard key={festivalId}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <strong style={{ color: COLORS.primary }}>{festival.name}</strong>
-              <AdminStatusBadge status={festival.status} />
-            </div>
-            <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>{festival.region ?? "-"} · {festival.startDate ?? "-"} ~ {festival.endDate ?? "-"}</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <AdminButton tone="subtle" onClick={() => edit(festival)} style={{ flex: 1 }}>수정</AdminButton>
-              <AdminButton tone="danger" onClick={() => remove(festivalId)} style={{ flex: 1 }}>삭제</AdminButton>
-            </div>
-          </AdminCard>
-        );
-      })}
+      <AdminLoadState
+        status={status}
+        errorMessage={errorMessage}
+        emptyTitle="등록된 축제가 없습니다."
+        emptyDescription="축제를 등록하거나 데이터를 수집하면 이곳에 표시됩니다."
+        onRetry={reload}
+      />
+      {status === "success" &&
+        items.map((festival) => {
+          const festivalId = festival.festivalId ?? festival.id;
+          return (
+            <AdminCard key={festivalId}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <strong style={{ color: COLORS.primary }}>{festival.name}</strong>
+                <AdminStatusBadge status={festival.status} />
+              </div>
+              <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: 14 }}>
+                {festival.region ?? "-"} · {festival.startDate ?? "-"} ~ {festival.endDate ?? "-"}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <AdminButton tone="subtle" onClick={() => edit(festival)} style={{ flex: 1 }}>
+                  수정
+                </AdminButton>
+                <AdminButton tone="danger" onClick={() => remove(festivalId)} style={{ flex: 1 }}>
+                  삭제
+                </AdminButton>
+              </div>
+            </AdminCard>
+          );
+        })}
     </AdminShell>
   );
 }
@@ -2298,7 +3862,14 @@ export function AdminShopsPage({ onBack, showToast }) {
   const [shopId, setShopId] = useState("");
   const [shop, setShop] = useState(null);
   const [status, setStatus] = useState("idle");
-  const [form, setForm] = useState({ status: "ACTIVE", description: "", phone: "", operatingHours: "", placeId: "", traditionalMarketId: "" });
+  const [form, setForm] = useState({
+    status: "ACTIVE",
+    description: "",
+    phone: "",
+    operatingHours: "",
+    placeId: "",
+    traditionalMarketId: "",
+  });
 
   const loadShop = async () => {
     if (!shopId) {
@@ -2315,7 +3886,8 @@ export function AdminShopsPage({ onBack, showToast }) {
         phone: data.phone ?? "",
         operatingHours: data.operatingHours ?? "",
         placeId: data.placeId != null ? String(data.placeId) : "",
-        traditionalMarketId: data.traditionalMarketId != null ? String(data.traditionalMarketId) : "",
+        traditionalMarketId:
+          data.traditionalMarketId != null ? String(data.traditionalMarketId) : "",
       });
       setStatus("success");
     } catch (error) {
@@ -2350,7 +3922,7 @@ export function AdminShopsPage({ onBack, showToast }) {
     if (!shop?.id && !shopId) return showToast("가게를 먼저 조회해주세요.");
     try {
       await updateAdminShopStatus(shop?.id ?? shopId, form.status);
-      setShop(prev => prev ? { ...prev, status: form.status } : prev);
+      setShop((prev) => (prev ? { ...prev, status: form.status } : prev));
       showToast("가게 상태를 변경했습니다.");
     } catch (error) {
       showToast(getApiErrorHint(error));
@@ -2361,7 +3933,9 @@ export function AdminShopsPage({ onBack, showToast }) {
     if (!shop?.id && !shopId) return showToast("가게를 먼저 조회해주세요.");
     try {
       await updateAdminShopPlace(shop?.id ?? shopId, form.placeId ? Number(form.placeId) : null);
-      setShop(prev => prev ? { ...prev, placeId: form.placeId ? Number(form.placeId) : null } : prev);
+      setShop((prev) =>
+        prev ? { ...prev, placeId: form.placeId ? Number(form.placeId) : null } : prev,
+      );
       showToast(form.placeId ? "가게와 장소를 연결했습니다." : "가게 장소 연결을 해제했습니다.");
     } catch (error) {
       showToast(getApiErrorHint(error));
@@ -2373,17 +3947,20 @@ export function AdminShopsPage({ onBack, showToast }) {
     try {
       const marketId = form.traditionalMarketId ? Number(form.traditionalMarketId) : null;
       const updated = await updateAdminShopMarket(shop?.id ?? shopId, marketId);
-      setShop(prev => prev ? { ...prev, ...updated, traditionalMarketId: marketId } : prev);
-      showToast(marketId ? "가게와 전통시장을 연결했습니다." : "가게 전통시장 연결을 해제했습니다.");
+      setShop((prev) => (prev ? { ...prev, ...updated, traditionalMarketId: marketId } : prev));
+      showToast(
+        marketId ? "가게와 전통시장을 연결했습니다." : "가게 전통시장 연결을 해제했습니다.",
+      );
     } catch (error) {
       showToast(getApiErrorHint(error));
     }
   };
 
-  const hasCoordinates = shop?.lat != null
-    && shop?.lng != null
-    && Number.isFinite(Number(shop.lat))
-    && Number.isFinite(Number(shop.lng));
+  const hasCoordinates =
+    shop?.lat != null &&
+    shop?.lng != null &&
+    Number.isFinite(Number(shop.lat)) &&
+    Number.isFinite(Number(shop.lng));
   // TODO: AdminShopDetailResponse에 placeId/placeName/traditionalMarketId/traditionalMarketName 추가 필요.
   const mapUrl = hasCoordinates
     ? `https://map.kakao.com/link/map/${encodeURIComponent(shop?.shopName ?? "가게")},${shop.lat},${shop.lng}`
@@ -2393,32 +3970,82 @@ export function AdminShopsPage({ onBack, showToast }) {
     <AdminShell title="가게 상세 관리" onBack={onBack}>
       <AdminCard style={{ background: "#FFF7D7" }}>
         <div style={{ fontSize: 14, color: "#8A4B00", fontWeight: 700 }}>
-          관리자 가게 목록 API가 없어 현재는 가게 ID로 단건 조회합니다. 연결된 전통시장 이름은 상세 응답에 포함되지 않아 ID 기준으로 관리합니다.
+          관리자 가게 목록 API가 없어 현재는 가게 ID로 단건 조회합니다. 연결된 전통시장 이름은 상세
+          응답에 포함되지 않아 ID 기준으로 관리합니다.
         </div>
       </AdminCard>
       <AdminCard>
         <div style={{ display: "flex", gap: 8 }}>
-          <input placeholder="가게 ID" type="number" value={shopId} onChange={(e) => setShopId(e.target.value)} style={{ ...adminInputStyle, flex: 1 }} />
+          <input
+            placeholder="가게 ID"
+            type="number"
+            value={shopId}
+            onChange={(e) => setShopId(e.target.value)}
+            style={{ ...adminInputStyle, flex: 1 }}
+          />
           <AdminButton onClick={loadShop}>조회</AdminButton>
         </div>
       </AdminCard>
-      {status === "loading" && <div style={{ margin: 16 }}><SkeletonList count={2} /></div>}
-      {status === "error" && <div style={{ margin: 16 }}><ErrorState title="가게를 불러오지 못했습니다." description="shopId와 관리자 권한을 확인해주세요." onRetry={loadShop} /></div>}
+      {status === "loading" && (
+        <div style={{ margin: 16 }}>
+          <SkeletonList count={2} />
+        </div>
+      )}
+      {status === "error" && (
+        <div style={{ margin: 16 }}>
+          <ErrorState
+            title="가게를 불러오지 못했습니다."
+            description="shopId와 관리자 권한을 확인해주세요."
+            onRetry={loadShop}
+          />
+        </div>
+      )}
       {shop && (
         <>
           <AdminCard>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+              }}
+            >
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <strong style={{ color: COLORS.primary, fontSize: 20 }}>{shop.shopName ?? shop.name ?? `가게 ${shop.id}`}</strong>
-                  {shop.isCertified && <span style={{ padding: "3px 8px", borderRadius: 6, background: COLORS.greenBg, color: COLORS.green, fontSize: 11, fontWeight: 700 }}>인증 가게</span>}
+                  <strong style={{ color: COLORS.primary, fontSize: 20 }}>
+                    {shop.shopName ?? shop.name ?? `가게 ${shop.id}`}
+                  </strong>
+                  {shop.isCertified && (
+                    <span
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        background: COLORS.greenBg,
+                        color: COLORS.green,
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      인증 가게
+                    </span>
+                  )}
                 </div>
-                <div style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>가게 ID {shop.id} · 소유자 ID {shop.userId ?? "-"}</div>
+                <div style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>
+                  가게 ID {shop.id} · 소유자 ID {shop.userId ?? "-"}
+                </div>
               </div>
               <AdminStatusBadge status={shop.status} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, marginTop: 16 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 8,
+                marginTop: 16,
+              }}
+            >
               {[
                 ["카테고리", shop.category ?? "미등록"],
                 ["주소", shop.address ?? "주소 미등록"],
@@ -2427,71 +4054,193 @@ export function AdminShopsPage({ onBack, showToast }) {
                 ["휴무일", shop.closedDays ?? "휴무일 미등록"],
                 ["평점·리뷰", `${shop.rating ?? 0}점 · 리뷰 ${shop.reviewCount ?? 0}개`],
               ].map(([label, value]) => (
-                <div key={label} style={{ background: COLORS.bg, borderRadius: 8, padding: "11px 12px", minWidth: 0 }}>
-                  <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{label}</div>
-                  <div style={{ color: COLORS.text, fontSize: 13, fontWeight: 700, overflowWrap: "anywhere" }}>{value}</div>
+                <div
+                  key={label}
+                  style={{
+                    background: COLORS.bg,
+                    borderRadius: 8,
+                    padding: "11px 12px",
+                    minWidth: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      color: COLORS.textMuted,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {label}
+                  </div>
+                  <div
+                    style={{
+                      color: COLORS.text,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {value}
+                  </div>
                 </div>
               ))}
             </div>
           </AdminCard>
 
           <AdminCard>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 12,
+              }}
+            >
               <div>
                 <strong style={{ color: COLORS.primary }}>위치 및 장소 연결</strong>
-                <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>가게가 실제로 어디에 있고 어떤 장소에 속하는지 확인합니다.</div>
+                <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
+                  가게가 실제로 어디에 있고 어떤 장소에 속하는지 확인합니다.
+                </div>
               </div>
               {mapUrl && (
-                <a href={mapUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", border: `1px solid ${COLORS.primary}`, color: COLORS.primary, padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                <a
+                  href={mapUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    textDecoration: "none",
+                    border: `1px solid ${COLORS.primary}`,
+                    color: COLORS.primary,
+                    padding: "7px 10px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    flexShrink: 0,
+                  }}
+                >
                   지도에서 보기
                 </a>
               )}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 8 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                gap: 8,
+              }}
+            >
               <div style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 12 }}>
-                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>실제 위치</div>
-                <div style={{ marginTop: 5, fontWeight: 700, color: COLORS.text }}>{shop.address || "주소 정보 없음"}</div>
+                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>
+                  실제 위치
+                </div>
+                <div style={{ marginTop: 5, fontWeight: 700, color: COLORS.text }}>
+                  {shop.address || "주소 정보 없음"}
+                </div>
                 <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>
                   {hasCoordinates ? `위도 ${shop.lat} · 경도 ${shop.lng}` : "좌표 정보 없음"}
                 </div>
               </div>
               <div style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 12 }}>
-                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>연결된 장소</div>
-                <div style={{ marginTop: 5, fontWeight: 700, color: shop.placeId ? COLORS.primary : "#A32D2D" }}>
+                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>
+                  연결된 장소
+                </div>
+                <div
+                  style={{
+                    marginTop: 5,
+                    fontWeight: 700,
+                    color: shop.placeId ? COLORS.primary : "#A32D2D",
+                  }}
+                >
                   {shop.placeId ? `장소 ID ${shop.placeId}` : "연결된 장소 없음"}
                 </div>
-                <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>장소 상세 이름은 현재 API 응답에 포함되지 않습니다.</div>
+                <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>
+                  장소 상세 이름은 현재 API 응답에 포함되지 않습니다.
+                </div>
               </div>
               <div style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 12 }}>
-                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>소속 전통시장</div>
-                <div style={{ marginTop: 5, fontWeight: 700, color: shop.traditionalMarketId ? COLORS.primary : "#A32D2D" }}>
-                  {shop.traditionalMarketId ? `전통시장 ID ${shop.traditionalMarketId}` : "연결된 전통시장 없음"}
+                <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700 }}>
+                  소속 전통시장
                 </div>
-                <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>시장 이름 확인을 위해 상세 응답 필드 추가가 필요합니다.</div>
+                <div
+                  style={{
+                    marginTop: 5,
+                    fontWeight: 700,
+                    color: shop.traditionalMarketId ? COLORS.primary : "#A32D2D",
+                  }}
+                >
+                  {shop.traditionalMarketId
+                    ? `전통시장 ID ${shop.traditionalMarketId}`
+                    : "연결된 전통시장 없음"}
+                </div>
+                <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>
+                  시장 이름 확인을 위해 상세 응답 필드 추가가 필요합니다.
+                </div>
               </div>
             </div>
           </AdminCard>
 
           <AdminCard>
             <strong style={{ color: COLORS.primary }}>관리자 편집</strong>
-            <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>가게 상태와 연결 정보를 변경하거나 운영 정보를 보완합니다.</div>
+            <div style={{ marginTop: 4, color: COLORS.textMuted, fontSize: 12 }}>
+              가게 상태와 연결 정보를 변경하거나 운영 정보를 보완합니다.
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
-            <select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} style={adminInputStyle}>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="SUSPENDED">SUSPENDED</option>
-              <option value="CLOSED">CLOSED</option>
-            </select>
-            <AdminButton onClick={saveStatus}>상태 저장</AdminButton>
-            <input placeholder="연결할 placeId, 비우면 해제" value={form.placeId} onChange={(e) => setForm(prev => ({ ...prev, placeId: e.target.value }))} style={adminInputStyle} />
-            <AdminButton onClick={savePlace}>장소 연결 저장</AdminButton>
-            <input placeholder="traditionalMarketId, 비우면 해제" value={form.traditionalMarketId} onChange={(e) => setForm(prev => ({ ...prev, traditionalMarketId: e.target.value }))} style={adminInputStyle} />
-            <AdminButton onClick={saveMarket}>시장 연결 저장</AdminButton>
-            <input placeholder="전화번호" value={form.phone} onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))} style={adminInputStyle} />
-            <input placeholder="운영시간" value={form.operatingHours} onChange={(e) => setForm(prev => ({ ...prev, operatingHours: e.target.value }))} style={adminInputStyle} />
-            <textarea placeholder="가게 소개" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...adminInputStyle, gridColumn: "1 / -1", minHeight: 90, resize: "vertical" }} />
-          </div>
-          <AdminButton onClick={saveBasic} style={{ width: "100%", marginTop: 10 }}>기본 정보 저장</AdminButton>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
+                style={adminInputStyle}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="SUSPENDED">SUSPENDED</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
+              <AdminButton onClick={saveStatus}>상태 저장</AdminButton>
+              <input
+                placeholder="연결할 placeId, 비우면 해제"
+                value={form.placeId}
+                onChange={(e) => setForm((prev) => ({ ...prev, placeId: e.target.value }))}
+                style={adminInputStyle}
+              />
+              <AdminButton onClick={savePlace}>장소 연결 저장</AdminButton>
+              <input
+                placeholder="traditionalMarketId, 비우면 해제"
+                value={form.traditionalMarketId}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, traditionalMarketId: e.target.value }))
+                }
+                style={adminInputStyle}
+              />
+              <AdminButton onClick={saveMarket}>시장 연결 저장</AdminButton>
+              <input
+                placeholder="전화번호"
+                value={form.phone}
+                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                style={adminInputStyle}
+              />
+              <input
+                placeholder="운영시간"
+                value={form.operatingHours}
+                onChange={(e) => setForm((prev) => ({ ...prev, operatingHours: e.target.value }))}
+                style={adminInputStyle}
+              />
+              <textarea
+                placeholder="가게 소개"
+                value={form.description}
+                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                style={{
+                  ...adminInputStyle,
+                  gridColumn: "1 / -1",
+                  minHeight: 90,
+                  resize: "vertical",
+                }}
+              />
+            </div>
+            <AdminButton onClick={saveBasic} style={{ width: "100%", marginTop: 10 }}>
+              기본 정보 저장
+            </AdminButton>
           </AdminCard>
         </>
       )}

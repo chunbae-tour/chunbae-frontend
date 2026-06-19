@@ -1,15 +1,39 @@
 ﻿import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
-import { ConfirmDialog, EmptyState, ErrorState, SkeletonBlock, SkeletonList } from "../../components/common";
+import {
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  SkeletonBlock,
+  SkeletonList,
+} from "../../components/common";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import { fetchFestivals, searchFestivals } from "../../services/festivalService.js";
 import { fetchFaqs, fetchFaqTranslation } from "../../services/faqService.js";
 import { fetchYeopjeonBalance } from "../../services/paymentService.js";
-import { deleteAllNotifications, deleteNotification, fetchNotifications, fetchNotificationSettings, markAllNotificationsRead, markNotificationRead, updateNotificationSettings } from "../../services/notificationService.js";
-import { updateCurrentUserProfile, uploadCurrentUserProfileImage } from "../../services/authService.js";
+import {
+  deleteAllNotifications,
+  deleteNotification,
+  fetchNotifications,
+  fetchNotificationSettings,
+  markAllNotificationsRead,
+  markNotificationRead,
+  updateNotificationSettings,
+} from "../../services/notificationService.js";
+import {
+  updateCurrentUserProfile,
+  uploadCurrentUserProfileImage,
+} from "../../services/authService.js";
 import YeopjeonImg from "../../assets/brand/yeopjeon-icon.png";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
-import { deleteRecentSearch, fetchPopularSearches, fetchRecentSearches, fetchSearchSuggestions, saveSearchKeyword, searchUnifiedPage } from "../../services/searchService.js";
+import {
+  deleteRecentSearch,
+  fetchPopularSearches,
+  fetchRecentSearches,
+  fetchSearchSuggestions,
+  saveSearchKeyword,
+  searchUnifiedPage,
+} from "../../services/searchService.js";
 import { fetchUserHomeStats } from "../../services/myService.js";
 
 // ─── 마이페이지 ───────────────────────────────────────────────────────
@@ -29,7 +53,16 @@ function normalizeProfileLanguage(language) {
   return "ko";
 }
 
-export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = () => {}, user, comfortableView = false, onComfortableViewChange = () => {} }) {
+export function MyPage({
+  onTab,
+  showToast,
+  onLogout,
+  onLogin,
+  onProfileUpdate = () => {},
+  user,
+  comfortableView = false,
+  onComfortableViewChange = () => {},
+}) {
   const isLoggedIn = Boolean(user);
   const role = String(user?.role || "USER").toUpperCase();
   const [balance, setBalance] = useState(0);
@@ -47,15 +80,34 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
   });
   const [profileError, setProfileError] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
-  const [homeStats, setHomeStats] = useState({ likedPlacesCount: 0, companionWaitingCount: 0, reviewCount: 0 });
+  const [homeStats, setHomeStats] = useState({
+    likedPlacesCount: 0,
+    companionWaitingCount: 0,
+    reviewCount: 0,
+  });
   const [homeStatsStatus, setHomeStatsStatus] = useState("loading");
   const companionCompletedCount = user?.companionCompletedCount ?? user?.companionReviewCount ?? 0;
   const travelerLevel = user?.travelerLevel || "새내기 여행자";
 
   const tripSummary = [
-    { icon: "❤️", label: "찜한 골목", value: homeStatsStatus === "loading" ? "-" : homeStats.likedPlacesCount, action: "wishlist" },
-    { icon: "🧭", label: "동행 대기", value: homeStatsStatus === "loading" ? "-" : homeStats.companionWaitingCount, action: "chat" },
-    { icon: "✍️", label: "작성 후기", value: homeStatsStatus === "loading" ? "-" : homeStats.reviewCount, action: "myReview" },
+    {
+      icon: "❤️",
+      label: "찜한 골목",
+      value: homeStatsStatus === "loading" ? "-" : homeStats.likedPlacesCount,
+      action: "wishlist",
+    },
+    {
+      icon: "🧭",
+      label: "동행 대기",
+      value: homeStatsStatus === "loading" ? "-" : homeStats.companionWaitingCount,
+      action: "chat",
+    },
+    {
+      icon: "✍️",
+      label: "작성 후기",
+      value: homeStatsStatus === "loading" ? "-" : homeStats.reviewCount,
+      action: "myReview",
+    },
   ];
   const activityMenus = [
     { icon: "❤️", label: "찜 목록", tab: "wishlist", count: homeStats.likedPlacesCount },
@@ -109,7 +161,9 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
         setHomeStatsStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [isLoggedIn]);
 
   const confirmLogout = () => {
@@ -148,7 +202,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
 
     const reader = new FileReader();
     reader.onload = () => {
-      setProfileForm(prev => ({
+      setProfileForm((prev) => ({
         ...prev,
         profileImagePreview: String(reader.result || ""),
         profileImageFile: file,
@@ -196,23 +250,92 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 20px 20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>👤 마이페이지</div>
         <span style={{ fontSize: 22, cursor: "pointer" }}>⚙️</span>
       </div>
       <div style={S.scrollArea}>
         {!isLoggedIn ? (
           <>
-            <div style={{ background: "#fff", padding: 20, display: "flex", gap: 16, alignItems: "center", marginBottom: 8 }}>
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>👤</div>
+            <div
+              style={{
+                background: "#fff",
+                padding: 20,
+                display: "flex",
+                gap: 16,
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background: COLORS.bg,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 32,
+                }}
+              >
+                👤
+              </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}>로그인이 필요합니다</div>
-                <div style={{ fontSize: 14, color: COLORS.textMuted, lineHeight: 1.5 }}>찜, 엽전, 이용 내역은 로그인 후 이용할 수 있어요.</div>
-                <button type="button" onClick={onLogin} style={{ marginTop: 10, border: 0, background: COLORS.primary, color: "#fff", borderRadius: 20, padding: "7px 14px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>로그인하기</button>
+                <div
+                  style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary, marginBottom: 4 }}
+                >
+                  로그인이 필요합니다
+                </div>
+                <div style={{ fontSize: 14, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                  찜, 엽전, 이용 내역은 로그인 후 이용할 수 있어요.
+                </div>
+                <button
+                  type="button"
+                  onClick={onLogin}
+                  style={{
+                    marginTop: 10,
+                    border: 0,
+                    background: COLORS.primary,
+                    color: "#fff",
+                    borderRadius: 20,
+                    padding: "7px 14px",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  로그인하기
+                </button>
               </div>
             </div>
-            <div style={{ background: "#fff", margin: "0 16px 12px", borderRadius: 16, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: COLORS.textMuted, borderBottom: "0.5px solid rgba(0,0,0,0.05)" }}>서비스</div>
+            <div
+              style={{
+                background: "#fff",
+                margin: "0 16px 12px",
+                borderRadius: 16,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "12px 16px",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: COLORS.textMuted,
+                  borderBottom: "0.5px solid rgba(0,0,0,0.05)",
+                }}
+              >
+                서비스
+              </div>
               <button
                 type="button"
                 className="settings-row comfortable-view-toggle"
@@ -229,7 +352,16 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
                 </div>
                 <em className={comfortableView ? "on" : ""}>{comfortableView ? "ON" : "OFF"}</em>
               </button>
-              <div onClick={() => onTab("faq")} style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+              <div
+                onClick={() => onTab("faq")}
+                style={{
+                  padding: "14px 16px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                }}
+              >
                 <span style={{ fontSize: 14 }}>❓ FAQ</span>
                 <span style={{ color: COLORS.textMuted }}>›</span>
               </div>
@@ -237,140 +369,259 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
           </>
         ) : (
           <>
-        <div className="my-profile-card">
-          <div className="my-profile-avatar">
-            {user?.profileImageUrl ? <img src={user.profileImageUrl} alt={`${user?.nickname || "사용자"} 프로필`} /> : "👤"}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>{user?.nickname || user?.email || "사용자"}</div>
-              {role === "MERCHANT" && <span style={{ background: COLORS.accent, color: COLORS.primary, fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>🏪 상인</span>}
-              {role === "ADMIN" && <span style={{ background: "#E24B4A", color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 6, padding: "2px 8px" }}>👑 관리자</span>}
-            </div>
-            <div className="my-traveler-level">{travelerLevel}</div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted }}>
-              동행 점수 {user?.companionScore ? `★ ${user.companionScore}` : "아직 없음"} · 동행 {companionCompletedCount}회 완료
-            </div>
-            <button type="button" onClick={openProfileEditor} style={{ marginTop: 6, display: "inline-block", fontSize: 14, color: COLORS.primary, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>프로필 수정</button>
-          </div>
-        </div>
-        <div className="my-balance-card">
-          <div className="my-certified-badge">춘배 인증</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
-            <img src={YeopjeonImg} alt="" style={{ width: 58, height: 58, borderRadius: "50%", objectFit: "cover", boxShadow: "0 8px 22px rgba(255,180,30,0.28)" }} />
-            <div>
-              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginBottom: 4 }}>엽전 잔액</div>
-              {balanceStatus === "loading" ? (
-                <div className="my-balance-skeleton" aria-label="엽전 잔액을 불러오는 중입니다.">
-                  <SkeletonBlock className="amount" />
-                  <SkeletonBlock className="caption" />
+            <div className="my-profile-card">
+              <div className="my-profile-avatar">
+                {user?.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt={`${user?.nickname || "사용자"} 프로필`} />
+                ) : (
+                  "👤"
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>
+                    {user?.nickname || user?.email || "사용자"}
+                  </div>
+                  {role === "MERCHANT" && (
+                    <span
+                      style={{
+                        background: COLORS.accent,
+                        color: COLORS.primary,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      🏪 상인
+                    </span>
+                  )}
+                  {role === "ADMIN" && (
+                    <span
+                      style={{
+                        background: "#E24B4A",
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      👑 관리자
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <div className="my-balance-amount">{balance.toLocaleString()}냥</div>
-              )}
-              <div className="my-balance-subtext">충전 후 전통시장에서 QR 결제 가능</div>
-            </div>
-          </div>
-          {balanceStatus === "error" && <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, marginBottom: 10 }}>{balanceError}</div>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="my-balance-action primary" onClick={() => onTab("pay")}><strong>엽전 충전</strong><span>잔액 채우기</span></button>
-            <button type="button" className="my-balance-action" onClick={() => onTab("qrpay")}><strong>QR 결제</strong><span>현장 결제</span></button>
-            <button type="button" className="my-balance-action" onClick={() => onTab("payHistory")}><strong>이용 내역</strong><span>충전·결제 확인</span></button>
-          </div>
-        </div>
-        <div className="my-trip-board">
-          <div className="my-section-head">
-            <div>
-              <span>내 로컬 여행 현황</span>
-              <small>찜, 동행, 후기를 한 번에 확인해요.</small>
-            </div>
-            <button type="button" onClick={() => onTab("notif")}>알림 보기</button>
-          </div>
-          <div className="my-trip-grid">
-            {tripSummary.map(item => (
-              <button key={item.label} type="button" onClick={() => onTab(item.action)}>
-                <em>{item.icon}</em>
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-          <div className="my-next-card">
-            <i aria-hidden="true">⌖</i>
-            <div>
-              <b>다음 추천 행동</b>
-              <span>찜한 장소를 방문하거나<br />동행 게시판에서 여행 친구를 찾아보세요.</span>
-            </div>
-          </div>
-        </div>
-        <div className="my-menu-card">
-          <div className="my-menu-head">나의 활동</div>
-          {activityMenus.map((m, i) => (
-            <div key={i} className="my-menu-row" onClick={() => m.tab ? onTab(m.tab) : showToast("준비 중입니다")}>
-              <span>{m.icon} {m.label}</span>
-              <div>
-                {typeof m.count === "number" && homeStatsStatus !== "loading" && <b>{m.count}</b>}
-                <span>›</span>
+                <div className="my-traveler-level">{travelerLevel}</div>
+                <div style={{ fontSize: 14, color: COLORS.textMuted }}>
+                  동행 점수 {user?.companionScore ? `★ ${user.companionScore}` : "아직 없음"} · 동행{" "}
+                  {companionCompletedCount}회 완료
+                </div>
+                <button
+                  type="button"
+                  onClick={openProfileEditor}
+                  style={{
+                    marginTop: 6,
+                    display: "inline-block",
+                    fontSize: 14,
+                    color: COLORS.primary,
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    background: "#fff",
+                    borderRadius: 20,
+                    padding: "4px 12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  프로필 수정
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-        {/* 상인 신청 버튼 (일반 유저만) */}
-        {role === "USER" && (
-          <div className="my-menu-card">
-            <div className="my-menu-head">상인 서비스</div>
-            <div className="my-menu-row" onClick={() => onTab("merchantApply")}>
-              <span>🏪 상인 신청</span>
-              <div><span>›</span></div>
+            <div className="my-balance-card">
+              <div className="my-certified-badge">춘배 인증</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
+                <img
+                  src={YeopjeonImg}
+                  alt=""
+                  style={{
+                    width: 58,
+                    height: 58,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    boxShadow: "0 8px 22px rgba(255,180,30,0.28)",
+                  }}
+                />
+                <div>
+                  <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginBottom: 4 }}>
+                    엽전 잔액
+                  </div>
+                  {balanceStatus === "loading" ? (
+                    <div
+                      className="my-balance-skeleton"
+                      aria-label="엽전 잔액을 불러오는 중입니다."
+                    >
+                      <SkeletonBlock className="amount" />
+                      <SkeletonBlock className="caption" />
+                    </div>
+                  ) : (
+                    <div className="my-balance-amount">{balance.toLocaleString()}냥</div>
+                  )}
+                  <div className="my-balance-subtext">충전 후 전통시장에서 QR 결제 가능</div>
+                </div>
+              </div>
+              {balanceStatus === "error" && (
+                <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, marginBottom: 10 }}>
+                  {balanceError}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  className="my-balance-action primary"
+                  onClick={() => onTab("pay")}
+                >
+                  <strong>엽전 충전</strong>
+                  <span>잔액 채우기</span>
+                </button>
+                <button type="button" className="my-balance-action" onClick={() => onTab("qrpay")}>
+                  <strong>QR 결제</strong>
+                  <span>현장 결제</span>
+                </button>
+                <button
+                  type="button"
+                  className="my-balance-action"
+                  onClick={() => onTab("payHistory")}
+                >
+                  <strong>이용 내역</strong>
+                  <span>충전·결제 확인</span>
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-        {/* 상인 전용 메뉴 */}
-        {role === "MERCHANT" && (
-          <div className="my-menu-card">
-            <div className="my-menu-head">🏪 상인 메뉴</div>
-            <div className="my-menu-row" onClick={() => onTab("merchant")}>
-              <span>🏪 가게 관리</span>
-              <div><span>›</span></div>
+            <div className="my-trip-board">
+              <div className="my-section-head">
+                <div>
+                  <span>내 로컬 여행 현황</span>
+                  <small>찜, 동행, 후기를 한 번에 확인해요.</small>
+                </div>
+                <button type="button" onClick={() => onTab("notif")}>
+                  알림 보기
+                </button>
+              </div>
+              <div className="my-trip-grid">
+                {tripSummary.map((item) => (
+                  <button key={item.label} type="button" onClick={() => onTab(item.action)}>
+                    <em>{item.icon}</em>
+                    <strong>{item.value}</strong>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="my-next-card">
+                <i aria-hidden="true">⌖</i>
+                <div>
+                  <b>다음 추천 행동</b>
+                  <span>
+                    찜한 장소를 방문하거나
+                    <br />
+                    동행 게시판에서 여행 친구를 찾아보세요.
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
-        {/* 관리자 전용 메뉴 */}
-        {role === "ADMIN" && (
-          <div className="my-menu-card">
-            <div className="my-menu-head">👑 관리자 메뉴</div>
-            <div className="my-menu-row" onClick={() => onTab("adminDashboard")}>
-              <span>👑 관리자 대시보드</span>
-              <div><span>›</span></div>
+            <div className="my-menu-card">
+              <div className="my-menu-head">나의 활동</div>
+              {activityMenus.map((m, i) => (
+                <div
+                  key={i}
+                  className="my-menu-row"
+                  onClick={() => (m.tab ? onTab(m.tab) : showToast("준비 중입니다"))}
+                >
+                  <span>
+                    {m.icon} {m.label}
+                  </span>
+                  <div>
+                    {typeof m.count === "number" && homeStatsStatus !== "loading" && (
+                      <b>{m.count}</b>
+                    )}
+                    <span>›</span>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
-        <div className="my-menu-card">
-          <div className="my-menu-head">서비스</div>
-          <button
-            type="button"
-            className="settings-row comfortable-view-toggle"
-            onClick={() => {
-              const next = !comfortableView;
-              onComfortableViewChange(next);
-              showToast(next ? "편한 보기 모드를 켰습니다." : "편한 보기 모드를 껐습니다.");
-            }}
-            aria-pressed={comfortableView}
-          >
-            <div>
-              <strong>편한 보기 모드</strong>
-              <span>글씨와 버튼을 크게 보여드려요.</span>
+            {/* 상인 신청 버튼 (일반 유저만) */}
+            {role === "USER" && (
+              <div className="my-menu-card">
+                <div className="my-menu-head">상인 서비스</div>
+                <div className="my-menu-row" onClick={() => onTab("merchantApply")}>
+                  <span>🏪 상인 신청</span>
+                  <div>
+                    <span>›</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* 상인 전용 메뉴 */}
+            {role === "MERCHANT" && (
+              <div className="my-menu-card">
+                <div className="my-menu-head">🏪 상인 메뉴</div>
+                <div className="my-menu-row" onClick={() => onTab("merchant")}>
+                  <span>🏪 가게 관리</span>
+                  <div>
+                    <span>›</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* 관리자 전용 메뉴 */}
+            {role === "ADMIN" && (
+              <div className="my-menu-card">
+                <div className="my-menu-head">👑 관리자 메뉴</div>
+                <div className="my-menu-row" onClick={() => onTab("adminDashboard")}>
+                  <span>👑 관리자 대시보드</span>
+                  <div>
+                    <span>›</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="my-menu-card">
+              <div className="my-menu-head">서비스</div>
+              <button
+                type="button"
+                className="settings-row comfortable-view-toggle"
+                onClick={() => {
+                  const next = !comfortableView;
+                  onComfortableViewChange(next);
+                  showToast(next ? "편한 보기 모드를 켰습니다." : "편한 보기 모드를 껐습니다.");
+                }}
+                aria-pressed={comfortableView}
+              >
+                <div>
+                  <strong>편한 보기 모드</strong>
+                  <span>글씨와 버튼을 크게 보여드려요.</span>
+                </div>
+                <em className={comfortableView ? "on" : ""}>{comfortableView ? "ON" : "OFF"}</em>
+              </button>
+              {serviceMenus.map((m, i) => (
+                <div
+                  key={i}
+                  className="my-menu-row"
+                  onClick={() => (m.tab ? onTab(m.tab) : showToast(`${m.label}으로 이동합니다`))}
+                >
+                  <span>
+                    {m.icon} {m.label}
+                  </span>
+                  <div>
+                    <span>›</span>
+                  </div>
+                </div>
+              ))}
+              <div
+                className="danger-service-action"
+                onClick={() => setLogoutConfirmOpen(true)}
+                style={{ padding: "14px 16px", color: "#E24B4A", fontSize: 14, cursor: "pointer" }}
+              >
+                🚪 로그아웃하기
+              </div>
             </div>
-            <em className={comfortableView ? "on" : ""}>{comfortableView ? "ON" : "OFF"}</em>
-          </button>
-          {serviceMenus.map((m, i) => (
-            <div key={i} className="my-menu-row" onClick={() => m.tab ? onTab(m.tab) : showToast(`${m.label}으로 이동합니다`)}>
-              <span>{m.icon} {m.label}</span>
-              <div><span>›</span></div>
-            </div>
-          ))}
-          <div className="danger-service-action" onClick={() => setLogoutConfirmOpen(true)} style={{ padding: "14px 16px", color: "#E24B4A", fontSize: 14, cursor: "pointer" }}>🚪 로그아웃하기</div>
-        </div>
           </>
         )}
       </div>
@@ -385,8 +636,18 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
         onCancel={() => setLogoutConfirmOpen(false)}
       />
       {profileModalOpen && (
-        <div className="confirm-dialog-backdrop" role="presentation" onMouseDown={() => !profileSaving && setProfileModalOpen(false)}>
-          <div className="confirm-dialog profile-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title" onMouseDown={(event) => event.stopPropagation()}>
+        <div
+          className="confirm-dialog-backdrop"
+          role="presentation"
+          onMouseDown={() => !profileSaving && setProfileModalOpen(false)}
+        >
+          <div
+            className="confirm-dialog profile-edit-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-edit-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <strong id="profile-edit-title">프로필 수정</strong>
             <p>마이페이지와 채팅에 표시되는 정보를 바꿀 수 있어요.</p>
             <label className="profile-edit-field">
@@ -394,7 +655,9 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
               <input
                 value={profileForm.nickname}
                 maxLength={20}
-                onChange={(event) => setProfileForm(prev => ({ ...prev, nickname: event.target.value }))}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, nickname: event.target.value }))
+                }
                 placeholder="닉네임"
               />
             </label>
@@ -402,7 +665,9 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
               <span>기본 언어</span>
               <select
                 value={profileForm.language}
-                onChange={(event) => setProfileForm(prev => ({ ...prev, language: event.target.value }))}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, language: event.target.value }))
+                }
               >
                 <option value="ko">한국어</option>
                 <option value="en">English</option>
@@ -437,7 +702,7 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
                   type="button"
                   className="profile-image-clear"
                   onClick={() => {
-                    setProfileForm(prev => ({
+                    setProfileForm((prev) => ({
                       ...prev,
                       profileImagePreview: prev.profileImageUrl,
                       profileImageFile: null,
@@ -452,8 +717,22 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
             </div>
             {profileError && <div className="profile-edit-error">{profileError}</div>}
             <div className="confirm-dialog-actions">
-              <button type="button" className="secondary" disabled={profileSaving} onClick={() => setProfileModalOpen(false)}>취소</button>
-              <button type="button" className="primary" disabled={profileSaving} onClick={saveProfile}>{profileSaving ? "저장 중" : "저장"}</button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={profileSaving}
+                onClick={() => setProfileModalOpen(false)}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={profileSaving}
+                onClick={saveProfile}
+              >
+                {profileSaving ? "저장 중" : "저장"}
+              </button>
             </div>
           </div>
         </div>
@@ -464,7 +743,8 @@ export function MyPage({ onTab, showToast, onLogout, onLogin, onProfileUpdate = 
 
 export function NotificationSettingsPage({ onBack, showToast }) {
   const [settings, setSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS);
-  const [status, setStatus] = useState("loading");  const [errorMessage, setErrorMessage] = useState("");
+  const [status, setStatus] = useState("loading");
+  const [errorMessage, setErrorMessage] = useState("");
   const [browserPermission, setBrowserPermission] = useState(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
     return window.Notification.permission;
@@ -490,7 +770,9 @@ export function NotificationSettingsPage({ onBack, showToast }) {
         setStatus("error");
         showToast?.(getApiErrorHint(error));
       });
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   };
 
   useEffect(() => {
@@ -517,19 +799,31 @@ export function NotificationSettingsPage({ onBack, showToast }) {
 
     const result = await window.Notification.requestPermission();
     setBrowserPermission(result);
-    showToast?.(result === "granted" ? "브라우저 알림을 켰습니다." : "브라우저 알림 권한이 허용되지 않았습니다.");
+    showToast?.(
+      result === "granted"
+        ? "브라우저 알림을 켰습니다."
+        : "브라우저 알림 권한이 허용되지 않았습니다.",
+    );
   };
 
   return (
     <div style={S.screen} className="notification-settings-page">
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>알림 설정</span>
       </div>
       <div style={S.scrollArea}>
-        <div className="settings-note">
-          현재는 동행 채팅과 고객센터 알림만 설정할 수 있어요.
-        </div>
+        <div className="settings-note">현재는 동행 채팅과 고객센터 알림만 설정할 수 있어요.</div>
         <div className="settings-list">
           <button
             type="button"
@@ -548,11 +842,19 @@ export function NotificationSettingsPage({ onBack, showToast }) {
               </span>
             </div>
             <em className={browserPermission === "granted" ? "on" : ""}>
-              {browserPermission === "granted" ? "허용됨" : browserPermission === "denied" ? "차단됨" : "허용하기"}
+              {browserPermission === "granted"
+                ? "허용됨"
+                : browserPermission === "denied"
+                  ? "차단됨"
+                  : "허용하기"}
             </em>
           </button>
         </div>
-        {status === "loading" && <div style={{ margin: "0 16px 12px" }}><SkeletonList count={2} /></div>}
+        {status === "loading" && (
+          <div style={{ margin: "0 16px 12px" }}>
+            <SkeletonList count={2} />
+          </div>
+        )}
         {status === "error" && (
           <div style={{ margin: "0 16px 12px" }}>
             <ErrorState
@@ -563,13 +865,20 @@ export function NotificationSettingsPage({ onBack, showToast }) {
           </div>
         )}
         <div className="settings-list">
-          {items.map(item => (
-            <button key={item.key} type="button" className="settings-row" onClick={() => toggle(item.key)}>
+          {items.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className="settings-row"
+              onClick={() => toggle(item.key)}
+            >
               <div>
                 <strong>{item.title}</strong>
                 <span>{item.desc}</span>
               </div>
-              <em className={settings[item.key] ? "on" : ""}>{settings[item.key] ? "ON" : "OFF"}</em>
+              <em className={settings[item.key] ? "on" : ""}>
+                {settings[item.key] ? "ON" : "OFF"}
+              </em>
             </button>
           ))}
         </div>
@@ -591,9 +900,9 @@ export function FAQPage({ onBack }) {
     setTranslationLoadingId(faqId);
     try {
       const data = await fetchFaqTranslation(faqId, translationLanguage);
-      setTranslations(prev => ({ ...prev, [faqId]: data }));
+      setTranslations((prev) => ({ ...prev, [faqId]: data }));
     } catch (error) {
-      setTranslations(prev => ({
+      setTranslations((prev) => ({
         ...prev,
         [faqId]: { error: getApiErrorHint(error) || "번역을 불러오지 못했습니다." },
       }));
@@ -635,13 +944,25 @@ export function FAQPage({ onBack }) {
         setStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   return (
     <div style={S.screen} className="faq-page">
-      <div style={{ background: COLORS.primary, padding: "44px 16px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 16px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+          ←
+        </span>
         <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>FAQ</span>
       </div>
       <div style={S.scrollArea}>
@@ -651,7 +972,11 @@ export function FAQPage({ onBack }) {
         </div>
         {status === "loading" && <SkeletonList count={4} />}
         {status === "empty" && (
-          <EmptyState icon="FAQ" title="등록된 FAQ가 없습니다." description="관리자가 FAQ를 등록하면 이곳에 표시됩니다." />
+          <EmptyState
+            icon="FAQ"
+            title="등록된 FAQ가 없습니다."
+            description="관리자가 FAQ를 등록하면 이곳에 표시됩니다."
+          />
         )}
         {status === "error" && (
           <ErrorState
@@ -661,7 +986,7 @@ export function FAQPage({ onBack }) {
           />
         )}
         <div className="faq-list">
-          {faqs.map(item => (
+          {faqs.map((item) => (
             <div key={item.id} className={`faq-card ${openId === item.id ? "open" : ""}`}>
               <button type="button" onClick={() => setOpenId(openId === item.id ? null : item.id)}>
                 <strong>{item.q}</strong>
@@ -669,16 +994,25 @@ export function FAQPage({ onBack }) {
               </button>
               {openId === item.id && (
                 <div className="faq-translation-panel">
-                  <select value={translationLanguage} onChange={(event) => setTranslationLanguage(event.target.value)}>
+                  <select
+                    value={translationLanguage}
+                    onChange={(event) => setTranslationLanguage(event.target.value)}
+                  >
                     <option value="EN">English</option>
                     <option value="JA">日本語</option>
                     <option value="ZH_CN">中文</option>
                     <option value="KO">한국어</option>
                   </select>
-                  <button type="button" onClick={() => loadTranslation(item.id)} disabled={translationLoadingId === item.id}>
+                  <button
+                    type="button"
+                    onClick={() => loadTranslation(item.id)}
+                    disabled={translationLoadingId === item.id}
+                  >
                     {translationLoadingId === item.id ? "번역 중" : "번역 보기"}
                   </button>
-                  {translations[item.id]?.error && <p className="faq-translation-error">{translations[item.id].error}</p>}
+                  {translations[item.id]?.error && (
+                    <p className="faq-translation-error">{translations[item.id].error}</p>
+                  )}
                   {translations[item.id]?.answer && (
                     <div className="faq-translation-result">
                       <strong>{translations[item.id].question || item.q}</strong>
@@ -715,9 +1049,10 @@ function festivalOverlapsMonth(festival, year, month, today) {
   if (!startDate || !endDate) return false;
 
   const { start, end } = getMonthRange(year, month);
-  const effectiveStart = year === today.getFullYear() && month === today.getMonth() + 1
-    ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    : start;
+  const effectiveStart =
+    year === today.getFullYear() && month === today.getMonth() + 1
+      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      : start;
 
   return startDate <= end && endDate >= effectiveStart;
 }
@@ -772,11 +1107,14 @@ const FESTIVAL_REGION_ALIASES = {
 };
 
 function resolveFestivalRegion(value = "") {
-  return FESTIVAL_REGIONS.includes(value) ? value : FESTIVAL_REGION_ALIASES[value] ?? "";
+  return FESTIVAL_REGIONS.includes(value) ? value : (FESTIVAL_REGION_ALIASES[value] ?? "");
 }
 
 function getFestivalProgressStatus(festival = {}) {
-  return String(festival.progressStatus ?? festival.dday ?? "").trim().toUpperCase().replace(/-/g, "_");
+  return String(festival.progressStatus ?? festival.dday ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
 }
 
 function isFestivalEnded(festival = {}, today = new Date()) {
@@ -873,14 +1211,19 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadFestivals();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const selectedMonth = Number.parseInt(filter, 10);
-  const activeFestivals = festivals.filter(festival => !isFestivalEnded(festival, today));
-  const filteredFestivals = filter === "전체"
-    ? activeFestivals
-    : activeFestivals.filter(festival => festivalOverlapsMonth(festival, currentYear, selectedMonth, today));
+  const activeFestivals = festivals.filter((festival) => !isFestivalEnded(festival, today));
+  const filteredFestivals =
+    filter === "전체"
+      ? activeFestivals
+      : activeFestivals.filter((festival) =>
+          festivalOverlapsMonth(festival, currentYear, selectedMonth, today),
+        );
   const monthFilters = [
     "전체",
     ...Array.from({ length: 12 - currentMonth + 1 }, (_, index) => `${currentMonth + index}월`),
@@ -888,25 +1231,44 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
 
   return (
     <div style={S.screen} className="festival-page">
-      <div className="festival-page-header" style={{ background: COLORS.primary, padding: "44px 20px 0" }}>
+      <div
+        className="festival-page-header"
+        style={{ background: COLORS.primary, padding: "44px 20px 0" }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>←</span>
+            <span onClick={onBack} style={{ color: "#fff", fontSize: 20, cursor: "pointer" }}>
+              ←
+            </span>
             <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>🎉 축제 & 이벤트</div>
           </div>
         </div>
         <div className="festival-view-tabs">
-          <button type="button" className="active">목록</button>
-          <button type="button" onClick={onCalendar}>캘린더</button>
+          <button type="button" className="active">
+            목록
+          </button>
+          <button type="button" onClick={onCalendar}>
+            캘린더
+          </button>
         </div>
       </div>
       <div style={S.scrollArea}>
         <div className="festival-list-content">
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.primary }}>올해 남은 축제 일정</div>
-            <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>오늘부터 12월 31일까지 열리는 축제를 월별로 확인해보세요.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.primary }}>
+              올해 남은 축제 일정
+            </div>
+            <div style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 4 }}>
+              오늘부터 12월 31일까지 열리는 축제를 월별로 확인해보세요.
+            </div>
           </div>
-          <form className="festival-search-form" onSubmit={(event) => { event.preventDefault(); runFestivalSearch(); }}>
+          <form
+            className="festival-search-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              runFestivalSearch();
+            }}
+          >
             <span aria-hidden="true">⌕</span>
             <input
               value={searchQuery}
@@ -914,8 +1276,19 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
               placeholder="축제명이나 지역을 검색하세요"
               aria-label="축제 검색"
             />
-            {searchQuery && <button type="button" className="festival-search-clear" onClick={clearFestivalSearch} aria-label="축제 검색어 지우기">×</button>}
-            <button type="submit" className="festival-search-submit">검색</button>
+            {searchQuery && (
+              <button
+                type="button"
+                className="festival-search-clear"
+                onClick={clearFestivalSearch}
+                aria-label="축제 검색어 지우기"
+              >
+                ×
+              </button>
+            )}
+            <button type="submit" className="festival-search-submit">
+              검색
+            </button>
           </form>
           <div className="festival-region-filter">
             <label htmlFor="festival-region">지역</label>
@@ -929,11 +1302,19 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
               }}
             >
               <option value="">전체 지역</option>
-              {FESTIVAL_REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
+              {FESTIVAL_REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
             </select>
           </div>
           {didYouMean && didYouMean !== activeSearchQuery && (
-            <button type="button" className="festival-search-suggestion" onClick={() => runFestivalSearch(didYouMean)}>
+            <button
+              type="button"
+              className="festival-search-suggestion"
+              onClick={() => runFestivalSearch(didYouMean)}
+            >
               혹시 <strong>{didYouMean}</strong>을 찾으셨나요?
             </button>
           )}
@@ -942,15 +1323,23 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
               <span>
                 {activeSearchQuery && <strong>{activeSearchQuery}</strong>}
                 {activeSearchQuery && activeRegion && " · "}
-                {activeRegion && <strong>{activeRegion}</strong>}
-                {" "}검색 결과
+                {activeRegion && <strong>{activeRegion}</strong>} 검색 결과
               </span>
-              <button type="button" onClick={clearFestivalSearch}>전체 일정 보기</button>
+              <button type="button" onClick={clearFestivalSearch}>
+                전체 일정 보기
+              </button>
             </div>
           )}
           <div className="festival-month-filters">
-            {monthFilters.map(f => (
-              <button type="button" key={f} onClick={() => setFilter(f)} className={filter === f ? "active" : ""}>{f}</button>
+            {monthFilters.map((f) => (
+              <button
+                type="button"
+                key={f}
+                onClick={() => setFilter(f)}
+                className={filter === f ? "active" : ""}
+              >
+                {f}
+              </button>
             ))}
           </div>
           {status === "loading" && <SkeletonList count={3} />}
@@ -964,27 +1353,46 @@ export function FestivalPage({ onBack, onCalendar, onFestival }) {
           {status !== "loading" && status !== "error" && filteredFestivals.length === 0 && (
             <EmptyState
               icon={activeSearchQuery || activeRegion ? "⌕" : "🎉"}
-              title={activeSearchQuery || activeRegion ? "검색 결과가 없습니다." : "표시할 축제가 없습니다."}
-              description={activeSearchQuery || activeRegion ? "다른 축제명이나 지역으로 검색해보세요." : "올해 남은 축제 일정이 없거나 선택한 월에 표시할 축제가 없습니다."}
+              title={
+                activeSearchQuery || activeRegion
+                  ? "검색 결과가 없습니다."
+                  : "표시할 축제가 없습니다."
+              }
+              description={
+                activeSearchQuery || activeRegion
+                  ? "다른 축제명이나 지역으로 검색해보세요."
+                  : "올해 남은 축제 일정이 없거나 선택한 월에 표시할 축제가 없습니다."
+              }
               actionLabel="캘린더 보기"
               onAction={onCalendar}
             />
           )}
-          {filteredFestivals.map(f => {
+          {filteredFestivals.map((f) => {
             const progressStatus = getFestivalProgressStatus(f);
             return (
-            <button type="button" onClick={() => onFestival?.(f)} key={f.id} className="festival-list-card">
-              <div className="festival-card-copy">
-                <strong>{f.name}</strong>
-                <span className="festival-location-line"><FestivalLocationIcon />{f.location}</span>
-                <span>📅 {f.date}</span>
-              </div>
-              <span className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}>
-                {FESTIVAL_PROGRESS_LABELS[progressStatus] ?? progressStatus}
-              </span>
-              <span className="festival-card-chevron" aria-hidden="true">›</span>
-            </button>
-          )})}
+              <button
+                type="button"
+                onClick={() => onFestival?.(f)}
+                key={f.id}
+                className="festival-list-card"
+              >
+                <div className="festival-card-copy">
+                  <strong>{f.name}</strong>
+                  <span className="festival-location-line">
+                    <FestivalLocationIcon />
+                    {f.location}
+                  </span>
+                  <span>📅 {f.date}</span>
+                </div>
+                <span className={`festival-status-badge ${String(progressStatus).toLowerCase()}`}>
+                  {FESTIVAL_PROGRESS_LABELS[progressStatus] ?? progressStatus}
+                </span>
+                <span className="festival-card-chevron" aria-hidden="true">
+                  ›
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -1016,7 +1424,7 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
 
   const syncNotifications = (items) => {
     setNotifications(items);
-    onUnreadCountChange?.(items.filter(item => !item.read).length);
+    onUnreadCountChange?.(items.filter((item) => !item.read).length);
   };
 
   const loadNotifications = () => {
@@ -1037,7 +1445,9 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
   useEffect(() => {
     let ignore = false;
     if (!ignore) loadNotifications();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const markOnly = async (notification) => {
@@ -1046,10 +1456,12 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
       await markNotificationRead(notification.id).catch(() => {});
     }
     const nextNotification = { ...notification, read: true };
-    syncNotifications(notifications.map(x => {
-      const isTarget = notification.id ? x.id === notification.id : x === notification;
-      return isTarget ? nextNotification : x;
-    }));
+    syncNotifications(
+      notifications.map((x) => {
+        const isTarget = notification.id ? x.id === notification.id : x === notification;
+        return isTarget ? nextNotification : x;
+      }),
+    );
     return nextNotification;
   };
 
@@ -1062,7 +1474,7 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
     if (!notification?.id) return;
     try {
       await deleteNotification(notification.id);
-      syncNotifications(notifications.filter(item => item.id !== notification.id));
+      syncNotifications(notifications.filter((item) => item.id !== notification.id));
     } catch {
       // 서버에서 삭제된 경우에만 현재 목록을 갱신합니다.
     }
@@ -1072,21 +1484,21 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
     if (markingAll) return;
     setMarkingAll(true);
     await markAllNotificationsRead().catch(() => {});
-    syncNotifications(notifications.map(n => ({ ...n, read: true })));
+    syncNotifications(notifications.map((n) => ({ ...n, read: true })));
     setMarkingAll(false);
   };
 
   const clearAll = async () => {
     setDeleteConfirmOpen(false);
     try {
-      await deleteAllNotifications(notifications.map(item => item.id));
+      await deleteAllNotifications(notifications.map((item) => item.id));
     } catch (error) {
       return;
     }
     syncNotifications([]);
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
   const filteredNotifications = notifications.filter((notification) => {
     if (activeFilter === "all") return true;
     if (activeFilter === "unread") return !notification.read;
@@ -1096,19 +1508,43 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
 
   return (
     <div style={S.screen}>
-      <div style={{ background: COLORS.primary, padding: "44px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div
+        style={{
+          background: COLORS.primary,
+          padding: "44px 20px 20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <span onClick={onBack} style={{ color: "#fff", cursor: "pointer" }}>←</span>
+          <span onClick={onBack} style={{ color: "#fff", cursor: "pointer" }}>
+            ←
+          </span>
           <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>알림</span>
         </div>
         <div className="notification-top-actions">
-          <button type="button" className="notification-read-action" onClick={markAll} disabled={markingAll || unreadCount === 0}>{markingAll ? "처리 중..." : "전체 읽음"}</button>
-          <button type="button" className="notification-delete-action" onClick={() => setDeleteConfirmOpen(true)} disabled={notifications.length === 0}>전체 삭제</button>
+          <button
+            type="button"
+            className="notification-read-action"
+            onClick={markAll}
+            disabled={markingAll || unreadCount === 0}
+          >
+            {markingAll ? "처리 중..." : "전체 읽음"}
+          </button>
+          <button
+            type="button"
+            className="notification-delete-action"
+            onClick={() => setDeleteConfirmOpen(true)}
+            disabled={notifications.length === 0}
+          >
+            전체 삭제
+          </button>
         </div>
       </div>
       <div style={S.scrollArea}>
         <div className="notification-filter-tabs" role="tablist" aria-label="알림 필터">
-          {NOTIFICATION_FILTER_TABS.map(tab => (
+          {NOTIFICATION_FILTER_TABS.map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -1121,7 +1557,11 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
             </button>
           ))}
         </div>
-        {status === "loading" && <div style={{ padding: "0 16px 16px" }}><SkeletonList count={4} /></div>}
+        {status === "loading" && (
+          <div style={{ padding: "0 16px 16px" }}>
+            <SkeletonList count={4} />
+          </div>
+        )}
         {status === "empty" && (
           <div style={{ padding: "0 16px 16px" }}>
             <EmptyState
@@ -1149,26 +1589,43 @@ export function NotificationPage({ onBack, onNotificationClick, onUnreadCountCha
             />
           </div>
         )}
-        {status === "success" && filteredNotifications.map((n, index) => {
-          const visualType = NOTIFICATION_TYPE_META[n.visualType] ? n.visualType : "system";
-          const meta = NOTIFICATION_TYPE_META[visualType];
-          return (
-          <div key={n.id ?? `${n.type || "notification"}-${n.time || index}`} className={`notification-row ${n.read ? "read" : "unread"} ${visualType}`}>
-            <button type="button" className="notification-row-main" onClick={() => openNotification(n)}>
-              <span className={`notification-type-icon ${visualType}`} aria-label={meta.label}>{meta.icon}</span>
-              <span className="notification-row-content">
-                {n.title && <span className="notification-title">{n.title}</span>}
-                <span className="notification-message">{n.displayMessage || n.text}</span>
-                <span className="notification-time">{n.timeText || n.time}</span>
-              </span>
-              {!n.read && <span className="notification-unread-dot" />}
-            </button>
-            <span className="notification-row-actions">
-              {!n.read && <button type="button" onClick={() => markOnly(n)}>읽음</button>}
-              <button type="button" className="delete" onClick={() => removeOne(n)}>삭제</button>
-            </span>
-          </div>
-        );})}
+        {status === "success" &&
+          filteredNotifications.map((n, index) => {
+            const visualType = NOTIFICATION_TYPE_META[n.visualType] ? n.visualType : "system";
+            const meta = NOTIFICATION_TYPE_META[visualType];
+            return (
+              <div
+                key={n.id ?? `${n.type || "notification"}-${n.time || index}`}
+                className={`notification-row ${n.read ? "read" : "unread"} ${visualType}`}
+              >
+                <button
+                  type="button"
+                  className="notification-row-main"
+                  onClick={() => openNotification(n)}
+                >
+                  <span className={`notification-type-icon ${visualType}`} aria-label={meta.label}>
+                    {meta.icon}
+                  </span>
+                  <span className="notification-row-content">
+                    {n.title && <span className="notification-title">{n.title}</span>}
+                    <span className="notification-message">{n.displayMessage || n.text}</span>
+                    <span className="notification-time">{n.timeText || n.time}</span>
+                  </span>
+                  {!n.read && <span className="notification-unread-dot" />}
+                </button>
+                <span className="notification-row-actions">
+                  {!n.read && (
+                    <button type="button" onClick={() => markOnly(n)}>
+                      읽음
+                    </button>
+                  )}
+                  <button type="button" className="delete" onClick={() => removeOne(n)}>
+                    삭제
+                  </button>
+                </span>
+              </div>
+            );
+          })}
       </div>
       <ConfirmDialog
         open={deleteConfirmOpen}
@@ -1202,7 +1659,7 @@ function readRecentSearches() {
 }
 
 function writeRecentSearch(keyword) {
-  const next = [keyword, ...readRecentSearches().filter(item => item !== keyword)].slice(0, 10);
+  const next = [keyword, ...readRecentSearches().filter((item) => item !== keyword)].slice(0, 10);
   sessionStorage.setItem("chunbae_recent_searches", JSON.stringify(next));
   return next;
 }
@@ -1214,7 +1671,7 @@ function replaceRecentSearches(keywords) {
 }
 
 function removeRecentSearch(keyword) {
-  return replaceRecentSearches(readRecentSearches().filter(item => item !== keyword));
+  return replaceRecentSearches(readRecentSearches().filter((item) => item !== keyword));
 }
 
 function clearRecentSearches() {
@@ -1240,10 +1697,16 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
   const draftQuery = query.trim();
   const normalizedQuery = submittedQuery.trim();
   const resultCounts = SEARCH_RESULT_TABS.reduce((acc, tab) => {
-    acc[tab.key] = tab.key === "ALL" ? results.length : results.filter(item => item.targetType === tab.key).length;
+    acc[tab.key] =
+      tab.key === "ALL"
+        ? results.length
+        : results.filter((item) => item.targetType === tab.key).length;
     return acc;
   }, {});
-  const visibleResults = activeResultType === "ALL" ? results : results.filter(item => item.targetType === activeResultType);
+  const visibleResults =
+    activeResultType === "ALL"
+      ? results
+      : results.filter((item) => item.targetType === activeResultType);
 
   useEffect(() => {
     let ignore = false;
@@ -1252,7 +1715,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       .then((data) => {
         if (ignore) return;
         const values = data
-          .map(item => item.keyword || item.query || item.name || item)
+          .map((item) => item.keyword || item.query || item.name || item)
           .filter(Boolean)
           .slice(0, 10);
         setPopularSearches(values);
@@ -1263,13 +1726,15 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       .then((data) => {
         if (ignore) return;
         const values = (Array.isArray(data) ? data : [])
-          .map(item => item.keyword || item.query || item.name || item)
+          .map((item) => item.keyword || item.query || item.name || item)
           .filter(Boolean);
         setRecentSearches(replaceRecentSearches(values));
       })
       .catch(() => {});
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleDeleteRecentSearch = (keyword) => {
@@ -1315,7 +1780,9 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
     if (!draftQuery || draftQuery === normalizedQuery) {
       setSuggestions([]);
       setIsSuggestOpen(false);
-      return () => { ignore = true; };
+      return () => {
+        ignore = true;
+      };
     }
 
     const timer = setTimeout(() => {
@@ -1323,7 +1790,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
         .then((data) => {
           if (ignore) return;
           const values = (Array.isArray(data) ? data : [])
-            .map(item => item.keyword || item.query || item.name || item)
+            .map((item) => item.keyword || item.query || item.name || item)
             .filter(Boolean)
             .slice(0, 5);
           setSuggestions(values);
@@ -1351,7 +1818,9 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       setNextCursor(null);
       setHasNextResults(false);
       setLoadMoreError("");
-      return () => { ignore = true; };
+      return () => {
+        ignore = true;
+      };
     }
 
     setStatus("loading");
@@ -1395,8 +1864,8 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       size: SEARCH_PAGE_SIZE,
     })
       .then((page) => {
-        setResults(current => {
-          const seen = new Set(current.map(item => `${item.targetType}-${item.id}`));
+        setResults((current) => {
+          const seen = new Set(current.map((item) => `${item.targetType}-${item.id}`));
           const merged = [...current];
           page.content.forEach((item) => {
             const key = `${item.targetType}-${item.id}`;
@@ -1440,7 +1909,9 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
       return `${item.shopName} · ${item.placeName}${item.price ? ` · ${item.price.toLocaleString()}원` : ""}`;
     }
     if (item.targetType === "SHOP") {
-      const menuText = item.matchedMenuNames?.length ? ` · 대표 ${item.matchedMenuNames.slice(0, 2).join(", ")}` : "";
+      const menuText = item.matchedMenuNames?.length
+        ? ` · 대표 ${item.matchedMenuNames.slice(0, 2).join(", ")}`
+        : "";
       return `${item.placeName ?? "연결 장소"} · ${item.category ?? "가게"}${menuText}`;
     }
     return `${item.type} · ${item.dist}`;
@@ -1461,7 +1932,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
             <input
               autoFocus
               value={query}
-              onChange={e => {
+              onChange={(e) => {
                 setQuery(e.target.value);
                 setIsSuggestOpen(true);
               }}
@@ -1472,16 +1943,19 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
               }}
               placeholder="장소, 가게, 메뉴를 검색해보세요"
             />
-            {isSuggestOpen && draftQuery && draftQuery !== normalizedQuery && suggestions.length > 0 && (
-              <div className="search-hero-suggest-row">
-                {suggestions.map(item => (
-                  <button key={item} type="button" onClick={() => submitSearch(item)}>
-                    <span>추천</span>
-                    <strong>{item}</strong>
-                  </button>
-                ))}
-              </div>
-            )}
+            {isSuggestOpen &&
+              draftQuery &&
+              draftQuery !== normalizedQuery &&
+              suggestions.length > 0 && (
+                <div className="search-hero-suggest-row">
+                  {suggestions.map((item) => (
+                    <button key={item} type="button" onClick={() => submitSearch(item)}>
+                      <span>추천</span>
+                      <strong>{item}</strong>
+                    </button>
+                  ))}
+                </div>
+              )}
           </div>
           <button type="submit">검색</button>
         </form>
@@ -1500,36 +1974,57 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
                 <div>
                   {popularSearches.length === 0 ? (
                     <span className="search-empty-keyword">아직 인기 검색어가 없습니다.</span>
-                  ) : popularSearches.map((item, index) => (
-                    <button key={`${item}-${index}`} type="button" onClick={() => submitSearch(item)}>
-                      <b>{index + 1}</b>
-                      {item}
-                    </button>
-                  ))}
+                  ) : (
+                    popularSearches.map((item, index) => (
+                      <button
+                        key={`${item}-${index}`}
+                        type="button"
+                        onClick={() => submitSearch(item)}
+                      >
+                        <b>{index + 1}</b>
+                        {item}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
               <div>
                 <div className="search-recent-head">
                   <strong>최근 검색어</strong>
                   {recentSearches.length > 0 && (
-                    <button type="button" onClick={handleClearRecentSearches}>전체 삭제</button>
+                    <button type="button" onClick={handleClearRecentSearches}>
+                      전체 삭제
+                    </button>
                   )}
                 </div>
                 <div>
                   {recentSearches.length === 0 ? (
                     <span className="search-empty-keyword">아직 최근 검색어가 없습니다.</span>
-                  ) : recentSearches.map(item => (
-                    <span key={item} className="search-recent-chip">
-                      <button type="button" onClick={() => submitSearch(item)}>{item}</button>
-                      <button type="button" aria-label={`${item} 최근 검색어 삭제`} onClick={() => handleDeleteRecentSearch(item)}>×</button>
-                    </span>
-                  ))}
+                  ) : (
+                    recentSearches.map((item) => (
+                      <span key={item} className="search-recent-chip">
+                        <button type="button" onClick={() => submitSearch(item)}>
+                          {item}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`${item} 최근 검색어 삭제`}
+                          onClick={() => handleDeleteRecentSearch(item)}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
           </div>
         ) : status === "loading" ? (
-          <div className="search-state-card search-loading-card" aria-label="검색 결과를 불러오는 중입니다.">
+          <div
+            className="search-state-card search-loading-card"
+            aria-label="검색 결과를 불러오는 중입니다."
+          >
             <strong>검색 결과를 찾는 중이에요.</strong>
             <span>잠시만 기다리면 장소 카드가 표시됩니다.</span>
             <SkeletonList count={3} />
@@ -1540,7 +2035,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
               title="검색 결과를 불러오지 못했습니다."
               description={errorMessage || "백엔드 연결 상태를 확인한 뒤 다시 시도해주세요."}
               actionLabel="다시 검색"
-              onRetry={() => setRetryKey(key => key + 1)}
+              onRetry={() => setRetryKey((key) => key + 1)}
             />
           </div>
         ) : results.length === 0 ? (
@@ -1558,7 +2053,7 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
               <small>거리와 분위기를 보고 바로 상세로 들어가세요</small>
             </div>
             <div className="search-result-tabs" role="tablist" aria-label="검색 결과 유형">
-              {SEARCH_RESULT_TABS.map(tab => (
+              {SEARCH_RESULT_TABS.map((tab) => (
                 <button
                   key={tab.key}
                   type="button"
@@ -1573,25 +2068,45 @@ export function SearchPage({ onBack, onPlaceClick, onShopClick }) {
                 </button>
               ))}
             </div>
-            {visibleResults.map(p => {
+            {visibleResults.map((p) => {
               const placeImage = getPlaceImageUrl(p);
               return (
-              <div key={`${p.targetType}-${p.id}`} onClick={() => handleSearchResultClick(p)} className={`search-result-card ${p.targetType?.toLowerCase() || "place"}`}>
                 <div
-                  className={p.type === "전통시장" ? "search-result-thumb market has-image" : "search-result-thumb has-image"}
-                  style={{ "--place-card-image": ["PLACE", "MARKET"].includes(p.targetType) && placeImage ? `url("${placeImage}")` : undefined }}
+                  key={`${p.targetType}-${p.id}`}
+                  onClick={() => handleSearchResultClick(p)}
+                  className={`search-result-card ${p.targetType?.toLowerCase() || "place"}`}
                 >
-                  {p.targetType === "SHOP" ? "가게" : p.targetType === "MENU" ? "메뉴" : !placeImage && p.emoji}
+                  <div
+                    className={
+                      p.type === "전통시장"
+                        ? "search-result-thumb market has-image"
+                        : "search-result-thumb has-image"
+                    }
+                    style={{
+                      "--place-card-image":
+                        ["PLACE", "MARKET"].includes(p.targetType) && placeImage
+                          ? `url("${placeImage}")`
+                          : undefined,
+                    }}
+                  >
+                    {p.targetType === "SHOP"
+                      ? "가게"
+                      : p.targetType === "MENU"
+                        ? "메뉴"
+                        : !placeImage && p.emoji}
+                  </div>
+                  <div>
+                    <em>{p.targetLabel ?? "장소"}</em>
+                    <strong>{p.name}</strong>
+                    <span>{getResultMeta(p)}</span>
+                    <small>{getResultDescription(p)}</small>
+                  </div>
+                  <button type="button">
+                    {p.targetType === "SHOP" || p.targetType === "MENU" ? "가게 보기" : "장소 보기"}
+                  </button>
                 </div>
-                <div>
-                  <em>{p.targetLabel ?? "장소"}</em>
-                  <strong>{p.name}</strong>
-                  <span>{getResultMeta(p)}</span>
-                  <small>{getResultDescription(p)}</small>
-                </div>
-                <button type="button">{p.targetType === "SHOP" || p.targetType === "MENU" ? "가게 보기" : "장소 보기"}</button>
-              </div>
-            );})}
+              );
+            })}
             {hasNextResults && activeResultType === "ALL" && (
               <div className="search-result-more">
                 {loadMoreError && <span>{loadMoreError}</span>}

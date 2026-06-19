@@ -53,15 +53,19 @@ export function createSupportRealtimeClient({ supportRoomId, role, onMessage, on
 
       client = new Client({
         webSocketFactory: () => new SockJS(getSockJsUrl(accessToken)),
-        connectHeaders: authorization ? {
-          Authorization: authorization,
-          authorization,
-          token: accessToken,
-        } : {},
+        connectHeaders: authorization
+          ? {
+              Authorization: authorization,
+              authorization,
+              token: accessToken,
+            }
+          : {},
         reconnectDelay: 3000,
         heartbeatIncoming: 10000,
         heartbeatOutgoing: 10000,
-        debug: import.meta.env.DEV ? (message) => console.debug("[SUPPORT_STOMP]", message) : () => {},
+        debug: import.meta.env.DEV
+          ? (message) => console.debug("[SUPPORT_STOMP]", message)
+          : () => {},
         onConnect: () => {
           notifyStatus("connected");
           subscription = client.subscribe(subscribeDestination, (frame) => {
@@ -69,7 +73,9 @@ export function createSupportRealtimeClient({ supportRoomId, role, onMessage, on
           });
         },
         onStompError: (frame) => {
-          notifyError(new Error(frame.body || frame.headers.message || "상담 STOMP 오류가 발생했습니다."));
+          notifyError(
+            new Error(frame.body || frame.headers.message || "상담 STOMP 오류가 발생했습니다."),
+          );
         },
         onWebSocketError: () => {
           if (client?.connected || client?.active) return;

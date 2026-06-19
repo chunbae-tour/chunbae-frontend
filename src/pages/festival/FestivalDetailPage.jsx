@@ -3,7 +3,11 @@ import MapPreview from "../../components/MapPreview.jsx";
 import { ErrorState, SkeletonList } from "../../components/common";
 import { COLORS, S } from "../../constants/colors";
 import { getApiErrorHint } from "../../services/apiClient.js";
-import { addFestivalLike, fetchFestivalDetail, removeFestivalLike } from "../../services/festivalService.js";
+import {
+  addFestivalLike,
+  fetchFestivalDetail,
+  removeFestivalLike,
+} from "../../services/festivalService.js";
 import { getFestivalProgress } from "../../utils/festivalProgress.js";
 
 const PROGRESS_LABELS = {
@@ -14,7 +18,17 @@ const PROGRESS_LABELS = {
 
 function ExternalLinkIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M14 3h7v7" />
       <path d="M10 14 21 3" />
       <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
@@ -23,7 +37,10 @@ function ExternalLinkIcon() {
 }
 
 function getFestivalStatus(detail = {}) {
-  return String(detail.progressStatus ?? detail.dday ?? "").trim().toUpperCase().replace(/-/g, "_");
+  return String(detail.progressStatus ?? detail.dday ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
 }
 
 export default function FestivalDetailPage({ festival, onBack }) {
@@ -96,15 +113,23 @@ export default function FestivalDetailPage({ festival, onBack }) {
   return (
     <div style={S.screen} className="festival-detail-page">
       <div className="festival-detail-topbar">
-        <button type="button" onClick={onBack} aria-label="뒤로 가기">←</button>
+        <button type="button" onClick={onBack} aria-label="뒤로 가기">
+          ←
+        </button>
         <strong>축제 상세</strong>
       </div>
       <div style={S.scrollArea}>
         {status === "loading" ? (
-          <div className="festival-detail-loading"><SkeletonList count={4} /></div>
+          <div className="festival-detail-loading">
+            <SkeletonList count={4} />
+          </div>
         ) : status === "error" ? (
           <div className="festival-detail-loading">
-            <ErrorState title="축제 상세 정보를 불러오지 못했습니다." description={errorMessage} onRetry={loadDetail} />
+            <ErrorState
+              title="축제 상세 정보를 불러오지 못했습니다."
+              description={errorMessage}
+              onRetry={loadDetail}
+            />
           </div>
         ) : (
           <article className="festival-detail-layout">
@@ -114,7 +139,10 @@ export default function FestivalDetailPage({ festival, onBack }) {
               </div>
             )}
 
-            <section className={`festival-detail-hero ${detail?.imageUrl ? "has-image" : ""}`} style={heroStyle}>
+            <section
+              className={`festival-detail-hero ${detail?.imageUrl ? "has-image" : ""}`}
+              style={heroStyle}
+            >
               <span className={`festival-hero-status ${String(progressStatus).toLowerCase()}`}>
                 {PROGRESS_LABELS[progressStatus] ?? progressStatus}
               </span>
@@ -135,7 +163,12 @@ export default function FestivalDetailPage({ festival, onBack }) {
                 <h1>{detail?.name}</h1>
               </div>
               {detail?.relatedUrl && (
-                <a className="festival-official-btn" href={detail.relatedUrl} target="_blank" rel="noreferrer">
+                <a
+                  className="festival-official-btn"
+                  href={detail.relatedUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   공식 정보 <ExternalLinkIcon />
                 </a>
               )}
@@ -146,8 +179,14 @@ export default function FestivalDetailPage({ festival, onBack }) {
                 <strong>행사 진행 상황</strong>
                 <span>{progress.label}</span>
               </div>
-              <div className="festival-progress-bar" aria-label={`행사 진행률 ${progress.percent}%`}>
-                <i className={progress.isEnded ? "ended" : ""} style={{ width: `${progress.percent}%` }} />
+              <div
+                className="festival-progress-bar"
+                aria-label={`행사 진행률 ${progress.percent}%`}
+              >
+                <i
+                  className={progress.isEnded ? "ended" : ""}
+                  style={{ width: `${progress.percent}%` }}
+                />
               </div>
               <div className="festival-progress-dates">
                 <span>{detail?.startDate || "시작일 미정"} 시작</span>
@@ -170,17 +209,18 @@ export default function FestivalDetailPage({ festival, onBack }) {
               <p>{detail?.description || "등록된 축제 소개가 없습니다."}</p>
             </section>
 
-            {(detail?.latitude != null || detail?.lat != null) && (detail?.longitude != null || detail?.lng != null) && (
-              <section className="festival-detail-card festival-location-card">
-                <h2>위치</h2>
-                <MapPreview
-                  name={detail?.name}
-                  address={detail?.address}
-                  latitude={detail?.latitude ?? detail?.lat}
-                  longitude={detail?.longitude ?? detail?.lng}
-                />
-              </section>
-            )}
+            {(detail?.latitude != null || detail?.lat != null) &&
+              (detail?.longitude != null || detail?.lng != null) && (
+                <section className="festival-detail-card festival-location-card">
+                  <h2>위치</h2>
+                  <MapPreview
+                    name={detail?.name}
+                    address={detail?.address}
+                    latitude={detail?.latitude ?? detail?.lat}
+                    longitude={detail?.longitude ?? detail?.lng}
+                  />
+                </section>
+              )}
           </article>
         )}
       </div>

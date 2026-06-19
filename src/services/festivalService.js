@@ -58,8 +58,10 @@ function getFestivalSortBucket(festival = {}, today = new Date()) {
 export function normalizeFestival(festival = {}) {
   const startDate = festival.startDate ?? "";
   const startParts = startDate ? startDate.split("-").map(Number) : [];
-  const monthNumber = festival.monthNumber ?? MONTH_LABEL_TO_NUMBER[festival.month] ?? startParts[1] ?? null;
-  const dayNumber = festival.dayNumber ?? (Number.parseInt(festival.day, 10) || startParts[2] || null);
+  const monthNumber =
+    festival.monthNumber ?? MONTH_LABEL_TO_NUMBER[festival.month] ?? startParts[1] ?? null;
+  const dayNumber =
+    festival.dayNumber ?? (Number.parseInt(festival.day, 10) || startParts[2] || null);
   const imageUrl = festival.imageUrl ?? festival.thumbnailUrl ?? "";
   const address = festival.address ?? festival.location ?? "";
   const latitude = festival.latitude ?? festival.lat ?? null;
@@ -78,7 +80,9 @@ export function normalizeFestival(festival = {}) {
     longitude,
     lat: latitude,
     lng: longitude,
-    date: festival.date ?? (startDate && festival.endDate ? `${startDate} ~ ${festival.endDate}` : startDate),
+    date:
+      festival.date ??
+      (startDate && festival.endDate ? `${startDate} ~ ${festival.endDate}` : startDate),
     dday: festival.dday ?? festival.progressStatus ?? "",
     month: festival.month ?? (monthNumber ? `${monthNumber}월` : ""),
     monthNumber,
@@ -120,7 +124,11 @@ export async function searchFestivals({
   };
 }
 
-export async function fetchRemainingYearFestivals({ today = new Date(), size = 100, maxPages = 12 } = {}) {
+export async function fetchRemainingYearFestivals({
+  today = new Date(),
+  size = 100,
+  maxPages = 12,
+} = {}) {
   const startDate = toLocalDateString(today);
   const endDate = getYearEndDateString(today);
   const allItems = [];

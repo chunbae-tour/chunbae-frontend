@@ -4,9 +4,9 @@ export function getKakaoMapAppKey() {
   // Kakao Maps Web SDK requires a browser-exposed JavaScript key.
   // Never accept REST API or Admin keys here.
   return (
-    import.meta.env.VITE_KAKAO_MAP_JS_KEY
-    || import.meta.env.VITE_KAKAO_MAP_APP_KEY
-    || ""
+    import.meta.env.VITE_KAKAO_MAP_JS_KEY ||
+    import.meta.env.VITE_KAKAO_MAP_APP_KEY ||
+    ""
   ).trim();
 }
 
