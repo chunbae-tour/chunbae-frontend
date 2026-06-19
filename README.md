@@ -157,7 +157,6 @@ npm run dev
 | --- | --- |
 | `pnpm dev` | 로컬 개발 서버 |
 | `pnpm dev:mobile` | 모바일 실기기 테스트용 (`--host`, HTTPS) |
-| `pnpm dev:ecs` | ECS 배포 백엔드 연동 개발 서버 |
 | `pnpm build` | 프로덕션 빌드 |
 | `pnpm preview` | 빌드 결과 미리보기 |
 | `pnpm lint` | ESLint 검사 |
