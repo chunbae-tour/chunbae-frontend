@@ -1,4 +1,4 @@
-import { COLORS, S } from "../../constants/colors.js";
+import { S } from "../../constants/colors.js";
 
 const policySections = [
   {

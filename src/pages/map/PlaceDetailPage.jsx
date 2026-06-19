@@ -174,7 +174,6 @@ export default function PlaceDetailPage({
   onBack,
   showToast,
   onDirection,
-  onQrPay,
   onShopClick,
   onLikeChange,
   onCompanionMore,
@@ -185,7 +184,7 @@ export default function PlaceDetailPage({
   const [likeLoading, setLikeLoading] = useState(false);
   const [tab, setTab] = useState(place?.reviewIntent ? "리뷰" : "소개");
   const [status, setStatus] = useState(place ? "success" : "loading");
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
   const [reviews, setReviews] = useState([]);
   const [nearbyStores, setNearbyStores] = useState([]);
   const [reviewFormOpen, setReviewFormOpen] = useState(Boolean(place?.reviewIntent));
@@ -745,7 +744,7 @@ export default function PlaceDetailPage({
                         </div>
                       )}
                       <div className="web-store-list" style={{ display: "flex", gap: 10 }}>
-                        {nearbyStores.map((store, index) => (
+                        {nearbyStores.map((store) => (
                           <button
                             key={store.id}
                             type="button"

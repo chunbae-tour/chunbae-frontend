@@ -301,7 +301,6 @@ function formatRoomLastMessage(message, currentUserId) {
 export function ChatListPage({
   onChatRoom,
   onLogin,
-  showToast,
   compact = false,
   selectedRoomId = null,
 }) {
@@ -977,7 +976,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         setParticipants(data);
         setParticipantStatus(data.length > 0 ? "success" : "empty");
       })
-      .catch((error) => {
+      .catch(() => {
         if (ignore) return;
         setParticipants([]);
         setParticipantStatus("error");

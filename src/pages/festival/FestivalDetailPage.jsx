@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import MapPreview from "../../components/MapPreview.jsx";
 import { ErrorState, SkeletonList } from "../../components/common";
-import { COLORS, S } from "../../constants/colors";
+import { S } from "../../constants/colors";
 import { getApiErrorHint } from "../../services/apiClient.js";
 import {
   addFestivalLike,

@@ -124,7 +124,7 @@ export default function KakaoMap({
           map.setCenter(new kakao.maps.LatLng(lat, lng));
         }, 120);
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return;
         setStatus("error");
         setErrorMessage("지도를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
