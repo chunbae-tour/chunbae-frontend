@@ -26,7 +26,25 @@ const CATEGORY_FILTERS = [
 ];
 const FAVORITE_FILTER = "찜한 장소";
 const MAP_FILTERS = [...CATEGORY_FILTERS.map(({ label }) => label), FAVORITE_FILTER];
-const REGION_FILTERS = ["전체", "서울", "경기", "인천", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "부산", "대구", "광주", "대전", "울산", "제주"];
+const REGION_FILTERS = [
+  "전체",
+  "서울",
+  "경기",
+  "인천",
+  "강원",
+  "충북",
+  "충남",
+  "전북",
+  "전남",
+  "경북",
+  "경남",
+  "부산",
+  "대구",
+  "광주",
+  "대전",
+  "울산",
+  "제주",
+];
 const REGION_QUERY_ALIASES = {
   서울: "서울특별시",
   경기: "경기도",
@@ -52,7 +70,9 @@ const MARKER_REQUEST_MIN_INTERVAL_MS = 1200;
 const MARKER_RATE_LIMIT_COOLDOWN_MS = 5000;
 
 function getPlaceIdentity(place = {}) {
-  const targetType = place.targetType ?? (place.marketId != null || place.type === "전통시장" ? "TRADITIONAL_MARKET" : "PLACE");
+  const targetType =
+    place.targetType ??
+    (place.marketId != null || place.type === "전통시장" ? "TRADITIONAL_MARKET" : "PLACE");
   const id = place.placeId ?? place.marketId ?? place.id ?? place.name;
   return `${targetType}:${id}`;
 }
@@ -80,7 +100,9 @@ function getRegionQueryValue(region) {
 function getRegionFilterKeywords(region) {
   const normalizedRegion = normalizeRegionFilter(region);
   if (normalizedRegion === "전체") return [];
-  return Array.from(new Set([normalizedRegion, getRegionQueryValue(normalizedRegion)].filter(Boolean)));
+  return Array.from(
+    new Set([normalizedRegion, getRegionQueryValue(normalizedRegion)].filter(Boolean)),
+  );
 }
 
 function filterPlacesByRegion(items, region) {
@@ -94,15 +116,19 @@ function filterPlacesByRegion(items, region) {
       place?.roadAddressName,
       place?.addressName,
       place?.name,
-    ].filter(Boolean).join(" ");
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return keywords.some((keyword) => searchableText.includes(keyword));
   });
 }
 
 function hasMarkerCoordinate(place) {
-  return Number.isFinite(Number(place?.lat ?? place?.latitude))
-    && Number.isFinite(Number(place?.lng ?? place?.longitude));
+  return (
+    Number.isFinite(Number(place?.lat ?? place?.latitude)) &&
+    Number.isFinite(Number(place?.lng ?? place?.longitude))
+  );
 }
 
 function mergeMarkerSources(...sources) {
@@ -127,12 +153,9 @@ function mergePlaceLists(currentItems, nextItems) {
 }
 
 function getMarkerBoundsKey(bounds) {
-  return [
-    bounds.swLat,
-    bounds.swLng,
-    bounds.neLat,
-    bounds.neLng,
-  ].map((value) => Number(value).toFixed(4)).join("|");
+  return [bounds.swLat, bounds.swLng, bounds.neLat, bounds.neLng]
+    .map((value) => Number(value).toFixed(4))
+    .join("|");
 }
 
 export default function MapPage({ onPlaceClick }) {
@@ -173,9 +196,7 @@ export default function MapPage({ onPlaceClick }) {
 
   const filtered = useMemo(() => filterPlacesByType(places, filter), [places, filter]);
   const activePlace = focusedPlace ?? selectedPlace;
-  const markerSource = filter === FAVORITE_FILTER
-    ? places
-    : mergeMarkerSources(mapMarkers, places);
+  const markerSource = filter === FAVORITE_FILTER ? places : mergeMarkerSources(mapMarkers, places);
   const filteredMarkers = filterPlacesByType(markerSource, filter);
   const accessOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const isSecureAccess = typeof window !== "undefined" ? window.isSecureContext : true;
@@ -185,7 +206,8 @@ export default function MapPage({ onPlaceClick }) {
     activeCategory ? filter : "",
     filter === FAVORITE_FILTER ? FAVORITE_FILTER : "",
   ].filter(Boolean);
-  const canLoadMoreNearby = nearbyPage.mode === "nearby" && nearbyPage.hasNext && status !== "loading";
+  const canLoadMoreNearby =
+    nearbyPage.mode === "nearby" && nearbyPage.hasNext && status !== "loading";
 
   const applyLocation = (location) => {
     setUserLocation(location);
@@ -222,25 +244,44 @@ export default function MapPage({ onPlaceClick }) {
       const normalizedRegion = normalizeRegionFilter(region);
       const selectedRegion = getRegionQueryValue(normalizedRegion);
       const selectedCategory = getCategoryFilterValue(nextFilter);
-      const isDefaultNearby = !selectedRegion && !selectedCategory && nextFilter !== FAVORITE_FILTER;
+      const isDefaultNearby =
+        !selectedRegion && !selectedCategory && nextFilter !== FAVORITE_FILTER;
       const placesPromise = (() => {
         if (nextFilter === FAVORITE_FILTER) {
-          return fetchLikedTravelSpots({ size: PLACE_FILTER_PAGE_SIZE }).then(items => ({ items, mode: "static", hasNext: false }));
+          return fetchLikedTravelSpots({ size: PLACE_FILTER_PAGE_SIZE }).then((items) => ({
+            items,
+            mode: "static",
+            hasNext: false,
+          }));
         }
 
         if (selectedCategory === "TRADITIONAL_MARKET") {
-          return fetchNearbyTraditionalMarkets({ ...location, radius: 50000, size: PLACE_FILTER_PAGE_SIZE })
-            .then((markets) => ({ items: filterPlacesByRegion(markets, normalizedRegion), mode: "static", hasNext: false }));
+          return fetchNearbyTraditionalMarkets({
+            ...location,
+            radius: 50000,
+            size: PLACE_FILTER_PAGE_SIZE,
+          }).then((markets) => ({
+            items: filterPlacesByRegion(markets, normalizedRegion),
+            mode: "static",
+            hasNext: false,
+          }));
         }
 
         if (selectedRegion || selectedCategory) {
-          const placeSearchPromise = fetchPlaces({ region: selectedRegion, category: selectedCategory, size: PLACE_FILTER_PAGE_SIZE });
+          const placeSearchPromise = fetchPlaces({
+            region: selectedRegion,
+            category: selectedCategory,
+            size: PLACE_FILTER_PAGE_SIZE,
+          });
 
           if (!selectedCategory) {
             return Promise.allSettled([
               placeSearchPromise,
-              fetchNearbyTraditionalMarkets({ ...location, radius: 50000, size: PLACE_FILTER_PAGE_SIZE })
-                .then((markets) => filterPlacesByRegion(markets, normalizedRegion)),
+              fetchNearbyTraditionalMarkets({
+                ...location,
+                radius: 50000,
+                size: PLACE_FILTER_PAGE_SIZE,
+              }).then((markets) => filterPlacesByRegion(markets, normalizedRegion)),
             ]).then(([placesResult, marketsResult]) => {
               if (placesResult.status === "rejected" && marketsResult.status === "rejected") {
                 throw placesResult.reason;
@@ -257,7 +298,7 @@ export default function MapPage({ onPlaceClick }) {
             });
           }
 
-          return placeSearchPromise.then(items => ({ items, mode: "static", hasNext: false }));
+          return placeSearchPromise.then((items) => ({ items, mode: "static", hasNext: false }));
         }
 
         return fetchNearbyTravelSpotsWithLikes({
@@ -266,12 +307,14 @@ export default function MapPage({ onPlaceClick }) {
           cursor,
           cursorDistance,
           page: marketPage ?? 0,
-        }).then(page => ({ ...page, mode: isDefaultNearby ? "nearby" : "static" }));
+        }).then((page) => ({ ...page, mode: isDefaultNearby ? "nearby" : "static" }));
       })();
 
       const [spotsResult, regionResult] = await Promise.allSettled([
         placesPromise,
-        selectedRegion ? Promise.resolve({ fullAddress: `${normalizedRegion} 지역` }) : fetchRegionByCoordinate(location),
+        selectedRegion
+          ? Promise.resolve({ fullAddress: `${normalizedRegion} 지역` })
+          : fetchRegionByCoordinate(location),
       ]);
       if (regionResult.status === "fulfilled") {
         setRegionInfo(regionResult.value);
@@ -293,9 +336,9 @@ export default function MapPage({ onPlaceClick }) {
       });
 
       if (append) {
-        setPlaces(prev => {
+        setPlaces((prev) => {
           const prevKeys = new Set(prev.map(getPlaceIdentity));
-          const addedKeys = nextItems.map(getPlaceIdentity).filter(key => !prevKeys.has(key));
+          const addedKeys = nextItems.map(getPlaceIdentity).filter((key) => !prevKeys.has(key));
           setNewItemKeys(new Set(addedKeys));
           return mergePlaceLists(prev, nextItems);
         });
@@ -374,7 +417,9 @@ export default function MapPage({ onPlaceClick }) {
       if (err?.status === 429 || err?.code === "TOO_MANY_REQUESTS") {
         markerRateLimitedUntil.current = Date.now() + MARKER_RATE_LIMIT_COOLDOWN_MS;
         setMarkerStatus("error");
-        setMarkerNotice("지도를 빠르게 움직여 마커 요청이 잠시 제한되었습니다. 잠시 후 다시 움직여주세요.");
+        setMarkerNotice(
+          "지도를 빠르게 움직여 마커 요청이 잠시 제한되었습니다. 잠시 후 다시 움직여주세요.",
+        );
         return;
       }
       setMapMarkers([]);
@@ -384,47 +429,50 @@ export default function MapPage({ onPlaceClick }) {
     }
   }, []);
 
-  const loadMapMarkers = useCallback((bounds) => {
-    if (!bounds) return;
+  const loadMapMarkers = useCallback(
+    (bounds) => {
+      if (!bounds) return;
 
-    if (bounds.latSpan > MAX_MAP_SPAN_DEGREES || bounds.lngSpan > MAX_MAP_SPAN_DEGREES) {
-      window.clearTimeout(markerRequestTimer.current);
-      markerPendingBounds.current = null;
-      markerRequestSeq.current += 1;
-      markerLastBoundsKey.current = "";
-      setMapMarkers([]);
-      setSelectedPlace(null);
-      setMarkerStatus("wide");
-      setMarkerNotice("지도를 더 확대해 주세요. 넓은 범위에서는 마커 조회를 잠시 멈춥니다.");
-      return;
-    }
-
-    const now = Date.now();
-    if (now < markerRateLimitedUntil.current) {
-      setMarkerStatus("error");
-      setMarkerNotice("마커 요청이 잠시 제한되었습니다. 몇 초 뒤 다시 지도를 움직여주세요.");
-      return;
-    }
-
-    const boundsKey = getMarkerBoundsKey(bounds);
-    if (boundsKey === markerLastBoundsKey.current) return;
-
-    const remainingWait = MARKER_REQUEST_MIN_INTERVAL_MS - (now - markerLastRequestAt.current);
-    window.clearTimeout(markerRequestTimer.current);
-
-    if (remainingWait > 0) {
-      markerPendingBounds.current = { bounds, boundsKey };
-      markerRequestTimer.current = window.setTimeout(() => {
-        const pending = markerPendingBounds.current;
+      if (bounds.latSpan > MAX_MAP_SPAN_DEGREES || bounds.lngSpan > MAX_MAP_SPAN_DEGREES) {
+        window.clearTimeout(markerRequestTimer.current);
         markerPendingBounds.current = null;
-        if (!pending) return;
-        executeMapMarkerLoad(pending.bounds, pending.boundsKey);
-      }, remainingWait);
-      return;
-    }
+        markerRequestSeq.current += 1;
+        markerLastBoundsKey.current = "";
+        setMapMarkers([]);
+        setSelectedPlace(null);
+        setMarkerStatus("wide");
+        setMarkerNotice("지도를 더 확대해 주세요. 넓은 범위에서는 마커 조회를 잠시 멈춥니다.");
+        return;
+      }
 
-    executeMapMarkerLoad(bounds, boundsKey);
-  }, [executeMapMarkerLoad]);
+      const now = Date.now();
+      if (now < markerRateLimitedUntil.current) {
+        setMarkerStatus("error");
+        setMarkerNotice("마커 요청이 잠시 제한되었습니다. 몇 초 뒤 다시 지도를 움직여주세요.");
+        return;
+      }
+
+      const boundsKey = getMarkerBoundsKey(bounds);
+      if (boundsKey === markerLastBoundsKey.current) return;
+
+      const remainingWait = MARKER_REQUEST_MIN_INTERVAL_MS - (now - markerLastRequestAt.current);
+      window.clearTimeout(markerRequestTimer.current);
+
+      if (remainingWait > 0) {
+        markerPendingBounds.current = { bounds, boundsKey };
+        markerRequestTimer.current = window.setTimeout(() => {
+          const pending = markerPendingBounds.current;
+          markerPendingBounds.current = null;
+          if (!pending) return;
+          executeMapMarkerLoad(pending.bounds, pending.boundsKey);
+        }, remainingWait);
+        return;
+      }
+
+      executeMapMarkerLoad(bounds, boundsKey);
+    },
+    [executeMapMarkerLoad],
+  );
 
   const requestUserLocation = async () => {
     setRequestingLocation(true);
@@ -468,9 +516,12 @@ export default function MapPage({ onPlaceClick }) {
     }, 80);
   }, [selectedPlace]);
 
-  useEffect(() => () => {
-    window.clearTimeout(markerRequestTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(markerRequestTimer.current);
+    },
+    [],
+  );
 
   const renderMapPanel = () => (
     <div className="map-panel">
@@ -502,7 +553,9 @@ export default function MapPage({ onPlaceClick }) {
       </div>
 
       {markerNotice && (
-        <div className={`map-state-card ${markerStatus === "wide" || markerNotice.includes("많아") ? "warning" : "error"}`}>
+        <div
+          className={`map-state-card ${markerStatus === "wide" || markerNotice.includes("많아") ? "warning" : "error"}`}
+        >
           {markerNotice}
         </div>
       )}
@@ -522,7 +575,11 @@ export default function MapPage({ onPlaceClick }) {
               : " · 현재 위치 기준 거리순으로 정렬돼요"}
         </small>
       </div>
-      {status === "loading" && <div className="map-result-grid"><SkeletonList count={4} /></div>}
+      {status === "loading" && (
+        <div className="map-result-grid">
+          <SkeletonList count={4} />
+        </div>
+      )}
       {status === "error" && (
         <ErrorState
           title="주변 장소를 불러오지 못했습니다."
@@ -542,8 +599,16 @@ export default function MapPage({ onPlaceClick }) {
       {status === "success" && filtered.length === 0 && (
         <EmptyState
           icon={filter === FAVORITE_FILTER ? "❤️" : "지도"}
-          title={filter === FAVORITE_FILTER ? "찜한 장소가 없습니다." : "이 필터에 표시할 장소가 없습니다."}
-          description={filter === FAVORITE_FILTER ? "관광지나 전통시장 상세에서 마음에 드는 장소를 찜하면 여기에서 모아볼 수 있어요." : "다른 필터를 선택하거나 위치를 다시 확인해보세요."}
+          title={
+            filter === FAVORITE_FILTER
+              ? "찜한 장소가 없습니다."
+              : "이 필터에 표시할 장소가 없습니다."
+          }
+          description={
+            filter === FAVORITE_FILTER
+              ? "관광지나 전통시장 상세에서 마음에 드는 장소를 찜하면 여기에서 모아볼 수 있어요."
+              : "다른 필터를 선택하거나 위치를 다시 확인해보세요."
+          }
         />
       )}
       <div className="map-result-grid">
@@ -564,7 +629,11 @@ export default function MapPage({ onPlaceClick }) {
               onClick={() => focusPlaceOnMap(place, { select: true })}
             >
               <div
-                className={place.type === "전통시장" ? "map-result-thumb market has-image" : "map-result-thumb has-image"}
+                className={
+                  place.type === "전통시장"
+                    ? "map-result-thumb market has-image"
+                    : "map-result-thumb has-image"
+                }
                 style={{ "--place-card-image": imageUrl ? `url("${imageUrl}")` : undefined }}
               >
                 {!imageUrl && <span>{place.emoji}</span>}
@@ -597,7 +666,12 @@ export default function MapPage({ onPlaceClick }) {
       {status === "success" && nearbyPage.mode === "nearby" && (
         <div className="map-more-section">
           {canLoadMoreNearby ? (
-            <button type="button" className="more-btn" onClick={handleLoadMore} disabled={loadingMore}>
+            <button
+              type="button"
+              className="more-btn"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+            >
               {loadingMore ? "장소를 더 불러오는 중..." : "더 많은 장소 보기"}
             </button>
           ) : (
@@ -623,9 +697,15 @@ export default function MapPage({ onPlaceClick }) {
               {requestingLocation ? "위치 확인 중..." : "위치 사용 허용"}
             </button>
           ) : (
-            <small>브라우저가 위치 기능을 지원하지 않습니다. 기본 위치 기준으로 장소를 보여드릴게요.</small>
+            <small>
+              브라우저가 위치 기능을 지원하지 않습니다. 기본 위치 기준으로 장소를 보여드릴게요.
+            </small>
           )}
-          <button type="button" className="map-location-pick" onClick={() => setPickLocationMode((value) => !value)}>
+          <button
+            type="button"
+            className="map-location-pick"
+            onClick={() => setPickLocationMode((value) => !value)}
+          >
             {pickLocationMode ? "지도 선택 모드 끄기" : "지도에서 내 위치 지정"}
           </button>
         </div>
@@ -635,8 +715,13 @@ export default function MapPage({ onPlaceClick }) {
         <div className="map-filter-section">
           <span className="map-filter-label">카테고리</span>
           <div className="map-filter-row">
-            {MAP_FILTERS.map(f => (
-              <button key={f} type="button" onClick={() => handleCategoryFilterClick(f)} className={filter === f ? "active" : ""}>
+            {MAP_FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => handleCategoryFilterClick(f)}
+                className={filter === f ? "active" : ""}
+              >
                 {f}
               </button>
             ))}
@@ -652,13 +737,27 @@ export default function MapPage({ onPlaceClick }) {
               applyRegionFilter();
             }}
           >
-            <input value={regionInput} onChange={(event) => setRegionInput(event.target.value)} placeholder="지역명 입력 (예: 종로구, 전주)" aria-label="지역명 입력" />
-            <button type="submit" className="map-region-submit">적용</button>
-            <button type="button" className="map-filter-reset" onClick={resetPlaceFilters}>초기화</button>
+            <input
+              value={regionInput}
+              onChange={(event) => setRegionInput(event.target.value)}
+              placeholder="지역명 입력 (예: 종로구, 전주)"
+              aria-label="지역명 입력"
+            />
+            <button type="submit" className="map-region-submit">
+              적용
+            </button>
+            <button type="button" className="map-filter-reset" onClick={resetPlaceFilters}>
+              초기화
+            </button>
           </form>
           <div className="map-region-filter-row" aria-label="지역 빠른 필터">
-            {REGION_FILTERS.map(region => (
-              <button key={region} type="button" className={regionFilter === region ? "active" : ""} onClick={() => applyRegionFilter(region)}>
+            {REGION_FILTERS.map((region) => (
+              <button
+                key={region}
+                type="button"
+                className={regionFilter === region ? "active" : ""}
+                onClick={() => applyRegionFilter(region)}
+              >
                 {region}
               </button>
             ))}
@@ -667,8 +766,20 @@ export default function MapPage({ onPlaceClick }) {
       </section>
 
       <div className="map-mobile-tabs" role="tablist" aria-label="지도 보기 방식">
-        <button type="button" className={mobileView === "map" ? "active" : ""} onClick={() => setMobileView("map")}>지도 보기</button>
-        <button type="button" className={mobileView === "list" ? "active" : ""} onClick={() => setMobileView("list")}>목록 보기</button>
+        <button
+          type="button"
+          className={mobileView === "map" ? "active" : ""}
+          onClick={() => setMobileView("map")}
+        >
+          지도 보기
+        </button>
+        <button
+          type="button"
+          className={mobileView === "list" ? "active" : ""}
+          onClick={() => setMobileView("list")}
+        >
+          목록 보기
+        </button>
       </div>
 
       <div className={`map-page-layout mobile-${mobileView}`}>

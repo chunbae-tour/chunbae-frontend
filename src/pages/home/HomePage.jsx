@@ -16,13 +16,40 @@ const QUICK_ACTIONS = [
 const RECOMMENDED_SHOP_NAMES = ["원조 모녀김밥", "순희네 빈대떡"];
 
 const FALLBACK_PLACES = [
-  { id: "mock-place-1", tag: "관광지", tagTone: "blue", name: "경복궁", location: "종로구", rating: 4.9, visual: "place-palace" },
-  { id: "mock-place-2", tag: "전통시장", tagTone: "yellow", name: "통인시장", location: "서촌", rating: 4.6, visual: "place-market" },
-  { id: "mock-place-3", tag: "관광지", tagTone: "blue", name: "북촌 한옥마을", location: "종로구", rating: 4.7, visual: "place-hanok" },
+  {
+    id: "mock-place-1",
+    tag: "관광지",
+    tagTone: "blue",
+    name: "경복궁",
+    location: "종로구",
+    rating: 4.9,
+    visual: "place-palace",
+  },
+  {
+    id: "mock-place-2",
+    tag: "전통시장",
+    tagTone: "yellow",
+    name: "통인시장",
+    location: "서촌",
+    rating: 4.6,
+    visual: "place-market",
+  },
+  {
+    id: "mock-place-3",
+    tag: "관광지",
+    tagTone: "blue",
+    name: "북촌 한옥마을",
+    location: "종로구",
+    rating: 4.7,
+    visual: "place-hanok",
+  },
 ];
 
 function getFestivalStatus(festival = {}) {
-  const raw = String(festival.progressStatus || festival.dday || "").trim().toUpperCase().replace(/-/g, "_");
+  const raw = String(festival.progressStatus || festival.dday || "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
   if (!raw || raw === "ONGOING" || raw === "IN_PROGRESS") return "진행 중";
   if (raw === "UPCOMING") return "예정";
   if (raw === "ENDED") return "종료";
@@ -30,7 +57,10 @@ function getFestivalStatus(festival = {}) {
 }
 
 function isFestivalInProgress(festival = {}) {
-  const raw = String(festival.progressStatus || festival.dday || "").trim().toUpperCase().replace(/-/g, "_");
+  const raw = String(festival.progressStatus || festival.dday || "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
   return raw === "ONGOING" || raw === "IN_PROGRESS";
 }
 
@@ -49,31 +79,59 @@ function RecommendationCard({ item, onClick }) {
       <div className="home-recommend-body">
         <span className={`home-recommend-tag ${item.tagTone || "green"}`}>{item.tag}</span>
         <strong>{item.name}</strong>
-        <small>{item.location || "위치 확인"} · <span className="star-score">★ {item.rating || 4.7}</span></small>
+        <small>
+          {item.location || "위치 확인"} ·{" "}
+          <span className="star-score">★ {item.rating || 4.7}</span>
+        </small>
       </div>
     </button>
   );
 }
 
-function RecommendationSection({ title, moreLabel, onMore, items, onItemClick, status = "success", emptyMessage = "추천 정보를 불러오지 못했습니다." }) {
+function RecommendationSection({
+  title,
+  moreLabel,
+  onMore,
+  items,
+  onItemClick,
+  status = "success",
+  emptyMessage = "추천 정보를 불러오지 못했습니다.",
+}) {
   return (
     <section className="home-landing-section">
       <div className="home-landing-section-head">
         <h2>{title}</h2>
-        <button type="button" onClick={onMore}>{moreLabel}</button>
+        <button type="button" onClick={onMore}>
+          {moreLabel}
+        </button>
       </div>
-      {status === "loading" ? <SkeletonList count={2} /> : items.length > 0 ? (
+      {status === "loading" ? (
+        <SkeletonList count={2} />
+      ) : items.length > 0 ? (
         <div className="home-recommend-scroll">
           {items.map((item) => (
-            <RecommendationCard key={item.id ?? item.name} item={item} onClick={() => onItemClick(item)} />
+            <RecommendationCard
+              key={item.id ?? item.name}
+              item={item}
+              onClick={() => onItemClick(item)}
+            />
           ))}
         </div>
-      ) : <div className="home-landing-empty">{emptyMessage}</div>}
+      ) : (
+        <div className="home-landing-empty">{emptyMessage}</div>
+      )}
     </section>
   );
 }
 
-export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab, onSignup, user }) {
+export default function HomePage({
+  onPlaceClick,
+  onShopClick,
+  onFestClick,
+  onTab,
+  onSignup,
+  user,
+}) {
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
   const [festivals, setFestivals] = useState([]);
   const [festivalStatus, setFestivalStatus] = useState("loading");
@@ -97,7 +155,9 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
 
     if (!navigator.geolocation) {
       loadNearbyPlaces(getDefaultLocation());
-      return () => { ignore = true; };
+      return () => {
+        ignore = true;
+      };
     }
 
     navigator.geolocation.getCurrentPosition(
@@ -106,7 +166,9 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
       { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
     );
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -117,17 +179,25 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
         if (ignore) return;
         const shops = resultGroups.flatMap((items, index) => {
           const targetName = RECOMMENDED_SHOP_NAMES[index];
-          const exactMatch = items.find((item) => item.targetType === "SHOP" && item.name?.trim() === targetName);
-          const partialMatch = items.find((item) => item.targetType === "SHOP" && item.name?.includes(targetName));
+          const exactMatch = items.find(
+            (item) => item.targetType === "SHOP" && item.name?.trim() === targetName,
+          );
+          const partialMatch = items.find(
+            (item) => item.targetType === "SHOP" && item.name?.includes(targetName),
+          );
           const shop = exactMatch ?? partialMatch;
-          return shop ? [{
-            ...shop,
-            tag: "춘배인증",
-            tagTone: "green",
-            location: shop.placeName || shop.marketName || "광장시장",
-            rating: shop.rating || 4.8,
-            visual: targetName.includes("빈대떡") ? "shop-night" : "shop-warm",
-          }] : [];
+          return shop
+            ? [
+                {
+                  ...shop,
+                  tag: "춘배인증",
+                  tagTone: "green",
+                  location: shop.placeName || shop.marketName || "광장시장",
+                  rating: shop.rating || 4.8,
+                  visual: targetName.includes("빈대떡") ? "shop-night" : "shop-warm",
+                },
+              ]
+            : [];
         });
         setRecommendedShops(shops);
         setShopStatus(shops.length > 0 ? "success" : "empty");
@@ -138,7 +208,9 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
         setShopStatus("error");
       });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -159,7 +231,9 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
     };
 
     loadFestivals();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const placeRecommendations = useMemo(() => {
@@ -177,14 +251,9 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
     }));
   }, [nearbyPlaces]);
 
-  const inProgressFestivals = useMemo(
-    () => festivals.filter(isFestivalInProgress),
-    [festivals],
-  );
+  const inProgressFestivals = useMemo(() => festivals.filter(isFestivalInProgress), [festivals]);
 
-  const stats = [
-    { label: "진행 중 축제 수", value: `${inProgressFestivals.length}개` },
-  ];
+  const stats = [{ label: "진행 중 축제 수", value: `${inProgressFestivals.length}개` }];
 
   const handlePrimaryCta = () => {
     if (isLoggedIn) {
@@ -220,13 +289,17 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
       <section className="home-landing-hero">
         <div className="home-landing-hero-copy">
           <span className="home-landing-badge">춘배투어 · 전통시장 여행 플랫폼</span>
-          <h1>전통시장을 <mark>춘배</mark>와 함께 여행해요</h1>
+          <h1>
+            전통시장을 <mark>춘배</mark>와 함께 여행해요
+          </h1>
           <p>동행 찾기, 엽전 결제, 지역 축제까지 전통시장 여행의 모든 것</p>
           <div className="home-landing-actions">
             <button type="button" className="primary" onClick={handlePrimaryCta}>
               {isLoggedIn ? "내 여행 시작하기" : "지금 시작하기"}
             </button>
-            <button type="button" className="ghost" onClick={() => onTab("map")}>둘러보기</button>
+            <button type="button" className="ghost" onClick={() => onTab("map")}>
+              둘러보기
+            </button>
           </div>
         </div>
         <div className="home-landing-stats">
@@ -244,7 +317,12 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
           <span>🔍</span>
           <strong>시장, 가게, 골목 키워드 검색</strong>
         </button>
-        <button type="button" className="home-location-button" onClick={() => onTab("map")} aria-label="현재 위치 기반 검색">
+        <button
+          type="button"
+          className="home-location-button"
+          onClick={() => onTab("map")}
+          aria-label="현재 위치 기반 검색"
+        >
           📍
         </button>
       </section>
@@ -256,7 +334,12 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
         </div>
         <div className="home-feature-grid">
           {QUICK_ACTIONS.map((action) => (
-            <button key={action.tab} type="button" className={`home-feature-card ${action.tone}`} onClick={() => onTab(action.tab)}>
+            <button
+              key={action.tab}
+              type="button"
+              className={`home-feature-card ${action.tone}`}
+              onClick={() => onTab(action.tab)}
+            >
               <span>{action.image ? <img src={action.image} alt="" /> : action.icon}</span>
               <strong>{action.label}</strong>
               <small>{action.desc}</small>
@@ -272,7 +355,11 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
         items={recommendedShops}
         onItemClick={handleShopClick}
         status={shopStatus}
-        emptyMessage={shopStatus === "error" ? "추천 가게를 불러오지 못했습니다." : "추천할 실제 가게 데이터가 아직 없습니다."}
+        emptyMessage={
+          shopStatus === "error"
+            ? "추천 가게를 불러오지 못했습니다."
+            : "추천할 실제 가게 데이터가 아직 없습니다."
+        }
       />
 
       <RecommendationSection
@@ -286,18 +373,31 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
       <section className="home-landing-section">
         <div className="home-landing-section-head">
           <h2>진행 중인 축제 일정</h2>
-          <button type="button" onClick={() => onTab("fest")}>전체 보기 &gt;</button>
+          <button type="button" onClick={() => onTab("fest")}>
+            전체 보기 &gt;
+          </button>
         </div>
         {festivalStatus === "loading" && <SkeletonList count={3} />}
-        {festivalStatus === "error" && <div className="home-landing-empty">축제 일정을 불러오지 못했습니다.</div>}
-        {festivalStatus === "empty" && <div className="home-landing-empty">진행 중인 축제 일정이 아직 없습니다.</div>}
-        {festivalStatus === "success" && inProgressFestivals.length === 0 && <div className="home-landing-empty">진행 중인 축제 일정이 아직 없습니다.</div>}
+        {festivalStatus === "error" && (
+          <div className="home-landing-empty">축제 일정을 불러오지 못했습니다.</div>
+        )}
+        {festivalStatus === "empty" && (
+          <div className="home-landing-empty">진행 중인 축제 일정이 아직 없습니다.</div>
+        )}
+        {festivalStatus === "success" && inProgressFestivals.length === 0 && (
+          <div className="home-landing-empty">진행 중인 축제 일정이 아직 없습니다.</div>
+        )}
         {festivalStatus === "success" && inProgressFestivals.length > 0 && (
           <div className="home-festival-schedule">
             {inProgressFestivals.slice(0, 4).map((festival) => {
               const { month, day } = getFestivalMonthDay(festival);
               return (
-                <button key={festival.id} type="button" className="home-festival-schedule-card" onClick={() => onFestClick(festival)}>
+                <button
+                  key={festival.id}
+                  type="button"
+                  className="home-festival-schedule-card"
+                  onClick={() => onFestClick(festival)}
+                >
                   <div className="home-festival-date-block">
                     <span>{month}월</span>
                     <strong>{day}</strong>
@@ -319,7 +419,9 @@ export default function HomePage({ onPlaceClick, onShopClick, onFestClick, onTab
           <span>무료 회원가입</span>
           <strong>엽전 500냥 받고 첫 여행 시작하기</strong>
           <p>가입하면 바로 엽전이 지급돼요</p>
-          <button type="button" onClick={onSignup}>가입하기 →</button>
+          <button type="button" onClick={onSignup}>
+            가입하기 →
+          </button>
         </section>
       )}
     </div>

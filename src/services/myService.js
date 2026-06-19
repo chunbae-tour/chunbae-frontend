@@ -50,7 +50,12 @@ function normalizeLikeTarget(item = {}, targetType = "PLACE") {
     wishlistKey: `${type}:${id}`,
     name: item.name ?? item.title ?? "",
     typeLabel: meta.label,
-    type: type === "MARKET" ? "전통시장" : type === "FESTIVAL" ? "축제" : (item.category ?? item.type ?? "관광지"),
+    type:
+      type === "MARKET"
+        ? "전통시장"
+        : type === "FESTIVAL"
+          ? "축제"
+          : (item.category ?? item.type ?? "관광지"),
     rating: item.rating ?? 0,
     emoji: item.emoji ?? meta.emoji,
     addr: item.address ?? item.addr ?? item.location ?? item.region ?? "",
@@ -77,16 +82,27 @@ export async function fetchUserHomeStats() {
   // Page 응답에서 totalElements 추출 또는 배열 길이 사용
   const likedPlacesCount = likesResults.reduce((sum, result) => {
     if (result.status !== "fulfilled") return sum;
-    return sum + (result.value?.totalElements ?? result.value?.total ?? (Array.isArray(result.value) ? result.value.length : 0));
+    return (
+      sum +
+      (result.value?.totalElements ??
+        result.value?.total ??
+        (Array.isArray(result.value) ? result.value.length : 0))
+    );
   }, 0);
 
-  const reviewCount = reviewsData.status === "fulfilled"
-    ? (reviewsData.value?.totalElements ?? reviewsData.value?.total ?? (Array.isArray(reviewsData.value) ? reviewsData.value.length : 0))
-    : 0;
+  const reviewCount =
+    reviewsData.status === "fulfilled"
+      ? (reviewsData.value?.totalElements ??
+        reviewsData.value?.total ??
+        (Array.isArray(reviewsData.value) ? reviewsData.value.length : 0))
+      : 0;
 
-  const companionWaitingCount = joinRequestsData.status === "fulfilled"
-    ? joinRequestsData.value.content.filter((request) => String(request.status).toUpperCase() === "PENDING").length
-    : 0;
+  const companionWaitingCount =
+    joinRequestsData.status === "fulfilled"
+      ? joinRequestsData.value.content.filter(
+          (request) => String(request.status).toUpperCase() === "PENDING",
+        ).length
+      : 0;
 
   return {
     likedPlacesCount,
@@ -106,11 +122,15 @@ export async function fetchUserHome() {
 
 export async function fetchWishlist() {
   const results = await Promise.allSettled(
-    LIKE_TARGET_TYPES.map((type) => fetchLikesByType(type, { size: 50 }).then((data) => ({ type, data }))),
+    LIKE_TARGET_TYPES.map((type) =>
+      fetchLikesByType(type, { size: 50 }).then((data) => ({ type, data })),
+    ),
   );
   const fulfilled = results
     .filter((result) => result.status === "fulfilled")
-    .flatMap((result) => getPageContent(result.value.data).map((item) => normalizeLikeTarget(item, result.value.type)));
+    .flatMap((result) =>
+      getPageContent(result.value.data).map((item) => normalizeLikeTarget(item, result.value.type)),
+    );
 
   if (fulfilled.length === 0 && results.every((result) => result.status === "rejected")) {
     throw results[0]?.reason;
@@ -127,7 +147,8 @@ export async function fetchWishlist() {
 
 export async function removeWishlistItem(itemOrId) {
   const item = typeof itemOrId === "object" ? itemOrId : { id: itemOrId, targetType: "PLACE" };
-  const targetType = item.targetType === "TRADITIONAL_MARKET" ? "MARKET" : item.targetType ?? "PLACE";
+  const targetType =
+    item.targetType === "TRADITIONAL_MARKET" ? "MARKET" : (item.targetType ?? "PLACE");
   const targetId = item.placeId ?? item.marketId ?? item.festivalId ?? item.targetId ?? item.id;
 
   if (targetId == null) {
@@ -147,7 +168,7 @@ export async function removeWishlistItem(itemOrId) {
 
 export async function fetchMyReviews() {
   const data = await apiRequest("/users/me/reviews?size=20", { auth: true });
-  return getPageContent(data).map(review => ({
+  return getPageContent(data).map((review) => ({
     id: review.reviewId ?? review.id,
     place: review.placeName ?? review.place ?? "",
     emoji: review.emoji ?? "📍",
@@ -160,7 +181,7 @@ export async function fetchMyReviews() {
 
 export async function fetchOwnedItems() {
   const data = await apiRequest("/users/me/items?size=20", { auth: true });
-  return getPageContent(data).map(item => ({
+  return getPageContent(data).map((item) => ({
     ...item,
     id: item.ownedItemId ?? item.itemId ?? item.id,
     itemId: item.itemId ?? item.ownedItemId ?? item.id,

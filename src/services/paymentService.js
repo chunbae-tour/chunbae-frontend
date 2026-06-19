@@ -1,10 +1,10 @@
 import { apiRequest, getAccessToken, getPageContent } from "./apiClient.js";
 
 const PAYMENT_METHOD_CODES = {
-  "카카오페이": "KAKAO_PAY",
-  "토스페이": "TOSS_PAY",
-  "신용카드": "CARD",
-  "해외카드": "FOREIGN_CARD",
+  카카오페이: "KAKAO_PAY",
+  토스페이: "TOSS_PAY",
+  신용카드: "CARD",
+  해외카드: "FOREIGN_CARD",
   KakaoPay: "KAKAO_PAY",
   TossPay: "TOSS_PAY",
   Card: "CARD",
@@ -123,11 +123,24 @@ function createPortOnePaymentRequest(payment = {}) {
 }
 
 function validatePortOnePayment(payment = {}) {
-  const requiredFields = ["storeId", "channelKey", "paymentId", "orderName", "totalAmount", "currency", "payMethod"];
-  const missingFields = requiredFields.filter((field) => payment[field] == null || payment[field] === "");
+  const requiredFields = [
+    "storeId",
+    "channelKey",
+    "paymentId",
+    "orderName",
+    "totalAmount",
+    "currency",
+    "payMethod",
+  ];
+  const missingFields = requiredFields.filter(
+    (field) => payment[field] == null || payment[field] === "",
+  );
 
   if (missingFields.length > 0) {
-    throw new PaymentApiError(`결제창 호출에 필요한 값이 없습니다: ${missingFields.join(", ")}`, "PORTONE_PAYMENT_PARAM_MISSING");
+    throw new PaymentApiError(
+      `결제창 호출에 필요한 값이 없습니다: ${missingFields.join(", ")}`,
+      "PORTONE_PAYMENT_PARAM_MISSING",
+    );
   }
 }
 
@@ -136,11 +149,12 @@ export function normalizePaymentHistoryItem(item = {}) {
   const type = PAYMENT_TYPE_LABELS[rawType] ?? rawType;
   const historyId = item.paymentHistoryId ?? item.historyId ?? item.transactionId ?? item.id;
   const amountValue = item.amount ?? item.coinAmount ?? item.yeopjeonAmount ?? 0;
-  const amountText = item.amountText
-    ?? item.amountLabel
-    ?? formatYeopjeonHistoryAmount(amountValue);
-  const paidAmountValue = item.paidAmount ?? item.paymentAmount ?? item.wonAmount ?? item.totalPrice;
-  const reviewWritable = item.reviewWritable ?? item.canWriteReview ?? (type === "결제" && !item.reviewId);
+  const amountText =
+    item.amountText ?? item.amountLabel ?? formatYeopjeonHistoryAmount(amountValue);
+  const paidAmountValue =
+    item.paidAmount ?? item.paymentAmount ?? item.wonAmount ?? item.totalPrice;
+  const reviewWritable =
+    item.reviewWritable ?? item.canWriteReview ?? (type === "결제" && !item.reviewId);
 
   return {
     ...item,
@@ -158,7 +172,10 @@ export function normalizePaymentHistoryItem(item = {}) {
     placeName: item.placeName ?? item.marketName,
     rawDate: item.createdAt ?? item.paidAt ?? item.date ?? "",
     date: formatDateTime(item.createdAt ?? item.paidAt ?? item.date ?? ""),
-    paidAmount: typeof paidAmountValue === "number" ? `${paidAmountValue.toLocaleString()}원` : paidAmountValue,
+    paidAmount:
+      typeof paidAmountValue === "number"
+        ? `${paidAmountValue.toLocaleString()}원`
+        : paidAmountValue,
     reviewWritable,
     reviewId: item.reviewId ?? null,
   };
@@ -210,7 +227,10 @@ export async function requestCharge({ amount, paymentMethod, idempotencyKey }) {
   }
 
   if (amount < 5000 || amount > 100000) {
-    throw new PaymentApiError("충전 금액은 5,000~100,000원만 가능합니다.", "PAYMENT_AMOUNT_INVALID");
+    throw new PaymentApiError(
+      "충전 금액은 5,000~100,000원만 가능합니다.",
+      "PAYMENT_AMOUNT_INVALID",
+    );
   }
 
   // TODO: amount는 원화 기준입니다. 백엔드가 엽전 수량 필드를 별도로 요구하면 coinAmount 매핑을 추가합니다.
@@ -244,7 +264,7 @@ export async function requestPortOnePayment(payment) {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function fetchPaymentHistory() {
@@ -255,11 +275,19 @@ export async function fetchPaymentHistory() {
 export async function fetchChargeRefundHistory({ cursor, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/payments/history?${params.toString()}`, { auth: true, role: "USER" });
+  const data = await apiRequest(`/payments/history?${params.toString()}`, {
+    auth: true,
+    role: "USER",
+  });
   return getPageContent(data).map(normalizeChargeRefundHistoryItem);
 }
 
-export async function waitForChargeSettlement({ orderUid, previousBalance, attempts = 8, intervalMs = 1500 } = {}) {
+export async function waitForChargeSettlement({
+  orderUid,
+  previousBalance,
+  attempts = 8,
+  intervalMs = 1500,
+} = {}) {
   let latestBalance = null;
   let matchedOrder = null;
 
@@ -272,10 +300,11 @@ export async function waitForChargeSettlement({ orderUid, previousBalance, attem
     ]);
 
     if (historyResult.status === "fulfilled") {
-      matchedOrder = historyResult.value.find((item) => {
-        const identifiers = [item.orderUid, item.paymentId, item.id].filter(Boolean).map(String);
-        return orderUid ? identifiers.includes(String(orderUid)) : false;
-      }) ?? matchedOrder;
+      matchedOrder =
+        historyResult.value.find((item) => {
+          const identifiers = [item.orderUid, item.paymentId, item.id].filter(Boolean).map(String);
+          return orderUid ? identifiers.includes(String(orderUid)) : false;
+        }) ?? matchedOrder;
     }
 
     if (balanceResult.status === "fulfilled") {
@@ -324,7 +353,10 @@ export async function cancelRefund(refundId) {
 export async function fetchRefundHistory({ cursor, size = 20 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/payments/refunds?${params.toString()}`, { auth: true, role: "USER" });
+  const data = await apiRequest(`/payments/refunds?${params.toString()}`, {
+    auth: true,
+    role: "USER",
+  });
   return getPageContent(data);
 }
 

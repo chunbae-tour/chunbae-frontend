@@ -24,7 +24,14 @@ export default function TabBar({ active, onTab }) {
   return (
     <div style={S.tabBar}>
       {tabs.map((t) => (
-        <button key={t.key} type="button" className="mobile-tabbar-button" style={tabButtonStyle} onClick={() => onTab(t.key)} aria-current={active === t.key ? "page" : undefined}>
+        <button
+          key={t.key}
+          type="button"
+          className="mobile-tabbar-button"
+          style={tabButtonStyle}
+          onClick={() => onTab(t.key)}
+          aria-current={active === t.key ? "page" : undefined}
+        >
           <span style={{ fontSize: 22 }}>{t.icon}</span>
           <span style={S.tabLabel(active === t.key)}>{t.label}</span>
         </button>

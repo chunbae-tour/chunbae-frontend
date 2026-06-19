@@ -30,6 +30,6 @@ const DEFAULT_PRODUCT_PLACEHOLDER = PRODUCT_PLACEHOLDERS.LOCAL_PRODUCT;
 
 export function getPlaceholderByCategory(category) {
   if (!category) return DEFAULT_PRODUCT_PLACEHOLDER;
-  const categoryCode = typeof category === "object" ? category.code ?? category.value : category;
+  const categoryCode = typeof category === "object" ? (category.code ?? category.value) : category;
   return PRODUCT_PLACEHOLDERS[String(categoryCode).toUpperCase()] ?? DEFAULT_PRODUCT_PLACEHOLDER;
 }

@@ -57,11 +57,13 @@ export function createChatRealtimeClient({ chatRoomId, onMessage, onStatus, onEr
 
       client = new Client({
         webSocketFactory: () => new SockJS(getSockJsUrl(accessToken)),
-        connectHeaders: authorization ? {
-          Authorization: authorization,
-          authorization,
-          token: accessToken,
-        } : {},
+        connectHeaders: authorization
+          ? {
+              Authorization: authorization,
+              authorization,
+              token: accessToken,
+            }
+          : {},
         reconnectDelay: 3000,
         heartbeatIncoming: 10000,
         heartbeatOutgoing: 10000,
@@ -74,7 +76,10 @@ export function createChatRealtimeClient({ chatRoomId, onMessage, onStatus, onEr
           });
           notifyStatus("connected");
           subscription = client.subscribe(subscribeDestination, (frame) => {
-            console.info("Chat realtime message", { destination: subscribeDestination, body: frame.body });
+            console.info("Chat realtime message", {
+              destination: subscribeDestination,
+              body: frame.body,
+            });
             onMessage?.(normalizeChatMessage(parseMessageBody(frame.body)));
           });
         },
@@ -83,7 +88,9 @@ export function createChatRealtimeClient({ chatRoomId, onMessage, onStatus, onEr
             headers: frame.headers,
             body: frame.body,
           });
-          notifyError(new Error(frame.body || frame.headers.message || "STOMP 오류가 발생했습니다."));
+          notifyError(
+            new Error(frame.body || frame.headers.message || "STOMP 오류가 발생했습니다."),
+          );
         },
         onWebSocketError: (event) => {
           if (client?.connected || client?.active) return;
@@ -114,14 +121,7 @@ export function createChatRealtimeClient({ chatRoomId, onMessage, onStatus, onEr
       client = null;
       notifyStatus("closed");
     },
-    send({
-      content = "",
-      messageType = "TEXT",
-      fileUrl,
-      fileName,
-      fileSize,
-      attachmentIds = [],
-    }) {
+    send({ content = "", messageType = "TEXT", fileUrl, fileName, fileSize, attachmentIds = [] }) {
       if (!client?.connected) {
         throw new Error("채팅 서버에 연결되지 않았습니다.");
       }

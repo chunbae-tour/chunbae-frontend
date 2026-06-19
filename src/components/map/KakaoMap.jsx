@@ -15,10 +15,10 @@ function getRenderableCoordinate(latValue, lngValue) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (lat === 0 || lng === 0) return null;
   if (
-    lat < KAKAO_RENDERABLE_BOUNDS.minLat
-    || lat > KAKAO_RENDERABLE_BOUNDS.maxLat
-    || lng < KAKAO_RENDERABLE_BOUNDS.minLng
-    || lng > KAKAO_RENDERABLE_BOUNDS.maxLng
+    lat < KAKAO_RENDERABLE_BOUNDS.minLat ||
+    lat > KAKAO_RENDERABLE_BOUNDS.maxLat ||
+    lng < KAKAO_RENDERABLE_BOUNDS.minLng ||
+    lng > KAKAO_RENDERABLE_BOUNDS.maxLng
   ) {
     return null;
   }
@@ -41,7 +41,9 @@ function getMapBoundsPayload(map) {
 }
 
 function getMarkerIdentity(place = {}) {
-  const targetType = place.targetType ?? (place.marketId != null || place.type === "전통시장" ? "TRADITIONAL_MARKET" : "PLACE");
+  const targetType =
+    place.targetType ??
+    (place.marketId != null || place.type === "전통시장" ? "TRADITIONAL_MARKET" : "PLACE");
   const id = place.placeId ?? place.marketId ?? place.id ?? place.name;
   return `${targetType}:${id}`;
 }
@@ -56,11 +58,9 @@ function createMarkerImage(kakao, active = false) {
     </svg>
   `;
   const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-  return new kakao.maps.MarkerImage(
-    src,
-    new kakao.maps.Size(size, size + 8),
-    { offset: new kakao.maps.Point(size / 2, size + 6) },
-  );
+  return new kakao.maps.MarkerImage(src, new kakao.maps.Size(size, size + 8), {
+    offset: new kakao.maps.Point(size / 2, size + 6),
+  });
 }
 
 export default function KakaoMap({
@@ -102,7 +102,10 @@ export default function KakaoMap({
       .then((kakao) => {
         if (cancelled || !containerRef.current) return;
 
-        const initialCenter = getRenderableCoordinate(center?.lat, center?.lng) ?? { lat: 37.5796, lng: 126.977 };
+        const initialCenter = getRenderableCoordinate(center?.lat, center?.lng) ?? {
+          lat: 37.5796,
+          lng: 126.977,
+        };
         const { lat, lng } = initialCenter;
         const map = new kakao.maps.Map(containerRef.current, {
           center: new kakao.maps.LatLng(lat, lng),
@@ -150,7 +153,10 @@ export default function KakaoMap({
     const validMarkers = markers
       .map((place) => ({
         place,
-        coordinate: getRenderableCoordinate(place.lat ?? place.latitude, place.lng ?? place.longitude),
+        coordinate: getRenderableCoordinate(
+          place.lat ?? place.latitude,
+          place.lng ?? place.longitude,
+        ),
       }))
       .filter((item) => item.coordinate);
 
@@ -187,7 +193,15 @@ export default function KakaoMap({
         mapRef.current.setLevel(8);
       }
     }
-  }, [markers, currentPosition?.lat, currentPosition?.lng, status, onMarkerClick, fitMarkers, selectedMarkerId]);
+  }, [
+    markers,
+    currentPosition?.lat,
+    currentPosition?.lng,
+    status,
+    onMarkerClick,
+    fitMarkers,
+    selectedMarkerId,
+  ]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return undefined;
@@ -234,8 +248,16 @@ export default function KakaoMap({
   useEffect(() => {
     if (status !== "ready" || !mapRef.current || selectedMarkerId == null) return;
 
-    const place = markers.find((item) => getMarkerIdentity(item) === String(selectedMarkerId) || item.id === selectedMarkerId || item.placeId === selectedMarkerId);
-    const coordinate = getRenderableCoordinate(place?.lat ?? place?.latitude, place?.lng ?? place?.longitude);
+    const place = markers.find(
+      (item) =>
+        getMarkerIdentity(item) === String(selectedMarkerId) ||
+        item.id === selectedMarkerId ||
+        item.placeId === selectedMarkerId,
+    );
+    const coordinate = getRenderableCoordinate(
+      place?.lat ?? place?.latitude,
+      place?.lng ?? place?.longitude,
+    );
     if (!coordinate) return;
 
     mapRef.current.panTo(new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng));
@@ -318,8 +340,13 @@ export default function KakaoMap({
   }
 
   return (
-    <div className={`kakao-map-shell ${pickLocationMode ? "is-pick-mode" : ""} ${className}`} style={style}>
-      {pickLocationMode && <div className="kakao-map-pick-hint">지도를 탭하면 그 위치를 내 위치로 표시합니다.</div>}
+    <div
+      className={`kakao-map-shell ${pickLocationMode ? "is-pick-mode" : ""} ${className}`}
+      style={style}
+    >
+      {pickLocationMode && (
+        <div className="kakao-map-pick-hint">지도를 탭하면 그 위치를 내 위치로 표시합니다.</div>
+      )}
       <div ref={containerRef} className="kakao-map-canvas" />
       {status === "loading" && <div className="kakao-map-overlay">지도를 불러오는 중...</div>}
       {status === "error" && (
@@ -340,7 +367,9 @@ export default function KakaoMap({
         </button>
       )}
       {locateError && status === "ready" && (
-        <div className="map-locate-toast" role="status">{locateError}</div>
+        <div className="map-locate-toast" role="status">
+          {locateError}
+        </div>
       )}
     </div>
   );

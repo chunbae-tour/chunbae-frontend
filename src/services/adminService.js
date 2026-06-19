@@ -75,7 +75,8 @@ export function normalizeAdminPlace(place = {}) {
     type: category === "TRADITIONAL_MARKET" ? "전통시장" : "관광지",
     category,
     name: place.name ?? "콘텐츠",
-    status: place.deleted || place.status === "HIDDEN" || place.status === "DELETED" ? "비공개" : "공개",
+    status:
+      place.deleted || place.status === "HIDDEN" || place.status === "DELETED" ? "비공개" : "공개",
     updatedAt: place.updatedAt ?? place.createdAt ?? "",
     address: place.address ?? "",
     source: "place",
@@ -118,7 +119,10 @@ export function normalizeAdminFestival(festival = {}) {
     id: festival.festivalId ?? festival.id,
     type: "축제",
     name: festival.name ?? festival.title ?? festival.festivalName ?? "축제",
-    status: festival.deleted || festival.status === "HIDDEN" || festival.status === "DELETED" ? "비공개" : "공개",
+    status:
+      festival.deleted || festival.status === "HIDDEN" || festival.status === "DELETED"
+        ? "비공개"
+        : "공개",
     updatedAt: festival.updatedAt ?? festival.createdAt ?? festival.startDate ?? "",
     readOnly: festival.source && festival.source !== "MANUAL",
     source: "festival",
@@ -182,7 +186,10 @@ export async function fetchAdminReports(status = "미처리") {
   const params = new URLSearchParams({ size: "20" });
   const apiStatus = REPORT_STATUS_QUERY[status];
   if (apiStatus) params.set("status", apiStatus);
-  const data = await apiRequest(`/admin/reports?${params.toString()}`, { auth: true, role: "ADMIN" });
+  const data = await apiRequest(`/admin/reports?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
   return getPageContent(data).map(normalizeReport);
 }
 
@@ -228,7 +235,10 @@ export async function resolveMerchantAdminReport(reportId, payload) {
 export async function fetchMerchantApplications(status = "") {
   const params = new URLSearchParams({ size: "20" });
   if (status) params.set("status", status);
-  const data = await apiRequest(`/admin/merchant-applications?${params.toString()}`, { auth: true, role: "ADMIN" });
+  const data = await apiRequest(`/admin/merchant-applications?${params.toString()}`, {
+    auth: true,
+    role: "ADMIN",
+  });
   return getPageContent(data).map(normalizeMerchantApplication);
 }
 
@@ -256,7 +266,11 @@ export async function rejectMerchantApplication(applicationId, rejectReason = "�
   });
 }
 
-export async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, maxItems = 2000 } = {}) {
+export async function fetchAdminTraditionalMarkets({
+  keyword = "",
+  size = 100,
+  maxItems = 2000,
+} = {}) {
   const markets = [];
   let cursor = null;
   let hasNext = true;
@@ -266,7 +280,10 @@ export async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, m
     if (keyword) params.set("keyword", keyword);
     if (cursor) params.set("cursor", cursor);
 
-    const data = await apiRequest(`/admin/traditional-markets?${params.toString()}`, { auth: true, role: "ADMIN" });
+    const data = await apiRequest(`/admin/traditional-markets?${params.toString()}`, {
+      auth: true,
+      role: "ADMIN",
+    });
     const pageItems = getPageContent(data);
     markets.push(...pageItems.map(normalizeAdminTraditionalMarket));
     cursor = data?.nextCursor ?? data?.cursor ?? null;
@@ -277,7 +294,10 @@ export async function fetchAdminTraditionalMarkets({ keyword = "", size = 100, m
 }
 
 export async function fetchAdminTraditionalMarketDetail(marketId) {
-  const data = await apiRequest(`/admin/traditional-markets/${marketId}`, { auth: true, role: "ADMIN" });
+  const data = await apiRequest(`/admin/traditional-markets/${marketId}`, {
+    auth: true,
+    role: "ADMIN",
+  });
   return normalizeAdminTraditionalMarket(data);
 }
 
@@ -290,7 +310,10 @@ export async function fetchAdminFestivals({ size = 100, maxItems = 1000 } = {}) 
     const params = new URLSearchParams({ size: String(size) });
     if (cursor) params.set("cursor", cursor);
 
-    const data = await apiRequest(`/admin/festivals?${params.toString()}`, { auth: true, role: "ADMIN" });
+    const data = await apiRequest(`/admin/festivals?${params.toString()}`, {
+      auth: true,
+      role: "ADMIN",
+    });
     const pageItems = getPageContent(data);
     festivals.push(...pageItems.map(normalizeAdminFestival));
     cursor = data?.nextCursor ?? data?.cursor ?? null;
@@ -360,7 +383,10 @@ export async function fetchAdminPlaces({ keyword = "", category = "" } = {}) {
     if (category === "관광지") params.set("category", "TOURIST_SPOT");
     if (cursor) params.set("cursor", cursor);
 
-    const data = await apiRequest(`/admin/places?${params.toString()}`, { auth: true, role: "ADMIN" });
+    const data = await apiRequest(`/admin/places?${params.toString()}`, {
+      auth: true,
+      role: "ADMIN",
+    });
     places.push(...getPageContent(data).map(normalizeAdminPlace));
     cursor = data?.nextCursor ?? "";
     hasNext = Boolean(data?.hasNext && cursor);
@@ -510,7 +536,8 @@ export async function deleteAdminProduct(productId) {
 
 export async function fetchAdminProducts({ category, cursor, size = 100 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
-  if (category && isProductCategoryCode(category)) params.set("category", getProductCategoryCode(category));
+  if (category && isProductCategoryCode(category))
+    params.set("category", getProductCategoryCode(category));
   if (cursor) params.set("cursor", cursor);
   const data = await apiRequest(`/admin/store/products?${params.toString()}`, {
     auth: true,
@@ -591,7 +618,11 @@ export async function rejectAd(adId, rejectReason) {
 export async function fetchAdminShops({ cursor, size = 20 } = {}) {
   void cursor;
   void size;
-  throw new ApiClientError("관리자 가게 목록 API는 현재 OpenAPI 명세에 없습니다.", "ADMIN_SHOP_LIST_API_MISSING", 501);
+  throw new ApiClientError(
+    "관리자 가게 목록 API는 현재 OpenAPI 명세에 없습니다.",
+    "ADMIN_SHOP_LIST_API_MISSING",
+    501,
+  );
 }
 
 export async function fetchAdminShopDetail(shopId) {
@@ -693,17 +724,24 @@ export async function fetchAdminSupportRooms({ cursor, size = 20 } = {}) {
 export async function fetchAdminSupportMessages(supportRoomId, { cursor, size = 50 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/admin/support/rooms/${supportRoomId}/messages?${params.toString()}`, {
-    auth: true,
-    role: "ADMIN",
-  });
+  const data = await apiRequest(
+    `/admin/support/rooms/${supportRoomId}/messages?${params.toString()}`,
+    {
+      auth: true,
+      role: "ADMIN",
+    },
+  );
   return getPageContent(data);
 }
 
 export async function sendAdminSupportMessage(supportRoomId, message) {
   void supportRoomId;
   void message;
-  throw new ApiClientError("상담 메시지 전송 API는 현재 OpenAPI 명세에 없습니다.", "SUPPORT_MESSAGE_API_MISSING", 501);
+  throw new ApiClientError(
+    "상담 메시지 전송 API는 현재 OpenAPI 명세에 없습니다.",
+    "SUPPORT_MESSAGE_API_MISSING",
+    501,
+  );
 }
 
 export async function uploadAdminSupportFile(supportRoomId, file) {
@@ -753,7 +791,9 @@ export async function fetchMySupportRooms({ cursor, size = 20 } = {}) {
 export async function fetchSupportMessages(supportRoomId, { cursor, size = 50 } = {}) {
   const params = new URLSearchParams({ size: String(size) });
   if (cursor) params.set("cursor", cursor);
-  const data = await apiRequest(`/support/rooms/${supportRoomId}/messages?${params.toString()}`, { auth: true });
+  const data = await apiRequest(`/support/rooms/${supportRoomId}/messages?${params.toString()}`, {
+    auth: true,
+  });
   return getPageContent(data);
 }
 

@@ -17,7 +17,10 @@ let pwaInstallEventsBound = false;
 const pwaInstallSubscribers = new Set();
 
 function isStandaloneDisplay() {
-  return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true
+  );
 }
 
 function isIosDevice() {
@@ -129,17 +132,28 @@ export function PwaInstallPrompt() {
 
   return (
     <aside className="pwa-install-card" aria-label="춘배투어 앱 설치 안내">
-      <div className="pwa-install-icon" aria-hidden="true">춘</div>
+      <div className="pwa-install-icon" aria-hidden="true">
+        춘
+      </div>
       <div className="pwa-install-copy">
         <strong>춘배투어를 앱처럼 사용해보세요.</strong>
-        <span>{isIos ? "Safari 공유 버튼에서 홈 화면에 추가를 선택하면 됩니다." : "홈 화면에 설치하면 바로 열 수 있어요."}</span>
+        <span>
+          {isIos
+            ? "Safari 공유 버튼에서 홈 화면에 추가를 선택하면 됩니다."
+            : "홈 화면에 설치하면 바로 열 수 있어요."}
+        </span>
       </div>
       {canInstall && (
         <button type="button" className="pwa-install-primary" onClick={handleInstall}>
           설치
         </button>
       )}
-      <button type="button" className="pwa-install-close" onClick={handleDismiss} aria-label="설치 안내 닫기">
+      <button
+        type="button"
+        className="pwa-install-close"
+        onClick={handleDismiss}
+        aria-label="설치 안내 닫기"
+      >
         ×
       </button>
     </aside>
@@ -184,7 +198,14 @@ export function PwaInstallButton({ className = "", children = "앱 설치하기"
 
 export function SectionHeader({ title, onMore }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 12,
+      }}
+    >
       <span style={{ fontSize: 17, fontWeight: 700, color: COLORS.primary }}>{title}</span>
       {onMore && (
         <button type="button" className="section-more-button" onClick={onMore}>
@@ -196,9 +217,7 @@ export function SectionHeader({ title, onMore }) {
 }
 
 export function StarRating({ rating }) {
-  return (
-    <span style={{ color: "#E8A020", fontSize: 14, fontWeight: 700 }}>★ {rating}</span>
-  );
+  return <span style={{ color: "#E8A020", fontSize: 14, fontWeight: 700 }}>★ {rating}</span>;
 }
 
 export function SkeletonBlock({ className = "", style }) {
@@ -239,7 +258,9 @@ export function EmptyState({
 }) {
   return (
     <div className="ui-state-card empty" role="status">
-      <div className="ui-state-icon" aria-hidden="true">{icon}</div>
+      <div className="ui-state-icon" aria-hidden="true">
+        {icon}
+      </div>
       <strong>{title}</strong>
       <p>{description}</p>
       {actionLabel && onAction && (
@@ -259,7 +280,9 @@ export function ErrorState({
 }) {
   return (
     <div className="ui-state-card error" role="alert">
-      <div className="ui-state-icon" aria-hidden="true">!</div>
+      <div className="ui-state-icon" aria-hidden="true">
+        !
+      </div>
       <strong>{title}</strong>
       <p>{description}</p>
       {onRetry && (
@@ -347,8 +370,10 @@ export function ReportDialog({
         <label className="report-dialog-field">
           <span>신고 사유</span>
           <select value={reason} onChange={(event) => setReason(event.target.value)}>
-            {reasons.map(item => (
-              <option key={item.value} value={item.value}>{item.label}</option>
+            {reasons.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
             ))}
           </select>
         </label>

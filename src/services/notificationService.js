@@ -45,26 +45,38 @@ export function formatRelativeTime(value) {
 }
 
 function pickText(...values) {
-  return values.find(value => typeof value === "string" && value.trim())?.trim() || "";
+  return values.find((value) => typeof value === "string" && value.trim())?.trim() || "";
 }
 
 function getNotificationVisualType(type, text = "") {
   const target = `${type || ""} ${text}`.toUpperCase();
   if (target.includes("KICK") || text.includes("강퇴") || text.includes("내보내")) return "kicked";
-  if (target.includes("REJECT") || target.includes("DENY") || text.includes("거절") || text.includes("반려")) return "rejected";
-  if (target.includes("APPROVE") || target.includes("ACCEPT") || text.includes("승인") || text.includes("수락")) return "approved";
+  if (
+    target.includes("REJECT") ||
+    target.includes("DENY") ||
+    text.includes("거절") ||
+    text.includes("반려")
+  )
+    return "rejected";
+  if (
+    target.includes("APPROVE") ||
+    target.includes("ACCEPT") ||
+    text.includes("승인") ||
+    text.includes("수락")
+  )
+    return "approved";
   return "system";
 }
 
 function getNotificationFilterType(type, referenceType, text = "") {
   const target = `${type || ""} ${referenceType || ""} ${text}`.toUpperCase();
   if (
-    target.includes("JOIN")
-    || target.includes("COMPANION")
-    || target.includes("CHAT_ROOM")
-    || text.includes("참여")
-    || text.includes("동행")
-    || text.includes("채팅방")
+    target.includes("JOIN") ||
+    target.includes("COMPANION") ||
+    target.includes("CHAT_ROOM") ||
+    text.includes("참여") ||
+    text.includes("동행") ||
+    text.includes("채팅방")
   ) {
     return "participation";
   }
@@ -78,23 +90,28 @@ export function normalizeNotification(notification = {}) {
   const message = notification.message ?? notification.text ?? "";
   const createdAt = notification.createdAt ?? notification.time ?? "";
   const type = notification.type;
-  const chatRoomId = notification.chatRoomId
-    ?? notification.roomId
-    ?? notification.chatRoom?.chatRoomId
-    ?? data.chatRoomId
-    ?? data.roomId
-    ?? data.chatRoom?.chatRoomId
-    ?? null;
-  const postId = notification.postId
-    ?? notification.companionPostId
-    ?? data.postId
-    ?? data.companionPostId
-    ?? data.post?.postId
-    ?? null;
+  const chatRoomId =
+    notification.chatRoomId ??
+    notification.roomId ??
+    notification.chatRoom?.chatRoomId ??
+    data.chatRoomId ??
+    data.roomId ??
+    data.chatRoom?.chatRoomId ??
+    null;
+  const postId =
+    notification.postId ??
+    notification.companionPostId ??
+    data.postId ??
+    data.companionPostId ??
+    data.post?.postId ??
+    null;
   const joinRequestId = notification.joinRequestId ?? data.joinRequestId ?? null;
-  const referenceId = notification.referenceId ?? notification.targetId ?? data.referenceId ?? data.targetId ?? null;
-  const referenceType = notification.referenceType ?? notification.targetType ?? data.referenceType ?? data.targetType;
-  const fallbackReferenceType = chatRoomId && String(type || "").startsWith("CHAT_") ? "CHAT_ROOM" : null;
+  const referenceId =
+    notification.referenceId ?? notification.targetId ?? data.referenceId ?? data.targetId ?? null;
+  const referenceType =
+    notification.referenceType ?? notification.targetType ?? data.referenceType ?? data.targetType;
+  const fallbackReferenceType =
+    chatRoomId && String(type || "").startsWith("CHAT_") ? "CHAT_ROOM" : null;
   const resolvedReferenceType = referenceType ?? fallbackReferenceType;
   const targetTitle = pickText(
     notification.targetTitle,
@@ -114,12 +131,13 @@ export function normalizeNotification(notification = {}) {
     data.target?.title,
     data.target?.name,
     data.chatRoom?.title,
-    data.post?.title
+    data.post?.title,
   );
   const baseText = message || title;
-  const displayText = targetTitle && baseText && !baseText.includes(targetTitle)
-    ? `[${targetTitle}] ${baseText}`
-    : baseText;
+  const displayText =
+    targetTitle && baseText && !baseText.includes(targetTitle)
+      ? `[${targetTitle}] ${baseText}`
+      : baseText;
   const visualType = getNotificationVisualType(type, `${title} ${message}`);
 
   return {

@@ -15,7 +15,9 @@ function normalizeShopImages(shop = {}) {
     : Array.isArray(shop.shopImages)
       ? shop.shopImages
       : [];
-  const primaryImage = rawImages.find((image) => image?.type === "PROFILE" || image?.isPrimary || image?.primary);
+  const primaryImage = rawImages.find(
+    (image) => image?.type === "PROFILE" || image?.isPrimary || image?.primary,
+  );
   const rawImageUrls = Array.isArray(shop.imageUrls)
     ? shop.imageUrls
     : typeof shop.imageUrls === "string"
@@ -35,22 +37,32 @@ function normalizeShop(shop = {}) {
   const shopName = shop.shopName || shop.name || "춘배인증 상점";
   const marketName = shop.marketName || shop.placeName || shop.place?.name || "연결된 장소";
   const rawMenus = shop.menus ?? shop.menuResponses ?? shop.menuList ?? shop.shopMenus ?? [];
-  const menus = Array.isArray(rawMenus) ? rawMenus.map(menu => ({
-    id: menu.menuId ?? menu.id,
-    name: menu.name ?? menu.menuName ?? "메뉴",
-    price: Number(menu.price ?? 0),
-    description: menu.description ?? menu.desc ?? "",
-    available: menu.available ?? menu.isAvailable ?? menu.status !== "SOLD_OUT",
-    imageUrl: menu.imageUrl ?? menu.thumbnailUrl ?? "",
-  })) : [];
-  const rawNotices = shop.notices ?? shop.noticeResponses ?? shop.noticeList ?? shop.shopNotices ?? [];
-  const notices = Array.isArray(rawNotices) ? rawNotices.map(notice => ({
-    id: notice.noticeId ?? notice.id,
-    title: notice.title ?? notice.subject ?? "가게 공지",
-    content: notice.content ?? notice.message ?? "",
-    createdAt: notice.createdAt ?? notice.createdDate ?? notice.date ?? "",
-  })) : [];
-  const mainMenu = shop.menu || shop.mainMenu || shop.representativeMenu || menus.find(menu => menu.available !== false)?.name || "";
+  const menus = Array.isArray(rawMenus)
+    ? rawMenus.map((menu) => ({
+        id: menu.menuId ?? menu.id,
+        name: menu.name ?? menu.menuName ?? "메뉴",
+        price: Number(menu.price ?? 0),
+        description: menu.description ?? menu.desc ?? "",
+        available: menu.available ?? menu.isAvailable ?? menu.status !== "SOLD_OUT",
+        imageUrl: menu.imageUrl ?? menu.thumbnailUrl ?? "",
+      }))
+    : [];
+  const rawNotices =
+    shop.notices ?? shop.noticeResponses ?? shop.noticeList ?? shop.shopNotices ?? [];
+  const notices = Array.isArray(rawNotices)
+    ? rawNotices.map((notice) => ({
+        id: notice.noticeId ?? notice.id,
+        title: notice.title ?? notice.subject ?? "가게 공지",
+        content: notice.content ?? notice.message ?? "",
+        createdAt: notice.createdAt ?? notice.createdDate ?? notice.date ?? "",
+      }))
+    : [];
+  const mainMenu =
+    shop.menu ||
+    shop.mainMenu ||
+    shop.representativeMenu ||
+    menus.find((menu) => menu.available !== false)?.name ||
+    "";
   const imageUrls = normalizeShopImages(shop);
   const imageUrl = shop.imageUrl ?? shop.thumbnailUrl ?? imageUrls[0] ?? "";
 
@@ -94,6 +106,6 @@ export async function createShopReview({ shopId, paymentHistoryId, rating, conte
     "상점 리뷰 API가 아직 백엔드에 없습니다. 결제 기반 상점 리뷰 작성은 백엔드 협의가 필요합니다.",
     "SHOP_REVIEW_API_MISSING",
     501,
-    { shopId, paymentHistoryId, rating, content }
+    { shopId, paymentHistoryId, rating, content },
   );
 }

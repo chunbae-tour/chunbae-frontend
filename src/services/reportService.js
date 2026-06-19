@@ -10,38 +10,44 @@ export const REPORT_REASONS = [
 ];
 
 export function getReportReasonLabel(reason) {
-  return REPORT_REASONS.find(item => item.value === reason)?.label ?? "기타";
+  return REPORT_REASONS.find((item) => item.value === reason)?.label ?? "기타";
 }
 
 export function getReportTargetLabel(targetType) {
-  return {
-    POST_COMPANION: "동행 게시글",
-    POST_FREE: "자유 게시글",
-    COMMENT: "댓글",
-    USER: "사용자",
-    MERCHANT: "상인",
-  }[targetType] ?? "신고 대상";
+  return (
+    {
+      POST_COMPANION: "동행 게시글",
+      POST_FREE: "자유 게시글",
+      COMMENT: "댓글",
+      USER: "사용자",
+      MERCHANT: "상인",
+    }[targetType] ?? "신고 대상"
+  );
 }
 
 export function getReportStatusLabel(status) {
-  return {
-    PENDING: "접수됨",
-    RESOLVED: "처리 완료",
-    DISMISSED: "기각",
-  }[status] ?? "상태 확인 중";
+  return (
+    {
+      PENDING: "접수됨",
+      RESOLVED: "처리 완료",
+      DISMISSED: "기각",
+    }[status] ?? "상태 확인 중"
+  );
 }
 
 function getReportTargetDetail(report = {}) {
   const target = report.target ?? {};
-  return report.targetTitle
-    ?? report.targetName
-    ?? report.targetNickname
-    ?? report.targetEmail
-    ?? target.title
-    ?? target.name
-    ?? target.nickname
-    ?? target.email
-    ?? "";
+  return (
+    report.targetTitle ??
+    report.targetName ??
+    report.targetNickname ??
+    report.targetEmail ??
+    target.title ??
+    target.name ??
+    target.nickname ??
+    target.email ??
+    ""
+  );
 }
 
 export function normalizeMyReport(report = {}) {

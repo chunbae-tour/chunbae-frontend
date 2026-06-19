@@ -143,13 +143,19 @@ export async function fetchMerchantShops() {
 
 export async function fetchMerchantShop(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
-  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}`, { auth: true, role: "MERCHANT" });
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}`, {
+    auth: true,
+    role: "MERCHANT",
+  });
   return normalizeShop(data);
 }
 
 export async function fetchMerchantMenus(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
-  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/menus`, { auth: true, role: "MERCHANT" });
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/menus`, {
+    auth: true,
+    role: "MERCHANT",
+  });
   const menus = Array.isArray(data) ? data : getPageContent(data);
   return menus.map(normalizeMenu);
 }
@@ -206,7 +212,10 @@ export async function uploadMerchantShopImage(shopId, file, type = "GALLERY") {
 
 export async function fetchMerchantShopImages(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
-  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/images`, { auth: true, role: "MERCHANT" });
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/images`, {
+    auth: true,
+    role: "MERCHANT",
+  });
   const images = Array.isArray(data) ? data : getPageContent(data);
   return images.map(normalizeShopImage);
 }
@@ -222,7 +231,10 @@ export async function deleteMerchantShopImage(shopId, imageId) {
 
 export async function fetchMerchantShopNotices(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
-  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/notices`, { auth: true, role: "MERCHANT" });
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/notices`, {
+    auth: true,
+    role: "MERCHANT",
+  });
   return getPageContent(data).map(normalizeShopNotice);
 }
 
@@ -251,7 +263,10 @@ export async function deleteMerchantShopNotice(shopId, noticeId) {
 
 export async function fetchMerchantWallet(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
-  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/wallet`, { auth: true, role: "MERCHANT" });
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/wallet`, {
+    auth: true,
+    role: "MERCHANT",
+  });
   return {
     shopId: data.shopId ?? resolvedShopId,
     balance: Number(data.balance ?? data.currentBalance ?? 0),
@@ -304,7 +319,10 @@ export async function deleteMerchantMenu(menuId, shopId) {
 
 export async function fetchMerchantSettlements(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
-  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/settlements?size=20`, { auth: true, role: "MERCHANT" });
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/settlements?size=20`, {
+    auth: true,
+    role: "MERCHANT",
+  });
   return getPageContent(data).map(normalizeSettlement);
 }
 
@@ -319,7 +337,10 @@ export async function requestMerchantSettlement(amount, shopId) {
 }
 
 export async function fetchMerchantPaymentRequests(shopId) {
-  const data = await apiRequest("/merchants/me/qr-payments/pending", { auth: true, role: "MERCHANT" });
+  const data = await apiRequest("/merchants/me/qr-payments/pending", {
+    auth: true,
+    role: "MERCHANT",
+  });
   const list = Array.isArray(data) ? data : getPageContent(data);
   const normalized = list.map(normalizePaymentRequest);
   if (!shopId) return normalized;
@@ -374,7 +395,10 @@ export async function updateShopAccount(shopId, payload) {
 
 export async function fetchShopQrCode(shopId) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
-  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/qr`, { auth: true, role: "MERCHANT" });
+  const data = await apiRequest(`/merchants/me/shops/${resolvedShopId}/qr`, {
+    auth: true,
+    role: "MERCHANT",
+  });
   return {
     shopId: data.shopId ?? resolvedShopId,
     shopName: data.shopName ?? "",
