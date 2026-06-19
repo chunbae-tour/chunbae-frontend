@@ -103,6 +103,18 @@ export function PayChargePage({ onBack, onDone, showToast }) {
     { label: "결제하기", done: false, active: Boolean(selected && method) },
   ];
 
+  const handleSelectMethod = (nextMethod) => {
+    if (!selected) {
+      showToast("충전할 금액을 먼저 선택해주세요!");
+      return;
+    }
+    if (customAmountError) {
+      showToast(customAmountError);
+      return;
+    }
+    setMethod(nextMethod);
+  };
+
   useEffect(() => {
     let ignore = false;
 
@@ -275,9 +287,16 @@ export function PayChargePage({ onBack, onDone, showToast }) {
         </div>
         <div className="web-payment-section web-payment-method-section" style={{ padding: "0 16px 16px" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary, marginBottom: 12 }}>결제 수단</div>
+          {!selected && <div className="payment-step-note">금액을 먼저 선택하면 결제 수단을 고를 수 있어요.</div>}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {PAYMENT_METHODS.map(m => (
-              <button key={m.label} type="button" className={`payment-method-card ${method === m.label ? "active selected" : ""}`} onClick={() => setMethod(m.label)}>
+              <button
+                key={m.label}
+                type="button"
+                className={`payment-method-card ${method === m.label ? "active selected" : ""} ${!selected || customAmountError ? "locked" : ""}`}
+                aria-disabled={!selected || Boolean(customAmountError)}
+                onClick={() => handleSelectMethod(m.label)}
+              >
                 <span className={`pay-logo ${m.logoTone}`}>
                   {m.logo ? <img src={m.logo} alt={m.logoAlt} onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
                   <span className="pay-logo-fallback">{m.fallback}</span>
@@ -286,7 +305,6 @@ export function PayChargePage({ onBack, onDone, showToast }) {
                   <span className="pay-name">{m.label}</span>
                   <small>{m.desc}</small>
                 </div>
-                <em>{m.provider}</em>
                 <div className="payment-radio-dot" aria-hidden="true">
                   {method === m.label && <div />}
                 </div>
