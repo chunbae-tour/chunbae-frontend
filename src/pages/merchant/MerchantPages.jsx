@@ -25,7 +25,7 @@ import {
   updateMerchantShop,
   updateMerchantShopStatus,
   uploadMerchantShopImage,
-  useCustomerItemByToken,
+  applyCustomerItemByToken,
 } from "../../services/merchantService.js";
 
 const MIN_SETTLEMENT_AMOUNT = 5000;
@@ -415,7 +415,7 @@ export function MerchantShopPage({
     setItemUseStatus("loading");
     setItemUseResult(null);
     try {
-      const result = await useCustomerItemByToken({ shopId: currentShopId, token });
+      const result = await applyCustomerItemByToken({ shopId: currentShopId, token });
       setItemUseResult(result);
       setItemUseStatus("success");
       setItemUseToken("");

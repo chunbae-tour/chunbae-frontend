@@ -420,7 +420,7 @@ export async function reissueShopQrCode(shopId) {
   };
 }
 
-export async function useCustomerItemByToken({ shopId, token }) {
+export async function applyCustomerItemByToken({ shopId, token }) {
   const resolvedShopId = await resolveMerchantShopId(shopId);
   const data = await apiRequest("/merchants/me/shop/items/use", {
     method: "POST",
