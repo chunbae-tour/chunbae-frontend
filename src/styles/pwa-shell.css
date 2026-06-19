@@ -8335,8 +8335,10 @@ button:disabled,
 }
 
 .pay-logo.toss img {
-  width: 86%;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
 }
 
 .pay-logo.card {
@@ -8351,6 +8353,7 @@ button:disabled,
 .pay-logo.eximbay img {
   width: 100%;
   height: 100%;
+  object-fit: fill;
 }
 
 .pay-logo-fallback {
@@ -19058,17 +19061,24 @@ body {
 .web-payment-page .pay-logo.kakao img {
   width: 90%;
   height: 90%;
+  object-fit: contain;
+  transform: translate(3px, 2px);
 }
 
 .web-payment-page .pay-logo.toss img {
-  width: 82%;
-  height: 82%;
+   width: 100%;
+  height: 57%;
+  object-fit: cover;
+  object-position: right center;
+    transform: scale(1.2) translateY(8px);
+  transform-origin: 20% center;
 }
 
+
 .web-payment-page .pay-logo.eximbay img {
-  width: 84%;
-  height: 84%;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
 }
 
 @media (max-width: 640px) {

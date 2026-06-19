@@ -26,7 +26,7 @@ const MAX_CHARGE_AMOUNT = 100000;
 const PAYMENT_LOGO_BASE = "/assets/payment-logos";
 function CardSvgIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="48" height="29" viewBox="0 0 24 24" fill="none" aria-hidden="true"style={{ marginTop: "8px" }}>
       <rect x="2" y="5" width="20" height="14" rx="2.5" stroke="white" strokeWidth="1.8" />
       <path d="M2 9.5h20" stroke="white" strokeWidth="1.8" />
       <rect x="5" y="13" width="5" height="2.5" rx="1.2" fill="white" />
