@@ -68,6 +68,33 @@ function formatOperatingHours(hours = "") {
     .filter(item => item.label || item.value);
 }
 
+function mergePlaceDetailWithImageFallback(previousPlace, nextPlace) {
+  const previous = previousPlace ? normalizePlace(previousPlace) : null;
+  const next = nextPlace ? normalizePlace(nextPlace) : null;
+  if (!next) return previous;
+
+  const previousImage = getPlaceImageUrl(previous);
+  const nextImage = getPlaceImageUrl(next);
+  const previousImageUrls = Array.isArray(previous?.imageUrls) ? previous.imageUrls.filter(Boolean) : [];
+  const nextImageUrls = Array.isArray(next.imageUrls) ? next.imageUrls.filter(Boolean) : [];
+  const imageUrl = next.imageUrl || next.thumbnailUrl || nextImage || previous?.imageUrl || previous?.thumbnailUrl || previousImage || "";
+  const imageUrls = nextImageUrls.length > 0
+    ? nextImageUrls
+    : previousImageUrls.length > 0
+      ? previousImageUrls
+      : imageUrl
+        ? [imageUrl]
+        : [];
+
+  return {
+    ...previous,
+    ...next,
+    imageUrl,
+    thumbnailUrl: next.thumbnailUrl || next.imageUrl || imageUrl,
+    imageUrls,
+  };
+}
+
 function getCompanionPeopleText(post = {}) {
   const current = post.currentMembers ?? post.current ?? post.memberCount ?? 0;
   const max = post.maxMembers ?? post.max ?? post.maxPeople ?? 0;
@@ -171,8 +198,9 @@ export default function PlaceDetailPage({ place, onBack, showToast, onDirection,
     fetchTravelSpotDetail(incomingDetail ?? placeId)
       .then((data) => {
         if (ignore) return;
-        setDetail(data);
-        setLiked(Boolean(data.isLiked));
+        const mergedDetail = mergePlaceDetailWithImageFallback(incomingDetail, data);
+        setDetail(mergedDetail);
+        setLiked(Boolean(data.isLiked ?? incomingDetail?.isLiked));
         setStatus("success");
       })
       .catch((err) => {

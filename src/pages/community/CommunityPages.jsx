@@ -440,13 +440,23 @@ async function fetchCompanionTarget(target) {
   const listPlace = candidates.find((place) => String(place.placeId ?? place.id) === String(target.id))
     ?? candidates.find((place) => place.name === target.name);
 
-  if (!listPlace) return detail;
+  if (!listPlace) {
+    const detailImageUrl = getPlaceImageUrl(detail);
+    return {
+      ...detail,
+      imageUrl: detail.imageUrl || detail.thumbnailUrl || detailImageUrl || "",
+      thumbnailUrl: detail.thumbnailUrl || detail.imageUrl || detailImageUrl || "",
+    };
+  }
+
+  const detailImageUrl = getPlaceImageUrl(detail);
+  const listImageUrl = getPlaceImageUrl(listPlace);
 
   return {
     ...listPlace,
     ...detail,
-    imageUrl: detail.imageUrl || detail.thumbnailUrl || listPlace.imageUrl || listPlace.thumbnailUrl || "",
-    thumbnailUrl: detail.thumbnailUrl || detail.imageUrl || listPlace.thumbnailUrl || listPlace.imageUrl || "",
+    imageUrl: detail.imageUrl || detail.thumbnailUrl || detailImageUrl || listPlace.imageUrl || listPlace.thumbnailUrl || listImageUrl || "",
+    thumbnailUrl: detail.thumbnailUrl || detail.imageUrl || detailImageUrl || listPlace.thumbnailUrl || listPlace.imageUrl || listImageUrl || "",
     imageUrls: detail.imageUrls?.length ? detail.imageUrls : listPlace.imageUrls,
   };
 }
