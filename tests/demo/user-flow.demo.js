@@ -104,19 +104,22 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   await pageA.getByRole("navigation", { name: "주요 화면 빠른 이동" }).getByText("지도").click();
   await pause(2500);
 
-  // 지역 검색창에 경복궁 입력
-  const regionInput = pageA.getByPlaceholder(/지역명 입력|지역/);
-  await regionInput.fill("경복궁");
-  await pause(500);
-  await pageA.getByRole("button", { name: "적용" }).click();
+  // ────────────────────────────────────────────────────────────
+  // 4 · 주변 골목 포인트 → 경복궁 카드 클릭 (마커 이동)
+  // ────────────────────────────────────────────────────────────
+
+  // 경복궁 카드가 보일 때까지 스크롤
+  const gyeongbokCard = pageA.locator(".map-result-card").filter({ hasText: "경복궁" }).first();
+  await gyeongbokCard.waitFor({ timeout: 10000 });
+  await gyeongbokCard.scrollIntoViewIfNeeded();
+  await pause(1000);
+
+  // 카드 클릭 → 지도 마커 이동
+  await gyeongbokCard.click();
   await pause(2500);
 
-  // ────────────────────────────────────────────────────────────
-  // 4 · 경복궁 상세 보기 클릭
-  // ────────────────────────────────────────────────────────────
-  const gyeongbokBtn = pageA.getByRole("button", { name: "상세 보기" }).first();
-  await gyeongbokBtn.waitFor({ timeout: 5000 });
-  await gyeongbokBtn.click();
+  // 상세 보기 버튼 클릭
+  await gyeongbokCard.getByRole("button", { name: "상세 보기" }).click();
   await pause(2500);
 
   // ────────────────────────────────────────────────────────────
@@ -214,13 +217,12 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   await pageB.getByRole("navigation", { name: "주요 화면 빠른 이동" }).getByText("지도").click();
   await pause(2000);
 
-  const regionB = pageB.getByPlaceholder(/지역명 입력|지역/);
-  await regionB.fill("경복궁");
-  await pause(500);
-  await pageB.getByRole("button", { name: "적용" }).click();
-  await pause(2500);
-
-  await pageB.getByRole("button", { name: "상세 보기" }).first().click();
+  const gyeongbokCardB = pageB.locator(".map-result-card").filter({ hasText: "경복궁" }).first();
+  await gyeongbokCardB.waitFor({ timeout: 10000 });
+  await gyeongbokCardB.scrollIntoViewIfNeeded();
+  await gyeongbokCardB.click();
+  await pause(2000);
+  await gyeongbokCardB.getByRole("button", { name: "상세 보기" }).click();
   await pause(2500);
 
   // 이 장소 동행 모집 카드에서 활성화된 게시글 클릭
