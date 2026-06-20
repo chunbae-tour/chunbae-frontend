@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import {
   ConfirmDialog,
@@ -656,6 +656,11 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
   const companionEndedCount =
     companionDetail?.participants?.filter((participant) => participant.endedAt).length ?? 0;
   const companionTotalCount = companionDetail?.participants?.length ?? 0;
+  const currentCompanionParticipant = companionDetail?.participants?.find((participant) =>
+    isSameUser(participant.userId ?? participant.participantUserId ?? participant.memberId, currentUserId),
+  );
+  const canCompleteCompanion = Boolean(companionDetail && currentCompanionParticipant && !companionDetail.endedAt);
+  const hasCompletedCompanion = Boolean(currentCompanionParticipant?.endedAt);
   const hasOtherActiveParticipants = participants.some(
     (participant) =>
       !isSameUser(participant.userId, currentUserId) &&
@@ -1177,7 +1182,7 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
     runRoomAction({
       key: "companion-end",
       action: () => endCompanion(roomId),
-      successMessage: "동행을 종료했습니다. 참여자 리뷰를 남길 수 있습니다.",
+      successMessage: "동행 참여를 완료했습니다. 참여자 리뷰를 남길 수 있습니다.",
       afterSuccess: () => loadCompanionDetail(),
     });
 
@@ -1468,17 +1473,27 @@ export function ChatRoomPage({ room, onBack, showToast, embedded = false }) {
         <div style={{ flex: 1 }}>
           <div className="chat-room-title-line">
             <div style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{currentRoom.title}</div>
-            {isCurrentUserHost && (
+            {(isCurrentUserHost || canCompleteCompanion) && (
               <div className="chat-companion-actions" aria-label="동행 관리">
-                <button type="button" disabled={Boolean(actioning)} onClick={handleCreateCompanion}>
-                  동행 생성
-                </button>
-                <button type="button" disabled={Boolean(actioning)} onClick={handleAddCompanion}>
-                  동행 추가
-                </button>
-                <button type="button" disabled={Boolean(actioning)} onClick={handleEndCompanion}>
-                  동행 종료
-                </button>
+                {isCurrentUserHost && (
+                  <>
+                    <button type="button" disabled={Boolean(actioning)} onClick={handleCreateCompanion}>
+                      동행 생성
+                    </button>
+                    <button type="button" disabled={Boolean(actioning)} onClick={handleAddCompanion}>
+                      동행 추가
+                    </button>
+                  </>
+                )}
+                {canCompleteCompanion && (
+                  <button
+                    type="button"
+                    disabled={Boolean(actioning) || hasCompletedCompanion}
+                    onClick={handleEndCompanion}
+                  >
+                    {hasCompletedCompanion ? "완료됨" : "동행 완료"}
+                  </button>
+                )}
               </div>
             )}
           </div>
