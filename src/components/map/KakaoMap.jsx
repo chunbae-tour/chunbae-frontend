@@ -124,10 +124,17 @@ export default function KakaoMap({
           map.setCenter(new kakao.maps.LatLng(lat, lng));
         }, 120);
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
         setStatus("error");
-        setErrorMessage("지도를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+        const message = String(error?.message || "");
+        if (message === "KAKAO_MAP_KEY_MISSING") {
+          setErrorMessage("Kakao 지도 키가 설정되지 않았습니다. VITE_KAKAO_MAP_JS_KEY 또는 VITE_KAKAO_MAP_APP_KEY를 .env에 넣어주세요.");
+        } else if (message === "KAKAO_MAP_SDK_LOAD_FAILED") {
+          setErrorMessage("Kakao 지도 SDK를 불러오지 못했습니다. 키와 도메인 제한을 확인하세요.");
+        } else {
+          setErrorMessage("지도를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+        }
       });
 
     return () => {

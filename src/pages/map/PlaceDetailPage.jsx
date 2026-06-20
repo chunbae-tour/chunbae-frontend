@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { COLORS, S } from "../../constants/colors";
 import { EmptyState, SkeletonList, StarRating } from "../../components/common";
 import { getPlaceImageUrl } from "../../constants/placeImages.js";
@@ -119,7 +119,15 @@ function isCompanionClosed(post = {}) {
   return status.includes("CLOSED") || status.includes("DONE") || status.includes("마감");
 }
 
-function PlaceCompanionSidebarPanel({ posts, status, placeName, onMore, onWrite, showToast }) {
+function PlaceCompanionSidebarPanel({
+  posts,
+  status,
+  placeName,
+  onMore,
+  onWrite,
+  onPostClick,
+  showToast,
+}) {
   const visiblePosts = posts.slice(0, 3);
 
   return (
@@ -147,7 +155,9 @@ function PlaceCompanionSidebarPanel({ posts, status, placeName, onMore, onWrite,
                 key={post.id}
                 type="button"
                 onClick={() =>
-                  showToast?.("동행 게시글 상세 이동은 커뮤니티 목록에서 확인해주세요.")
+                  onPostClick
+                    ? onPostClick(post)
+                    : showToast?.("동행 게시글 상세 이동은 커뮤니티 목록에서 확인해주세요.")
                 }
               >
                 <strong>{post.title}</strong>
@@ -178,6 +188,7 @@ export default function PlaceDetailPage({
   onLikeChange,
   onCompanionMore,
   onCompanionWrite,
+  onCompanionPostClick,
 }) {
   const [detail, setDetail] = useState(place ? normalizePlace(place) : null);
   const [liked, setLiked] = useState(Boolean(place?.isLiked));
@@ -553,6 +564,7 @@ export default function PlaceDetailPage({
                   onCompanionWrite ||
                   (() => showToast?.("동행 모집글 작성 화면으로 연결 예정입니다."))
                 }
+                onPostClick={onCompanionPostClick}
                 showToast={showToast}
               />
             </aside>

@@ -831,6 +831,11 @@ export default function App() {
               setCommunityWriteType("동행");
               go("communityWrite");
             }}
+            onCompanionPostClick={(post) => {
+              setSelectedPost(post);
+              setCommunityTab(post?.type || "동행");
+              go("communityPost");
+            }}
           />
         )}
         {screen === "direction" && (
