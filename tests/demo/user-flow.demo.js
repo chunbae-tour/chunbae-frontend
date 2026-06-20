@@ -52,13 +52,19 @@ async function setupMockRoutes(page) {
     const path = new URL(req.url()).pathname;
 
     // 인증
-    if (path === "/api/v1/auth/login" && req.method() === "POST") {
+    if (path === "/api/v1/users/auth/login" && req.method() === "POST") {
       return route.fulfill(json({
         accessToken: "demo-token",
         userId: 1, nickname: "춘배", role: "USER", language: "ko", email: "demo@chunbae.site",
       }));
     }
-    if (path === "/api/v1/auth/logout") return route.fulfill(json(null));
+    if (path === "/api/v1/merchants/auth/login" && req.method() === "POST") {
+      return route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ code: "UNAUTHORIZED", message: "인증 실패" }) });
+    }
+    if (path === "/api/v1/admin/auth/login" && req.method() === "POST") {
+      return route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ code: "UNAUTHORIZED", message: "인증 실패" }) });
+    }
+    if (path === "/api/v1/users/auth/logout") return route.fulfill(json(null));
     if (path === "/api/v1/users/me") return route.fulfill(json(MOCK.user));
 
     // 잔액
