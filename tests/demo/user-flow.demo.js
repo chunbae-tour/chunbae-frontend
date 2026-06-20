@@ -131,74 +131,74 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
     await pause(2000);
   }
 
-  // ────────────────────────────────────────────────────────────
-  // 6 · 동행 모집글 작성하기
-  // ────────────────────────────────────────────────────────────
-  const writeBtn = pageA.getByRole("button", { name: /동행 모집글 작성하기|동행 모집/ }).first();
-  if (await writeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await writeBtn.click();
-    await pause(2500);
-  }
-
-  // ────────────────────────────────────────────────────────────
-  // 7 · 동행 글 작성 (제목, 내용, 날짜, 인원)
-  // ────────────────────────────────────────────────────────────
-  const titleInput = pageA.getByPlaceholder("제목을 입력하세요");
-  if (await titleInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await titleInput.fill("경복궁 같이 갈 사람을 모집합니다 🏯");
-    await pause(800);
-  }
-
-  const contentInput = pageA.getByPlaceholder(/내용을 입력|내용/).first();
-  if (await contentInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await contentInput.fill(
-      "혼자 여행하는 것보다 함께하면 훨씬 재밌을 것 같아요! 경복궁 구석구석을 같이 탐험하실 분을 모집합니다. 외국어 가능하신 분도 환영해요 😊 오전 10시 정문 앞에서 만나서 천천히 둘러봐요!",
-    );
-    await pause(800);
-  }
-
-  // 만나는 곳: 찜한 관광지 버튼
-  const meetPlace = pageA.getByText(/찜한 관광지/).first();
-  if (await meetPlace.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await meetPlace.click();
-    await pause(1500);
-    await pageA.getByText("경복궁").first().click();
-    await pause(1000);
-  }
-
-  // 날짜 선택
-  const dateBtn = pageA.getByText(/날짜를 선택|날짜/).first();
-  if (await dateBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await dateBtn.click();
-    await pause(1500);
-    await pageA.getByText("15").first().click();
-    await pause(800);
-    const confirmBtn = pageA.getByRole("button", { name: /확인|선택|완료/ }).first();
-    if (await confirmBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await confirmBtn.click();
-    }
-    await pause(1000);
-  }
-
-  // 최대 인원 6명
-  const maxBtn = pageA.getByText(/최대 인원|인원/).first();
-  if (await maxBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await maxBtn.click();
-    await pause(1000);
-    await pageA.getByText("6명").first().click();
-    await pause(800);
-  }
-
+  // 스크롤 내려서 "동행 모집글 작성하기" 버튼 보이게
+  const writeBtn = pageA.getByRole("button", { name: /동행 모집글 작성하기/ }).first();
+  await writeBtn.waitFor({ timeout: 5000 });
+  await writeBtn.scrollIntoViewIfNeeded();
   await pause(1500);
 
   // ────────────────────────────────────────────────────────────
-  // 8 · 게시글 등록 → 채팅방 생성
+  // 6 · 동행 모집글 작성하기 클릭
   // ────────────────────────────────────────────────────────────
-  const submitBtn = pageA.getByRole("button", { name: /등록|작성 완료|완료/ }).first();
-  if (await submitBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await submitBtn.click();
-    await pause(3000);
-  }
+  await writeBtn.click();
+  await pause(2500);
+
+  // ────────────────────────────────────────────────────────────
+  // 7 · 동행 글 작성
+  // ────────────────────────────────────────────────────────────
+
+  // 제목
+  const titleInput = pageA.getByPlaceholder("제목을 입력하세요");
+  await titleInput.waitFor({ timeout: 5000 });
+  await titleInput.fill("경복궁 같이 갈 사람을 모집합니다 🏯");
+  await pause(800);
+
+  // 내용
+  const contentInput = pageA.getByPlaceholder(/내용을 입력|내용/).first();
+  await contentInput.fill(
+    "혼자 여행하는 것보다 함께하면 훨씬 재밌을 것 같아요! 경복궁 구석구석을 같이 탐험하실 분을 모집합니다. 외국어 가능하신 분도 환영해요 😊 오전 10시 정문 앞에서 만나서 천천히 둘러봐요!",
+  );
+  await pause(1000);
+
+  // 만나는 곳 → 찜한 관광지 탭 클릭
+  const likedTab = pageA.locator(".community-place-source-tabs button").filter({ hasText: "찜한 관광지" });
+  await likedTab.scrollIntoViewIfNeeded();
+  await likedTab.click();
+  await pause(2000);
+
+  // 찜한 관광지 목록에서 경복궁 클릭
+  const likedPlace = pageA.locator(".community-place-result-list button").filter({ hasText: "경복궁" }).first();
+  await likedPlace.waitFor({ timeout: 5000 });
+  await likedPlace.click();
+  await pause(1000);
+
+  // 모임 날짜 → "직접 날짜 선택" 버튼 클릭 → 달력 열기
+  const calendarBtn = pageA.locator(".community-date-display");
+  await calendarBtn.scrollIntoViewIfNeeded();
+  await pause(800);
+  await calendarBtn.click();
+  await pause(1500);
+
+  // 달력에서 20일 클릭 (^20$ — 정확한 날짜만)
+  await pageA.locator(".hanok-calendar-days button").filter({ hasText: /^20$/ }).first().click();
+  await pause(1200);
+
+  // 최대 인원 select → 5명 선택 (스크롤 후 보이게)
+  const maxSelect = pageA.locator("select").filter({ has: pageA.locator("option[value='5']") });
+  await maxSelect.scrollIntoViewIfNeeded();
+  await pause(800);
+  await maxSelect.selectOption("5");
+  await pause(1000);
+
+  // ────────────────────────────────────────────────────────────
+  // 8 · 게시글 등록 버튼 스크롤 후 클릭
+  // ────────────────────────────────────────────────────────────
+  const submitBtn = pageA.getByRole("button", { name: "게시글 등록" });
+  await submitBtn.waitFor({ timeout: 5000 });
+  await submitBtn.scrollIntoViewIfNeeded();
+  await pause(1200);
+  await submitBtn.click();
+  await pause(3000);
 
   const chatCreateBtn = pageA.getByRole("button", { name: /채팅방 생성/ }).first();
   if (await chatCreateBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
