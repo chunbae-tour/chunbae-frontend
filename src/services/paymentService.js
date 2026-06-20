@@ -248,13 +248,23 @@ export async function requestCharge({ amount, paymentMethod, idempotencyKey }) {
   return normalizeChargeResponse(data, paymentMethod);
 }
 
+const PORTONE_PAYMENT_TIMEOUT_MS = 10 * 60 * 1000;
+
 export async function requestPortOnePayment(payment) {
   const paymentRequest = createPortOnePaymentRequest(payment);
   validatePortOnePayment(paymentRequest);
 
   const PortOne = await import(/* @vite-ignore */ "https://cdn.portone.io/v2/browser-sdk.esm.js");
   console.info("PortOne payment request", paymentRequest);
-  const result = await PortOne.requestPayment(paymentRequest);
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(
+      () => reject(new PaymentApiError("결제 시간이 초과되었습니다. 다시 시도해주세요.", "PAYMENT_TIMEOUT")),
+      PORTONE_PAYMENT_TIMEOUT_MS,
+    ),
+  );
+
+  const result = await Promise.race([PortOne.requestPayment(paymentRequest), timeoutPromise]);
 
   if (result?.code) {
     throw new PaymentApiError(result.message || "결제창 요청에 실패했습니다.", result.code);
