@@ -101,8 +101,7 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   // ────────────────────────────────────────────────────────────
   // 3 · 지도 탭 → 경복궁 검색
   // ────────────────────────────────────────────────────────────
-  await pageA.locator("nav").getByText("지도").click();
-  await pageA.waitForLoadState("networkidle");
+  await pageA.getByRole("navigation", { name: "주요 화면 빠른 이동" }).getByText("지도").click();
   await pause(2500);
 
   // 지역 검색창에 경복궁 입력
@@ -212,8 +211,7 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   await loginWithEmail(pageB, ALEX_EMAIL, ALEX_PW);
 
   // Alex도 지도 → 경복궁 검색
-  await pageB.locator("nav").getByText("지도").click();
-  await pageB.waitForLoadState("networkidle");
+  await pageB.getByRole("navigation", { name: "주요 화면 빠른 이동" }).getByText("지도").click();
   await pause(2000);
 
   const regionB = pageB.getByPlaceholder(/지역명 입력|지역/);
@@ -262,8 +260,7 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   // 11 · 채팅 — 춘배(한국어) ↔ Alex(영어)
   // ────────────────────────────────────────────────────────────
   // 춘배 채팅방 입장
-  const chatNav = pageA.locator("nav").getByText("채팅");
-  await chatNav.click();
+  await pageA.getByRole("navigation", { name: "주요 화면 빠른 이동" }).getByText("채팅").click();
   await pause(2000);
 
   const roomA = pageA.getByText("경복궁 같이 갈 사람을 모집합니다").first();
@@ -281,7 +278,7 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
 
   // Alex 채팅방 입장
   await pageB.bringToFront();
-  await pageB.locator("nav").getByText("채팅").click();
+  await pageB.getByRole("navigation", { name: "주요 화면 빠른 이동" }).getByText("채팅").click();
   await pause(2000);
 
   const roomB = pageB.getByText("경복궁 같이 갈 사람을 모집합니다").first();
@@ -301,9 +298,10 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   // 12 · 마이페이지 → QR 결제 화면 (마무리)
   // ────────────────────────────────────────────────────────────
   await pageA.bringToFront();
-  await pageA.locator("nav").getByText("마이").click();
+  const nav = pageA.getByRole("navigation", { name: "주요 화면 빠른 이동" });
+  await nav.getByText("마이").click();
   await pause(3000);
 
-  await pageA.locator("nav").getByText("지도").click();
+  await nav.getByText("지도").click();
   await pause(3000);
 });
