@@ -162,7 +162,7 @@ async function positionWindow(page, left) {
     const { windowId } = await cdp.send("Browser.getWindowForTarget");
     await cdp.send("Browser.setWindowBounds", {
       windowId,
-      bounds: { left, top: 40, width: 960, height: 920 },
+      bounds: { left, top: 40, width: 410, height: 900 },
     });
   } catch { /* CDP 미지원 환경 무시 */ }
 }
@@ -173,9 +173,15 @@ async function positionWindow(page, left) {
 test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   test.setTimeout(360_000);
 
-  // ── 두 컨텍스트 생성 ──
-  const ctxA = await browser.newContext({ viewport: { width: 960, height: 920 } });
-  const ctxB = await browser.newContext({ viewport: { width: 960, height: 920 } });
+  // ── 두 컨텍스트 생성 (모바일 뷰 + 위치정보 권한 사전 허용) ──
+  const geoOptions = {
+    viewport: { width: 390, height: 844 },
+    geolocation: { latitude: 37.5796, longitude: 126.9770 }, // 경복궁
+    permissions: ["geolocation"],
+    locale: "ko-KR",
+  };
+  const ctxA = await browser.newContext(geoOptions);
+  const ctxB = await browser.newContext({ ...geoOptions, locale: "en-US" });
   const pageA = await ctxA.newPage(); // 춘배 (한국인, 글 작성자)
   const pageB = await ctxB.newPage(); // Alex  (외국인, 동행 참여자)
 
@@ -188,7 +194,7 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   await pageA.goto("/");
   await pageB.goto("/");
   await positionWindow(pageA, 0);
-  await positionWindow(pageB, 960);
+  await positionWindow(pageB, 420);
   await pause(2500);
 
   // ────────────────────────────────────────────────────────────
