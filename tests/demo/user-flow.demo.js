@@ -162,7 +162,7 @@ async function positionWindow(page, left) {
     const { windowId } = await cdp.send("Browser.getWindowForTarget");
     await cdp.send("Browser.setWindowBounds", {
       windowId,
-      bounds: { left, top: 0, width: 600, height: 1000 },
+      bounds: { left, top: 0, width: 1440, height: 960 },
     });
   } catch { /* CDP 미지원 환경 무시 */ }
 }
@@ -173,15 +173,14 @@ async function positionWindow(page, left) {
 test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   test.setTimeout(360_000);
 
-  // ── 두 컨텍스트 생성 (모바일 뷰 + 위치정보 권한 사전 허용) ──
-  const geoOptions = {
-    viewport: { width: 430, height: 900 },
-    geolocation: { latitude: 37.5796, longitude: 126.9770 }, // 경복궁
+  // ── 두 컨텍스트 생성 (웹 뷰, 위치정보 권한 사전 허용) ──
+  const baseOptions = {
+    viewport: { width: 1440, height: 900 },
+    geolocation: { latitude: 37.5796, longitude: 126.9770 },
     permissions: ["geolocation"],
-    locale: "ko-KR",
   };
-  const ctxA = await browser.newContext(geoOptions);
-  const ctxB = await browser.newContext({ ...geoOptions, locale: "en-US" });
+  const ctxA = await browser.newContext({ ...baseOptions, locale: "ko-KR" });
+  const ctxB = await browser.newContext({ ...baseOptions, locale: "en-US" });
   const pageA = await ctxA.newPage(); // 춘배 (한국인, 글 작성자)
   const pageB = await ctxB.newPage(); // Alex  (외국인, 동행 참여자)
 
@@ -193,8 +192,9 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   // ────────────────────────────────────────────────────────────
   await pageA.goto("/");
   await pageB.goto("/");
+  // 창 하나씩 전체 화면 — 탭 전환 방식
   await positionWindow(pageA, 0);
-  await positionWindow(pageB, 610);
+  await positionWindow(pageB, 0); // pageB는 숨겨진 상태로 대기, bringToFront로 전환
   await pause(2500);
 
   // ────────────────────────────────────────────────────────────
