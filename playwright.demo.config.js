@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "https://chunbae-tour.site",
     trace: "off",
     screenshot: "off",
     video: "off",
@@ -22,10 +22,5 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "corepack pnpm dev --host localhost --port 5173",
-    url: "http://localhost:5173",
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  // webServer 불필요 — 실서버(chunbae-tour.site) 직접 접속
 });
