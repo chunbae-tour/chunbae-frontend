@@ -47,5 +47,7 @@ tmp/
 # Local scripts
 setup.bat
 
-AGENTS.md
-docs/
+docs/frontend/current-task.md
+docs/frontend/discussion-needed.md
+docs/frontend/task-prompts/
+docs/frontend/unimplemented-apis.md
