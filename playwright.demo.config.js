@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: "http://localhost:5173",
     trace: "off",
     screenshot: "off",
     video: "off",
@@ -23,8 +23,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "corepack pnpm dev --host 127.0.0.1 --port 4173",
-    url: "http://127.0.0.1:4173",
+    command: "corepack pnpm dev --host localhost --port 5173",
+    url: "http://localhost:5173",
     reuseExistingServer: true,
     timeout: 120_000,
   },
