@@ -12,9 +12,6 @@ export default defineConfig({
     trace: "off",
     screenshot: "off",
     video: "off",
-    launchOptions: {
-      slowMo: 600,
-    },
   },
   projects: [
     {

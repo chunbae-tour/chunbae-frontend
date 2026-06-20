@@ -43,12 +43,22 @@ async function positionWindow(page, left, width = 1440) {
 
 // ── 로그인 헬퍼 ───────────────────────────────────────────────
 async function loginWithEmail(page, email, password) {
-  await page.getByRole("button", { name: "로그인", exact: true }).click();
-  await pause(1000);
+  await page.waitForLoadState("networkidle");
+  // 로그인 버튼 — 버튼/링크 모두 대응
+  const loginTrigger = page.locator("button, a").filter({ hasText: /^로그인$/ }).first();
+  await loginTrigger.waitFor({ timeout: 15000 });
+  await loginTrigger.click();
+  await pause(1200);
+
   await page.getByPlaceholder("이메일").fill(email);
+  await pause(400);
   await page.getByPlaceholder("비밀번호").fill(password);
-  await page.getByRole("button", { name: "로그인" }).click();
-  await pause(3000);
+  await pause(400);
+
+  // 로그인 제출 버튼 (폼 안의 로그인)
+  await page.locator("button[type='submit'], button").filter({ hasText: /^로그인$/ }).last().click();
+  await page.waitForLoadState("networkidle");
+  await pause(2000);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -91,9 +101,8 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   // ────────────────────────────────────────────────────────────
   // 3 · 지도 탭 → 경복궁 검색
   // ────────────────────────────────────────────────────────────
-  await pageA.getByRole("link", { name: /지도/ }).click().catch(() =>
-    pageA.locator("nav").getByText("지도").click()
-  );
+  await pageA.locator("nav").getByText("지도").click();
+  await pageA.waitForLoadState("networkidle");
   await pause(2500);
 
   // 지역 검색창에 경복궁 입력
@@ -203,9 +212,8 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   await loginWithEmail(pageB, ALEX_EMAIL, ALEX_PW);
 
   // Alex도 지도 → 경복궁 검색
-  await pageB.getByRole("link", { name: /지도/ }).click().catch(() =>
-    pageB.locator("nav").getByText("지도").click()
-  );
+  await pageB.locator("nav").getByText("지도").click();
+  await pageB.waitForLoadState("networkidle");
   await pause(2000);
 
   const regionB = pageB.getByPlaceholder(/지역명 입력|지역/);
