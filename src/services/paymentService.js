@@ -248,7 +248,7 @@ export async function requestCharge({ amount, paymentMethod, idempotencyKey }) {
   return normalizeChargeResponse(data, paymentMethod);
 }
 
-const PORTONE_PAYMENT_TIMEOUT_MS = 10 * 60 * 1000;
+const PORTONE_PAYMENT_TIMEOUT_MS = 15 * 60 * 1000;
 
 export async function requestPortOnePayment(payment) {
   const paymentRequest = createPortOnePaymentRequest(payment);
