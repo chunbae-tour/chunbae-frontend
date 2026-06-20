@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/demo",
+  testMatch: "**/*.demo.js",
   fullyParallel: false,
   retries: 0,
   workers: 1,
