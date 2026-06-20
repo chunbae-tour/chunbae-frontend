@@ -53,7 +53,10 @@ async function setupMockRoutes(page) {
 
     // 인증
     if (path === "/api/v1/auth/login" && req.method() === "POST") {
-      return route.fulfill(json({ accessToken: "demo-token", user: MOCK.user }));
+      return route.fulfill(json({
+        accessToken: "demo-token",
+        userId: 1, nickname: "춘배", role: "USER", language: "ko", email: "demo@chunbae.site",
+      }));
     }
     if (path === "/api/v1/auth/logout") return route.fulfill(json(null));
     if (path === "/api/v1/users/me") return route.fulfill(json(MOCK.user));
@@ -107,7 +110,7 @@ async function setupMockRoutes(page) {
 test("춘배투어 사용자 이용 흐름 시연", async ({ page }) => {
   test.setTimeout(180_000); // 3분
 
-  await page.setViewportSize({ width: 390, height: 844 }); // iPhone 14 크기
+  await page.setViewportSize({ width: 1280, height: 800 }); // 웹 뷰
   await setupMockRoutes(page);
 
   // ──────────────────────────────────────────────────────────
