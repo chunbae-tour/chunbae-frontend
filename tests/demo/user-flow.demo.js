@@ -162,7 +162,7 @@ async function positionWindow(page, left) {
     const { windowId } = await cdp.send("Browser.getWindowForTarget");
     await cdp.send("Browser.setWindowBounds", {
       windowId,
-      bounds: { left, top: 40, width: 410, height: 900 },
+      bounds: { left, top: 0, width: 600, height: 1000 },
     });
   } catch { /* CDP 미지원 환경 무시 */ }
 }
@@ -175,7 +175,7 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
 
   // ── 두 컨텍스트 생성 (모바일 뷰 + 위치정보 권한 사전 허용) ──
   const geoOptions = {
-    viewport: { width: 390, height: 844 },
+    viewport: { width: 430, height: 900 },
     geolocation: { latitude: 37.5796, longitude: 126.9770 }, // 경복궁
     permissions: ["geolocation"],
     locale: "ko-KR",
@@ -194,7 +194,7 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   await pageA.goto("/");
   await pageB.goto("/");
   await positionWindow(pageA, 0);
-  await positionWindow(pageB, 420);
+  await positionWindow(pageB, 610);
   await pause(2500);
 
   // ────────────────────────────────────────────────────────────
