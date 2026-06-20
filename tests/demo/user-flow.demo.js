@@ -30,13 +30,23 @@ function pause(ms = 1800) {
 }
 
 // ── 창 위치 설정 ───────────────────────────────────────────────
-async function positionWindow(page, left, width = 1440) {
+// 두 번째 모니터 기준 — 주 모니터가 1920px 너비라고 가정
+// 다른 경우 SECOND_MONITOR_LEFT 값 조정
+const SECOND_MONITOR_LEFT = 1920;
+
+async function positionWindow(page) {
   try {
     const cdp = await page.context().newCDPSession(page);
     const { windowId } = await cdp.send("Browser.getWindowForTarget");
+    // 먼저 두 번째 모니터로 이동
     await cdp.send("Browser.setWindowBounds", {
       windowId,
-      bounds: { left, top: 0, width, height: 960 },
+      bounds: { left: SECOND_MONITOR_LEFT, top: 0, width: 1920, height: 1080 },
+    });
+    // 최대화
+    await cdp.send("Browser.setWindowBounds", {
+      windowId,
+      bounds: { left: SECOND_MONITOR_LEFT, top: 0, windowState: "maximized" },
     });
   } catch { /* CDP 미지원 무시 */ }
 }
@@ -88,8 +98,8 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   // ────────────────────────────────────────────────────────────
   await pageA.goto(BASE_URL);
   await pageB.goto(BASE_URL);
-  await positionWindow(pageA, 0);
-  await positionWindow(pageB, 0);
+  await positionWindow(pageA);
+  await positionWindow(pageB);
   await pageA.bringToFront();
   await pause(2500);
 
@@ -172,15 +182,11 @@ test("춘배투어 사용자 이용 흐름 시연", async ({ browser }) => {
   await likedPlace.click();
   await pause(1000);
 
-  // 모임 날짜 → "직접 날짜 선택" 버튼 클릭 → 달력 열기
-  const calendarBtn = pageA.locator(".community-date-display");
-  await calendarBtn.scrollIntoViewIfNeeded();
+  // 모임 날짜 → 퀵버튼 "오늘" 클릭 (오늘 = 20일)
+  const todayBtn = pageA.locator(".community-date-quick-options button").filter({ hasText: "오늘" });
+  await todayBtn.scrollIntoViewIfNeeded();
   await pause(800);
-  await calendarBtn.click();
-  await pause(1500);
-
-  // 달력에서 20일 클릭 (^20$ — 정확한 날짜만)
-  await pageA.locator(".hanok-calendar-days button").filter({ hasText: /^20$/ }).first().click();
+  await todayBtn.click();
   await pause(1200);
 
   // 최대 인원 select → 5명 선택 (스크롤 후 보이게)
