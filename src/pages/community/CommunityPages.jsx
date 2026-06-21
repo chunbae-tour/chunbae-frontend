@@ -2409,7 +2409,7 @@ export function CommunityWritePage({
         ? await updateCommunityPost(initialPost.id, type, submitForm)
         : await createCommunityPost({ type, ...submitForm });
       const savedPost = isEditing ? { ...initialPost, ...responsePost } : responsePost;
-      showToast(isEditing ? "게시글이 수정되었습니다." : "게시글이 등록되었습니다! ??");
+      showToast(isEditing ? "게시글이 수정되었습니다." : "게시글이 등록되었습니다!");
       if (onSaved) {
         onSaved(savedPost);
       } else {
